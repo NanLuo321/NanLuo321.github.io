@@ -41,31 +41,25 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 		{
 			// 组件类型：用户资料组件
 			type: "profile",
-			// 是否启用该组件
-			enable: true,
+			// 是否启用该组件（已移至悬浮窗）
+			enable: false,
 			// 组件位置
 			position: "top",
 			// 是否在文章详情页显示
 			showOnPostPage: true,
 		},
 		{
-			// 组件类型：公告组件
+			// 组件类型：公告组件（已移至悬浮窗）
 			type: "announcement",
-			// 是否启用该组件
-			enable: true,
-			// 组件位置
+			enable: false,
 			position: "top",
-			// 是否在文章详情页显示
 			showOnPostPage: true,
 		},
 		{
-			// 组件类型：音乐播放器
+			// 组件类型：音乐播放器（已移至悬浮窗）
 			type: "music",
-			// 是否启用该组件
-			enable: true,
-			// 组件位置
+			enable: false,
 			position: "sticky",
-			// 是否在文章详情页显示
 			showOnPostPage: true,
 		},
 		{
@@ -241,17 +235,15 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 		{
 			// 组件类型：用户资料组件
 			type: "profile",
-			// 是否启用该组件
-			enable: true,
+			// 是否启用该组件（已移至悬浮窗）
+			enable: false,
 			// 是否在文章详情页显示
 			showOnPostPage: true,
 		},
 		{
-			// 组件类型：公告组件
+			// 组件类型：公告组件（已移至悬浮窗）
 			type: "announcement",
-			// 是否启用该组件
-			enable: true,
-			// 是否在文章详情页显示
+			enable: false,
 			showOnPostPage: true,
 		},
 		{

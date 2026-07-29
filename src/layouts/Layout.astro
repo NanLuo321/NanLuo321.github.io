@@ -9,6 +9,9 @@ import FontSetup from "@components/features/FontSetup.astro";
 import MusicManager from "@components/features/MusicManager.astro";
 import SakuraEffect from "@components/features/SakuraEffect.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
+import { Icon } from "astro-icon/components";
+import MusicPlayer from "@/components/features/MusicPlayer.astro";
+import { announcementConfig } from "@/config/announcementConfig";
 
 import {
 	analyticsConfig,
@@ -686,6 +689,137 @@ const siteLang = lang.replace("_", "-");
     </div>
     <!-- 彩蛋撒花容器 -->
     <div id="easter-egg-confetti" class="fixed inset-0 z-[9998] pointer-events-none overflow-hidden"></div>
+
+    <!-- 个人介绍悬浮窗触发按钮 -->
+    <button
+      id="profile-float-trigger"
+      class="fixed bottom-5 left-5 z-[9000] w-12 h-12 rounded-full flex items-center justify-center pointer-events-auto"
+      aria-label="个人介绍"
+      title="个人介绍"
+    >
+      <Icon is:inline name="material-symbols:person-rounded" class="text-[1.5rem]" />
+    </button>
+
+    <!-- 个人介绍悬浮窗 -->
+    <div id="profile-float" class="profile-float" style="display:none;">
+      <!-- 拖拽头部 -->
+      <div class="profile-float-header" id="profile-float-drag">
+        <span class="profile-float-title">个人介绍</span>
+        <div class="profile-float-controls">
+          <button class="profile-float-btn" id="profile-float-minimize" aria-label="最小化" title="最小化">
+            <Icon is:inline name="material-symbols:remove-rounded" class="text-[1.1rem]" />
+          </button>
+          <button class="profile-float-btn" id="profile-float-fullscreen" aria-label="全屏" title="全屏">
+            <Icon is:inline name="material-symbols:fullscreen-rounded" class="text-[1.1rem]" id="profile-float-fs-icon" />
+          </button>
+          <button class="profile-float-btn" id="profile-float-close" aria-label="关闭" title="关闭">
+            <Icon is:inline name="material-symbols:close-rounded" class="text-[1.1rem]" />
+          </button>
+        </div>
+      </div>
+      <!-- 内容区域 -->
+      <div class="profile-float-body" id="profile-float-body">
+        <div class="profile-float-content">
+          <div class="profile-float-avatar-wrapper">
+            <img src={profileConfig.avatar} alt={profileConfig.name} class="profile-float-avatar" />
+          </div>
+          <div class="profile-float-name">{profileConfig.name}</div>
+          <div class="profile-float-divider"></div>
+          <div class="profile-float-bio">{profileConfig.bio}</div>
+          <div class="profile-float-links">
+            {profileConfig.links.map(item => (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="me"
+                aria-label={item.name}
+                class="profile-float-link"
+              >
+                <Icon is:inline name={item.icon} class="text-[1.4rem]" />
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+      <!-- 缩放手柄 -->
+      <div class="profile-float-resize" id="profile-float-resize"></div>
+    </div>
+
+    <!-- 公告悬浮窗触发按钮 -->
+    <button
+      id="announce-float-trigger"
+      class="fixed bottom-5 left-20 z-[9000] w-12 h-12 rounded-full flex items-center justify-center pointer-events-auto float-trigger-btn"
+      aria-label="公告"
+      title="公告"
+    >
+      <Icon is:inline name="material-symbols:campaign-rounded" class="text-[1.4rem]" />
+    </button>
+
+    <!-- 公告悬浮窗 -->
+    <div id="announce-float" class="profile-float announce-float" style="display:none;">
+      <div class="profile-float-header" id="announce-float-drag">
+        <span class="profile-float-title">{announcementConfig.title || "公告"}</span>
+        <div class="profile-float-controls">
+          <button class="profile-float-btn" id="announce-float-minimize" aria-label="最小化" title="最小化">
+            <Icon is:inline name="material-symbols:remove-rounded" class="text-[1.1rem]" />
+          </button>
+          <button class="profile-float-btn" id="announce-float-fullscreen" aria-label="全屏" title="全屏">
+            <Icon is:inline name="material-symbols:fullscreen-rounded" class="text-[1.1rem]" id="announce-float-fs-icon" />
+          </button>
+          <button class="profile-float-btn" id="announce-float-close" aria-label="关闭" title="关闭">
+            <Icon is:inline name="material-symbols:close-rounded" class="text-[1.1rem]" />
+          </button>
+        </div>
+      </div>
+      <div class="profile-float-body" id="announce-float-body">
+        <div class="announce-float-content">
+          <div class="announce-float-text">{announcementConfig.content}</div>
+          {announcementConfig.link && announcementConfig.link.enable !== false && (
+            <a
+              href={announcementConfig.link.url}
+              target={announcementConfig.link.external ? "_blank" : "_self"}
+              rel={announcementConfig.link.external ? "noopener noreferrer" : undefined}
+              class="announce-float-link-btn"
+            >
+              {announcementConfig.link.text}
+            </a>
+          )}
+        </div>
+      </div>
+      <div class="profile-float-resize" id="announce-float-resize"></div>
+    </div>
+
+    <!-- 音乐悬浮窗触发按钮 -->
+    <button
+      id="music-float-trigger"
+      class="fixed bottom-5 left-[8.5rem] z-[9000] w-12 h-12 rounded-full flex items-center justify-center pointer-events-auto float-trigger-btn"
+      aria-label="音乐"
+      title="音乐"
+    >
+      <Icon is:inline name="material-symbols:music-note-rounded" class="text-[1.4rem]" />
+    </button>
+
+    <!-- 音乐悬浮窗 -->
+    <div id="music-float" class="profile-float music-float" style="display:none;">
+      <div class="profile-float-header" id="music-float-drag">
+        <span class="profile-float-title">音乐</span>
+        <div class="profile-float-controls">
+          <button class="profile-float-btn" id="music-float-minimize" aria-label="最小化" title="最小化">
+            <Icon is:inline name="material-symbols:remove-rounded" class="text-[1.1rem]" />
+          </button>
+          <button class="profile-float-btn" id="music-float-fullscreen" aria-label="全屏" title="全屏">
+            <Icon is:inline name="material-symbols:fullscreen-rounded" class="text-[1.1rem]" id="music-float-fs-icon" />
+          </button>
+          <button class="profile-float-btn" id="music-float-close" aria-label="关闭" title="关闭">
+            <Icon is:inline name="material-symbols:close-rounded" class="text-[1.1rem]" />
+          </button>
+        </div>
+      </div>
+      <div class="profile-float-body" id="music-float-body">
+        <MusicPlayer id="music-float-player" />
+      </div>
+      <div class="profile-float-resize" id="music-float-resize"></div>
+    </div>
   </body>
 </html>
 
@@ -808,8 +942,6 @@ const siteLang = lang.replace("_", "-");
       transform: translateY(-140%) scale(0.9);
       opacity: 0;
       pointer-events: none;
-      width: 0;
-      margin: 0;
     }
 
     /* 按钮在导航岛隐藏后的状态 */
@@ -821,6 +953,255 @@ const siteLang = lang.replace("_", "-");
     @keyframes navbar-toggle-pulse {
       0%, 100% { opacity: 0.5; transform: scale(1); }
       50% { opacity: 1; transform: scale(1.08); }
+    }
+
+    /* ========== 个人介绍悬浮窗 ========== */
+    #profile-float-trigger {
+      background: color-mix(in oklch, var(--card-bg) 75%, transparent);
+      border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 40%, transparent);
+      backdrop-filter: blur(16px) saturate(1.4);
+      -webkit-backdrop-filter: blur(16px) saturate(1.4);
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      opacity: 0.85;
+      transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    #profile-float-trigger:hover {
+      opacity: 1;
+      transform: scale(1.12);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08);
+    }
+    #profile-float-trigger:active {
+      transform: scale(0.88);
+      transition-duration: 0.15s;
+    }
+    :root.dark #profile-float-trigger {
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+    }
+
+    .profile-float {
+      position: fixed;
+      bottom: 80px;
+      left: 20px;
+      width: 280px;
+      z-index: 9001;
+      background: color-mix(in oklch, var(--card-bg) 80%, transparent);
+      backdrop-filter: blur(20px) saturate(1.6);
+      -webkit-backdrop-filter: blur(20px) saturate(1.6);
+      border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 50%, transparent);
+      border-radius: 1rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: profile-float-appear 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    :root.dark .profile-float {
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+    }
+    .profile-float.profile-fullscreen {
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+      border: none !important;
+    }
+
+    @keyframes profile-float-appear {
+      0% { opacity: 0; transform: scale(0.85) translateY(20px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .profile-float-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      cursor: grab;
+      user-select: none;
+      border-bottom: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent);
+      background: color-mix(in oklch, var(--card-bg) 60%, transparent);
+    }
+    .profile-float-header:active {
+      cursor: grabbing;
+    }
+    .profile-float-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .profile-float-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .profile-float-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 0.5rem;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .profile-float-btn:hover {
+      background: color-mix(in oklch, var(--primary) 15%, transparent);
+      color: var(--primary);
+    }
+    .profile-float-btn:active {
+      transform: scale(0.9);
+    }
+
+    .profile-float-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .profile-float-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.25rem 1rem;
+    }
+    .profile-float-avatar-wrapper {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid color-mix(in oklch, var(--primary) 30%, transparent);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      margin-bottom: 0.75rem;
+    }
+    .profile-float-avatar {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .profile-float-name {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: center;
+    }
+    .profile-float-divider {
+      width: 1.5rem;
+      height: 3px;
+      background: var(--primary);
+      border-radius: 9999px;
+      margin: 0.5rem 0;
+    }
+    .profile-float-bio {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .profile-float-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .profile-float-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      background: color-mix(in oklch, var(--card-bg) 50%, transparent);
+      border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .profile-float-link:hover {
+      background: color-mix(in oklch, var(--primary) 15%, transparent);
+      color: var(--primary);
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .profile-float-link:active {
+      transform: scale(0.92);
+    }
+
+    .profile-float-resize {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 16px;
+      height: 16px;
+      cursor: nwse-resize;
+      background: linear-gradient(135deg, transparent 50%, color-mix(in oklch, var(--text-secondary) 30%, transparent) 50%);
+      border-bottom-right-radius: 1rem;
+    }
+
+    /* ========== 公告/音乐悬浮窗触发按钮通用样式 ========== */
+    .float-trigger-btn {
+      background: color-mix(in oklch, var(--card-bg) 75%, transparent);
+      border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 40%, transparent);
+      backdrop-filter: blur(16px) saturate(1.4);
+      -webkit-backdrop-filter: blur(16px) saturate(1.4);
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      opacity: 0.85;
+      transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .float-trigger-btn:hover {
+      opacity: 1;
+      transform: scale(1.12);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08);
+    }
+    .float-trigger-btn:active {
+      transform: scale(0.88);
+      transition-duration: 0.15s;
+    }
+    :root.dark .float-trigger-btn {
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+    }
+
+    /* 公告悬浮窗特定样式 */
+    .announce-float {
+      width: 320px;
+    }
+    .announce-float-content {
+      padding: 1.25rem;
+    }
+    .announce-float-text {
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 1rem;
+      white-space: pre-wrap;
+    }
+    .announce-float-link-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      background: color-mix(in oklch, var(--primary) 15%, transparent);
+      color: var(--primary);
+      transition: all 0.2s ease;
+    }
+    .announce-float-link-btn:hover {
+      background: color-mix(in oklch, var(--primary) 25%, transparent);
+      transform: translateY(-1px);
+    }
+
+    /* 音乐悬浮窗特定样式 */
+    .music-float {
+      width: 340px;
+    }
+    .music-float .music-player-widget {
+      padding: 0.75rem;
     }
 
     /* ========== iOS 风格彩蛋弹窗动画 ========== */
@@ -2142,4 +2523,452 @@ function disableAnimation() {
   document.addEventListener("keydown", function(e) {
     if (e.key === "Escape") closeEasterEgg();
   });
+
+  /* ========== 个人介绍悬浮窗 ========== */
+  function initProfileFloat() {
+    const float = document.getElementById("profile-float") as HTMLElement | null;
+    const trigger = document.getElementById("profile-float-trigger");
+    const dragHandle = document.getElementById("profile-float-drag");
+    const resizeHandle = document.getElementById("profile-float-resize");
+    const closeBtn = document.getElementById("profile-float-close");
+    const minimizeBtn = document.getElementById("profile-float-minimize");
+    const fullscreenBtn = document.getElementById("profile-float-fullscreen");
+    const fsIcon = document.getElementById("profile-float-fs-icon");
+
+    if (!float || !trigger) return;
+
+    // 从 localStorage 恢复位置和大小
+    const savedPos = localStorage.getItem("profile-float-pos");
+    if (savedPos) {
+      try {
+        const pos = JSON.parse(savedPos);
+        if (pos.left !== undefined) float.style.left = pos.left + "px";
+        if (pos.top !== undefined) {
+          float.style.top = pos.top + "px";
+          float.style.bottom = "auto";
+        }
+        if (pos.width) float.style.width = pos.width + "px";
+        if (pos.height) float.style.height = pos.height + "px";
+      } catch (e) {}
+    }
+
+    // 显示/隐藏
+    function showFloat() {
+      float!.style.display = "flex";
+      trigger!.style.display = "none";
+    }
+    function hideFloat() {
+      float!.style.display = "none";
+      trigger!.style.display = "flex";
+    }
+
+    trigger.onclick = function(e) {
+      e.stopPropagation();
+      showFloat();
+    };
+    if (closeBtn) {
+      closeBtn.onclick = function(e) {
+        e.stopPropagation();
+        hideFloat();
+      };
+    }
+    if (minimizeBtn) {
+      minimizeBtn.onclick = function(e) {
+        e.stopPropagation();
+        hideFloat();
+      };
+    }
+
+    // 全屏切换
+    let isFullscreen = false;
+    let prevRect: { left: number; top: number; width: number; height: number } | null = null;
+    if (fullscreenBtn) {
+      fullscreenBtn.onclick = function(e) {
+        e.stopPropagation();
+        if (!isFullscreen) {
+          prevRect = {
+            left: float.offsetLeft,
+            top: float.offsetTop,
+            width: float.offsetWidth,
+            height: float.offsetHeight,
+          };
+          float.classList.add("profile-fullscreen");
+          isFullscreen = true;
+          if (fsIcon) {
+            (fsIcon as HTMLElement).setAttribute("data-icon", "material-symbols:fullscreen-exit-rounded");
+          }
+        } else {
+          float.classList.remove("profile-fullscreen");
+          isFullscreen = false;
+          if (prevRect) {
+            float.style.left = prevRect.left + "px";
+            float.style.top = prevRect.top + "px";
+            float.style.width = prevRect.width + "px";
+            float.style.height = prevRect.height + "px";
+          }
+          if (fsIcon) {
+            (fsIcon as HTMLElement).setAttribute("data-icon", "material-symbols:fullscreen-rounded");
+          }
+        }
+      };
+    }
+
+    // 拖拽
+    if (dragHandle) {
+      let isDragging = false;
+      let startX = 0, startY = 0;
+      let startLeft = 0, startTop = 0;
+
+      const onMouseDown = function(e: MouseEvent | TouchEvent) {
+        if (isFullscreen) return;
+        // 排除点击控制按钮
+        const target = e.target as HTMLElement;
+        if (target.closest(".profile-float-btn")) return;
+
+        isDragging = true;
+        const point = "touches" in e ? e.touches[0] : e;
+        startX = point.clientX;
+        startY = point.clientY;
+        startLeft = float.offsetLeft;
+        startTop = float.offsetTop;
+        float.style.bottom = "auto";
+        (dragHandle as HTMLElement).style.cursor = "grabbing";
+        e.preventDefault();
+      };
+
+      const onMouseMove = function(e: MouseEvent | TouchEvent) {
+        if (!isDragging) return;
+        const point = "touches" in e ? e.touches[0] : e;
+        const dx = point.clientX - startX;
+        const dy = point.clientY - startY;
+        let newLeft = startLeft + dx;
+        let newTop = startTop + dy;
+
+        // 边界约束
+        const maxLeft = window.innerWidth - 60;
+        const maxTop = window.innerHeight - 60;
+        const minLeft = -float.offsetWidth + 60;
+        const minTop = 0;
+        newLeft = Math.max(minLeft, Math.min(maxLeft, newLeft));
+        newTop = Math.max(minTop, Math.min(maxTop, newTop));
+
+        float.style.left = newLeft + "px";
+        float.style.top = newTop + "px";
+
+        // 保存位置
+        localStorage.setItem("profile-float-pos", JSON.stringify({
+          left: newLeft,
+          top: newTop,
+          width: float.offsetWidth,
+          height: float.offsetHeight,
+        }));
+      };
+
+      const onMouseUp = function() {
+        isDragging = false;
+        (dragHandle as HTMLElement).style.cursor = "grab";
+      };
+
+      dragHandle.addEventListener("mousedown", onMouseDown as EventListener);
+      dragHandle.addEventListener("touchstart", onMouseDown as EventListener, { passive: false });
+      document.addEventListener("mousemove", onMouseMove as EventListener);
+      document.addEventListener("touchmove", onMouseMove as EventListener, { passive: false });
+      document.addEventListener("mouseup", onMouseUp);
+      document.addEventListener("touchend", onMouseUp);
+    }
+
+    // 缩放
+    if (resizeHandle) {
+      let isResizing = false;
+      let startX = 0, startY = 0;
+      let startWidth = 0, startHeight = 0;
+
+      const onResizeDown = function(e: MouseEvent | TouchEvent) {
+        if (isFullscreen) return;
+        e.stopPropagation();
+        e.preventDefault();
+
+        isResizing = true;
+        const point = "touches" in e ? e.touches[0] : e;
+        startX = point.clientX;
+        startY = point.clientY;
+        startWidth = float.offsetWidth;
+        startHeight = float.offsetHeight;
+      };
+
+      const onResizeMove = function(e: MouseEvent | TouchEvent) {
+        if (!isResizing) return;
+        const point = "touches" in e ? e.touches[0] : e;
+        const dw = point.clientX - startX;
+        const dh = point.clientY - startY;
+
+        const newWidth = Math.max(220, Math.min(window.innerWidth - float.offsetLeft - 10, startWidth + dw));
+        const newHeight = Math.max(200, Math.min(window.innerHeight - float.offsetTop - 10, startHeight + dh));
+
+        float.style.width = newWidth + "px";
+        float.style.height = newHeight + "px";
+
+        localStorage.setItem("profile-float-pos", JSON.stringify({
+          left: float.offsetLeft,
+          top: float.offsetTop,
+          width: newWidth,
+          height: newHeight,
+        }));
+      };
+
+      const onResizeUp = function() {
+        isResizing = false;
+      };
+
+      resizeHandle.addEventListener("mousedown", onResizeDown as EventListener);
+      resizeHandle.addEventListener("touchstart", onResizeDown as EventListener, { passive: false });
+      document.addEventListener("mousemove", onResizeMove as EventListener);
+      document.addEventListener("touchmove", onResizeMove as EventListener, { passive: false });
+      document.addEventListener("mouseup", onResizeUp);
+      document.addEventListener("touchend", onResizeUp);
+    }
+  }
+
+  // 初始化
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initProfileFloat);
+  } else {
+    initProfileFloat();
+  }
+  document.addEventListener("astro:page-load", initProfileFloat);
+  if (window.swup?.hooks) {
+    window.swup.hooks.on("content:replace", initProfileFloat);
+  } else {
+    document.addEventListener("swup:enable", function() {
+      if (window.swup?.hooks) {
+        window.swup.hooks.on("content:replace", initProfileFloat);
+      }
+    });
+  }
+
+  /* ========== 通用悬浮窗初始化（公告/音乐） ========== */
+  function initGenericFloat(prefix: string) {
+    const float = document.getElementById(prefix + "-float") as HTMLElement | null;
+    const trigger = document.getElementById(prefix + "-float-trigger");
+    const dragHandle = document.getElementById(prefix + "-float-drag");
+    const resizeHandle = document.getElementById(prefix + "-float-resize");
+    const closeBtn = document.getElementById(prefix + "-float-close");
+    const minimizeBtn = document.getElementById(prefix + "-float-minimize");
+    const fullscreenBtn = document.getElementById(prefix + "-float-fullscreen");
+    const fsIcon = document.getElementById(prefix + "-float-fs-icon");
+
+    if (!float || !trigger) return;
+
+    // 从 localStorage 恢复位置和大小
+    const savedPos = localStorage.getItem(prefix + "-float-pos");
+    if (savedPos) {
+      try {
+        const pos = JSON.parse(savedPos);
+        if (pos.left !== undefined) float.style.left = pos.left + "px";
+        if (pos.top !== undefined) {
+          float.style.top = pos.top + "px";
+          float.style.bottom = "auto";
+        }
+        if (pos.width) float.style.width = pos.width + "px";
+        if (pos.height) float.style.height = pos.height + "px";
+      } catch (e) {}
+    }
+
+    function showFloat() {
+      float!.style.display = "flex";
+      trigger!.style.display = "none";
+      // 音乐悬浮窗打开时初始化播放器
+      if (prefix === "music" && (window as any).__fireflyMusic) {
+        (window as any).__fireflyMusic.init();
+      }
+    }
+    function hideFloat() {
+      float!.style.display = "none";
+      trigger!.style.display = "flex";
+    }
+
+    trigger.onclick = function(e) {
+      e.stopPropagation();
+      showFloat();
+    };
+    if (closeBtn) {
+      closeBtn.onclick = function(e) {
+        e.stopPropagation();
+        hideFloat();
+      };
+    }
+    if (minimizeBtn) {
+      minimizeBtn.onclick = function(e) {
+        e.stopPropagation();
+        hideFloat();
+      };
+    }
+
+    // 全屏切换
+    let isFullscreen = false;
+    let prevRect: { left: number; top: number; width: number; height: number } | null = null;
+    if (fullscreenBtn) {
+      fullscreenBtn.onclick = function(e) {
+        e.stopPropagation();
+        if (!isFullscreen) {
+          prevRect = {
+            left: float!.offsetLeft,
+            top: float!.offsetTop,
+            width: float!.offsetWidth,
+            height: float!.offsetHeight,
+          };
+          float!.classList.add("profile-fullscreen");
+          isFullscreen = true;
+          if (fsIcon) {
+            (fsIcon as HTMLElement).setAttribute("data-icon", "material-symbols:fullscreen-exit-rounded");
+          }
+        } else {
+          float!.classList.remove("profile-fullscreen");
+          isFullscreen = false;
+          if (prevRect) {
+            float!.style.left = prevRect.left + "px";
+            float!.style.top = prevRect.top + "px";
+            float!.style.width = prevRect.width + "px";
+            float!.style.height = prevRect.height + "px";
+          }
+          if (fsIcon) {
+            (fsIcon as HTMLElement).setAttribute("data-icon", "material-symbols:fullscreen-rounded");
+          }
+        }
+      };
+    }
+
+    // 拖拽
+    if (dragHandle) {
+      let isDragging = false;
+      let startX = 0, startY = 0;
+      let startLeft = 0, startTop = 0;
+
+      const onMouseDown = function(e: MouseEvent | TouchEvent) {
+        if (isFullscreen) return;
+        const target = e.target as HTMLElement;
+        if (target.closest(".profile-float-btn")) return;
+
+        isDragging = true;
+        const point = "touches" in e ? e.touches[0] : e;
+        startX = point.clientX;
+        startY = point.clientY;
+        startLeft = float!.offsetLeft;
+        startTop = float!.offsetTop;
+        float!.style.bottom = "auto";
+        (dragHandle as HTMLElement).style.cursor = "grabbing";
+        e.preventDefault();
+      };
+
+      const onMouseMove = function(e: MouseEvent | TouchEvent) {
+        if (!isDragging) return;
+        const point = "touches" in e ? e.touches[0] : e;
+        const dx = point.clientX - startX;
+        const dy = point.clientY - startY;
+        let newLeft = startLeft + dx;
+        let newTop = startTop + dy;
+
+        const maxLeft = window.innerWidth - 60;
+        const maxTop = window.innerHeight - 60;
+        const minLeft = -float!.offsetWidth + 60;
+        const minTop = 0;
+        newLeft = Math.max(minLeft, Math.min(maxLeft, newLeft));
+        newTop = Math.max(minTop, Math.min(maxTop, newTop));
+
+        float!.style.left = newLeft + "px";
+        float!.style.top = newTop + "px";
+
+        localStorage.setItem(prefix + "-float-pos", JSON.stringify({
+          left: newLeft,
+          top: newTop,
+          width: float!.offsetWidth,
+          height: float!.offsetHeight,
+        }));
+      };
+
+      const onMouseUp = function() {
+        isDragging = false;
+        (dragHandle as HTMLElement).style.cursor = "grab";
+      };
+
+      dragHandle.addEventListener("mousedown", onMouseDown as EventListener);
+      dragHandle.addEventListener("touchstart", onMouseDown as EventListener, { passive: false });
+      document.addEventListener("mousemove", onMouseMove as EventListener);
+      document.addEventListener("touchmove", onMouseMove as EventListener, { passive: false });
+      document.addEventListener("mouseup", onMouseUp);
+      document.addEventListener("touchend", onMouseUp);
+    }
+
+    // 缩放
+    if (resizeHandle) {
+      let isResizing = false;
+      let startX = 0, startY = 0;
+      let startWidth = 0, startHeight = 0;
+
+      const onResizeDown = function(e: MouseEvent | TouchEvent) {
+        if (isFullscreen) return;
+        e.stopPropagation();
+        e.preventDefault();
+
+        isResizing = true;
+        const point = "touches" in e ? e.touches[0] : e;
+        startX = point.clientX;
+        startY = point.clientY;
+        startWidth = float!.offsetWidth;
+        startHeight = float!.offsetHeight;
+      };
+
+      const onResizeMove = function(e: MouseEvent | TouchEvent) {
+        if (!isResizing) return;
+        const point = "touches" in e ? e.touches[0] : e;
+        const dw = point.clientX - startX;
+        const dh = point.clientY - startY;
+
+        const newWidth = Math.max(220, Math.min(window.innerWidth - float!.offsetLeft - 10, startWidth + dw));
+        const newHeight = Math.max(200, Math.min(window.innerHeight - float!.offsetTop - 10, startHeight + dh));
+
+        float!.style.width = newWidth + "px";
+        float!.style.height = newHeight + "px";
+
+        localStorage.setItem(prefix + "-float-pos", JSON.stringify({
+          left: float!.offsetLeft,
+          top: float!.offsetTop,
+          width: newWidth,
+          height: newHeight,
+        }));
+      };
+
+      const onResizeUp = function() {
+        isResizing = false;
+      };
+
+      resizeHandle.addEventListener("mousedown", onResizeDown as EventListener);
+      resizeHandle.addEventListener("touchstart", onResizeDown as EventListener, { passive: false });
+      document.addEventListener("mousemove", onResizeMove as EventListener);
+      document.addEventListener("touchmove", onResizeMove as EventListener, { passive: false });
+      document.addEventListener("mouseup", onResizeUp);
+      document.addEventListener("touchend", onResizeUp);
+    }
+  }
+
+  function initAllFloats() {
+    initGenericFloat("announce");
+    initGenericFloat("music");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAllFloats);
+  } else {
+    initAllFloats();
+  }
+  document.addEventListener("astro:page-load", initAllFloats);
+  if (window.swup?.hooks) {
+    window.swup.hooks.on("content:replace", initAllFloats);
+  } else {
+    document.addEventListener("swup:enable", function() {
+      if (window.swup?.hooks) {
+        window.swup.hooks.on("content:replace", initAllFloats);
+      }
+    });
+  }
 </script>
