@@ -313,10 +313,21 @@ const hasMultipleImages =
 <slot slot="head" name="head"></slot>
 
 <!-- Floating Navbar - 居中悬浮 -->
-<div id="top-row" class="z-50 fixed top-3 left-1/2 -translate-x-1/2 pointer-events-none">
+<div id="top-row" class="z-50 fixed top-3 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-3">
     <div id="navbar-wrapper" class="pointer-events-auto flex items-center gap-3">
         <Navbar></Navbar>
     </div>
+    <!-- 隐藏/显示导航岛按钮 -->
+    <button
+        id="fullscreen-navbar-toggle"
+        class="pointer-events-auto w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center"
+        aria-label="隐藏导航栏"
+        title="隐藏导航栏"
+        onclick="toggleFullscreenNavbar()"
+    >
+        <Icon is:inline id="navbar-toggle-icon-up" name="material-symbols:expand-less-rounded" class="text-[1.25rem]" />
+        <Icon is:inline id="navbar-toggle-icon-down" name="material-symbols:expand-more-rounded" class="text-[1.25rem] hidden" />
+    </button>
 </div>
 
 <!-- Wallpaper - 如果允许切换则始终渲染，否则只渲染当前模式 -->

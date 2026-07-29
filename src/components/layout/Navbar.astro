@@ -106,7 +106,12 @@ if (isLocalSrcLogo) {
         "overflow-visible! h-14 px-4 rounded-2xl"
     ]}>
         <div class="mx-auto h-full flex items-center gap-3">
-            <a href={url('/')} class="btn-plain scale-animation rounded-lg h-10 px-3 md:px-5 font-bold active:scale-95 shrink-0">
+            <button
+                onclick="openEasterEgg()"
+                class="btn-plain scale-animation rounded-lg h-10 px-3 md:px-5 font-bold active:scale-95 shrink-0 cursor-pointer"
+                aria-label="彩蛋"
+                title="点我试试？"
+            >
                 <div class:list={[
                     "flex flex-row items-center text-md",
                     siteConfig.navbar.followTheme ? "text-(--primary)" : "dark:text-white text-black"
@@ -131,7 +136,7 @@ if (isLocalSrcLogo) {
                                     ) : null}
                     <span class="font-extrabold text-lg tracking-wide">{showNavbarTitle && navbarTitle}</span>
                 </div>
-            </a>
+            </button>
             <div class:list={[
                 "hidden lg:flex items-center space-x-1",
                 isNavbarMenuCentered
