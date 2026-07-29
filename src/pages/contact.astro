@@ -1,0 +1,59 @@
+---
+import { Icon } from "astro-icon/components";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+---
+
+<MainGridLayout title="联系我" description="联系我">
+    <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32">
+        <div class="card-base z-10 px-9 py-8 relative w-full">
+            <h1 class="text-3xl font-bold text-neutral-800 dark:text-neutral-100 mb-2">联系我</h1>
+            <p class="text-neutral-500 dark:text-neutral-400 mb-8">如果你有任何问题或想法，欢迎通过以下方式联系我</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- QQ -->
+                <a href="https://qm.qq.com/q/RL3xlvQ6YK" target="_blank" rel="noopener noreferrer"
+                    class="contact-card group flex items-center gap-4 p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/50 hover:bg-(--primary)/8 transition-all duration-300 border border-neutral-200/50 dark:border-neutral-700/50">
+                    <div class="w-14 h-14 rounded-2xl bg-(--primary)/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                        <Icon is:inline name="fa7-brands:qq" class="text-2xl text-(--primary)" />
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-lg font-bold text-neutral-800 dark:text-neutral-100">QQ</div>
+                        <div class="text-sm text-neutral-500 dark:text-neutral-400 truncate">点击添加好友</div>
+                    </div>
+                </a>
+
+                <!-- Email -->
+                <a href="mailto:NanLuo111@outlook.com"
+                    class="contact-card group flex items-center gap-4 p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/50 hover:bg-(--primary)/8 transition-all duration-300 border border-neutral-200/50 dark:border-neutral-700/50">
+                    <div class="w-14 h-14 rounded-2xl bg-(--primary)/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                        <Icon is:inline name="fa7-solid:envelope" class="text-2xl text-(--primary)" />
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-lg font-bold text-neutral-800 dark:text-neutral-100">Email</div>
+                        <div class="text-sm text-neutral-500 dark:text-neutral-400 truncate">NanLuo111@outlook.com</div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- 装饰文字 -->
+            <div class="mt-8 pt-6 border-t border-neutral-200/50 dark:border-neutral-700/50">
+                <p class="text-center text-sm text-neutral-400 dark:text-neutral-500">
+                    期待你的来信
+                </p>
+            </div>
+        </div>
+    </div>
+</MainGridLayout>
+
+<style>
+    .contact-card {
+        transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.3s ease;
+    }
+    .contact-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+    :root.dark .contact-card:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+</style>

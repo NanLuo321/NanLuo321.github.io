@@ -135,7 +135,7 @@ const widgetId =
 <div class="lrc-drawer grid transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] grid-rows-[0fr] opacity-0">
     <div class="overflow-hidden min-h-0">
         <div class="mt-2 pt-2 border-t border-neutral-100 dark:border-white/5 mx-1">
-            <div class="lrc-container h-48 overflow-y-auto custom-scrollbar flex flex-col items-center gap-2 p-4 py-24 text-center relative scroll-smooth" role="listbox" aria-label={i18n(I18nKey.musicLyrics)}>
+            <div class="lrc-container h-48 min-h-0 overflow-y-auto custom-scrollbar flex flex-col items-center gap-2 p-4 py-24 text-center relative scroll-smooth" role="listbox" aria-label={i18n(I18nKey.musicLyrics)}>
                 <div class="text-neutral-400 text-sm py-10" role="option">{i18n(I18nKey.musicNoLyrics)}</div>
             </div>
         </div>
@@ -146,7 +146,7 @@ const widgetId =
 <div class="playlist-drawer grid transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] grid-rows-[0fr] opacity-0">
     <div class="overflow-hidden min-h-0">
             <div class="mt-2 pt-2 border-t border-neutral-100 dark:border-white/5 mx-1">
-            <div class="playlist-container max-h-48 overflow-y-auto custom-scrollbar pr-1 pb-1 relative" role="listbox" aria-label={i18n(I18nKey.musicPlaylist)}>
+            <div class="playlist-container max-h-[60vh] min-h-0 overflow-y-auto custom-scrollbar pr-1 pb-1 relative" role="listbox" aria-label={i18n(I18nKey.musicPlaylist)}>
                 <!-- Items -->
             </div>
         </div>
@@ -644,6 +644,14 @@ const widgetId =
             updateVolumeUI(d.volume, d.isMuted);
         } else {
             ui.title.innerText = cfg.i18n.noSongs;
+        }
+    });
+
+    // Hybrid mode: online songs appended after initial load
+    on('fm:playlist-update', function (e) {
+        var d = e.detail;
+        if (d.playlist && d.playlist.length > 0) {
+            renderPlaylist(d.playlist, d.currentIndex);
         }
     });
 

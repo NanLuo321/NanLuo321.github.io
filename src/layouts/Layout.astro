@@ -662,10 +662,10 @@ const siteLang = lang.replace("_", "-");
     <CodeGroupManager />
 
     <!-- iOS 风格彩蛋弹窗 -->
-    <div id="easter-egg-overlay" class="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-md opacity-0 pointer-events-none" style="transition: opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1);" onclick="closeEasterEgg()"></div>
-    <div id="easter-egg-sheet" class="fixed bottom-0 left-0 right-0 z-[10000] translate-y-full" style="transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1);">
+    <div id="easter-egg-overlay" class="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-md opacity-0 pointer-events-none" style="transition: opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1);"></div>
+    <div id="easter-egg-sheet" class="fixed bottom-0 left-0 right-0 z-[10000] translate-y-full" style="transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1); pointer-events: none;">
       <div class="mx-auto max-w-sm w-full">
-        <div class="bg-[var(--card-bg)] rounded-t-[2rem] shadow-2xl overflow-hidden border-t border-x border-[var(--card-border)]">
+        <div class="bg-[var(--card-bg)] rounded-t-[2rem] shadow-2xl overflow-hidden border-t border-x border-[var(--card-border)]" style="pointer-events: auto;">
           <!-- 顶部指示条 -->
           <div class="flex justify-center pt-3 pb-1">
             <div class="w-10 h-1 rounded-full bg-gray-400/50"></div>
@@ -673,7 +673,7 @@ const siteLang = lang.replace("_", "-");
           <!-- 内容区域 -->
           <div class="px-6 pb-8 pt-2 flex flex-col items-center easter-egg-content">
             <!-- 图片 -->
-            <div class="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-lg mb-5 easter-egg-img-wrapper">
+            <div class="rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-lg mb-5 easter-egg-img-wrapper flex items-center justify-center" style="width: 200px; height: 200px; margin-left: auto; margin-right: auto;">
               <img src="/assets/images/easter-egg.webp" alt="彩蛋" class="w-full h-full object-contain easter-egg-img" />
             </div>
             <!-- 文字 -->
@@ -1480,6 +1480,20 @@ const siteLang = lang.replace("_", "-");
     }
     .music-float .music-player-widget {
       padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .music-float .playlist-drawer,
+    .music-float .lrc-drawer {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .music-float .playlist-container {
+      max-height: none !important;
+    }
+    .music-float .lrc-container {
+      height: auto !important;
+      min-height: 120px;
     }
 
     /* ========== iOS 风格彩蛋弹窗动画 ========== */
@@ -2725,6 +2739,8 @@ function disableAnimation() {
     setTimeout(() => { if (container) container.innerHTML = ""; }, 6000);
   }
 
+  var easterEggOpen = false;
+
   function openEasterEgg() {
     const overlay = document.getElementById("easter-egg-overlay");
     const sheet = document.getElementById("easter-egg-sheet");
@@ -2734,6 +2750,8 @@ function disableAnimation() {
     overlay.classList.add("opacity-100", "pointer-events-auto");
     sheet.classList.remove("translate-y-full");
     sheet.classList.add("translate-y-0");
+
+    easterEggOpen = true;
 
     // 触发动画类
     requestAnimationFrame(() => {
@@ -2753,6 +2771,7 @@ function disableAnimation() {
     const confetti = document.getElementById("easter-egg-confetti");
     if (!overlay || !sheet) return;
 
+    easterEggOpen = false;
     sheet.classList.remove("easter-egg-sheet-open");
     overlay.classList.remove("opacity-100", "pointer-events-auto");
     overlay.classList.add("opacity-0", "pointer-events-none");
@@ -2785,6 +2804,17 @@ function disableAnimation() {
   // 初始化绑定
   bindEasterEggTrigger();
   document.addEventListener("astro:page-load", bindEasterEggTrigger);
+
+  // 全局点击监听：点击 sheet 外部关闭彩蛋
+  document.addEventListener("click", function(e) {
+    if (!easterEggOpen) return;
+    const sheet = document.getElementById("easter-egg-sheet");
+    if (!sheet) return;
+    // 如果点击不在 sheet 内部，关闭彩蛋
+    if (!sheet.contains(e.target as Node)) {
+      closeEasterEgg();
+    }
+  }, true);
 
   // Swup 页面切换后重新绑定
   if (window.swup?.hooks) {

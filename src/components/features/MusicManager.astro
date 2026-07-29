@@ -7,7 +7,7 @@ import { url } from "@/utils/url-utils";
 const config = musicPlayerConfig;
 
 const localPlaylist =
-	config.mode === "local" && config.local?.playlist
+	(config.mode === "local" || config.mode === "hybrid") && config.local?.playlist
 		? config.local.playlist.map((song) => {
 				const isFullUrl = (path: string) => /^https?:\/\//.test(path);
 				return {
@@ -411,6 +411,22 @@ const managerConfigStr = JSON.stringify({
                 await fetchMetingData();
             } else if (config.mode === 'local') {
                 state.playlist = config.localPlaylist || [];
+            } else if (config.mode === 'hybrid') {
+                // Hybrid: load local songs first, then fetch online and append
+                var hybridLocal = (config.localPlaylist || []).slice();
+                state.playlist = hybridLocal.slice();
+
+                if (config.meting) {
+                    try {
+                        await fetchMetingData();
+                        // fetchMetingData set state.playlist to online songs
+                        var onlineSongs = state.playlist.slice();
+                        state.playlist = hybridLocal.concat(onlineSongs);
+                    } catch (e) {
+                        console.warn('Hybrid: Meting fetch failed, using local only', e);
+                        state.playlist = hybridLocal.slice();
+                    }
+                }
             }
 
             if (state.playlist.length > 0) {
