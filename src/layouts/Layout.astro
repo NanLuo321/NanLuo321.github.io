@@ -657,6 +657,35 @@ const siteLang = lang.replace("_", "-");
 
     <!-- Tab 代码块交互 -->
     <CodeGroupManager />
+
+    <!-- iOS 风格彩蛋弹窗 -->
+    <div id="easter-egg-overlay" class="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-md opacity-0 pointer-events-none" style="transition: opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1);" onclick="closeEasterEgg()"></div>
+    <div id="easter-egg-sheet" class="fixed bottom-0 left-0 right-0 z-[10000] translate-y-full" style="transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1);">
+      <div class="mx-auto max-w-sm w-full">
+        <div class="bg-[var(--card-bg)] rounded-t-[2rem] shadow-2xl overflow-hidden border-t border-x border-[var(--card-border)]">
+          <!-- 顶部指示条 -->
+          <div class="flex justify-center pt-3 pb-1">
+            <div class="w-10 h-1 rounded-full bg-gray-400/50"></div>
+          </div>
+          <!-- 内容区域 -->
+          <div class="px-6 pb-8 pt-2 flex flex-col items-center easter-egg-content">
+            <!-- 图片 -->
+            <div class="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-lg mb-5 easter-egg-img-wrapper">
+              <img src="/assets/images/easter-egg.webp" alt="彩蛋" class="w-full h-full object-contain easter-egg-img" />
+            </div>
+            <!-- 文字 -->
+            <p class="text-2xl font-black text-center tracking-wider easter-egg-title" style="font-family: var(--font-special); background: linear-gradient(135deg, var(--primary) 0%, #ff6b6b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+              带Π不老铁
+            </p>
+            <p class="text-sm text-[var(--text-secondary)] mt-2 text-center opacity-60 easter-egg-hint">
+              点击空白处关闭
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 彩蛋撒花容器 -->
+    <div id="easter-egg-confetti" class="fixed inset-0 z-[9998] pointer-events-none overflow-hidden"></div>
   </body>
 </html>
 
@@ -724,6 +753,170 @@ const siteLang = lang.replace("_", "-");
 
     .navbar-hidden {
       @apply opacity-0 -translate-y-16;
+    }
+
+    /* ========== 壁纸模式导航岛切换按钮 ========== */
+    #fullscreen-navbar-toggle {
+      background: color-mix(in oklch, var(--card-bg) 75%, transparent);
+      border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 40%, transparent);
+      backdrop-filter: blur(16px) saturate(1.4);
+      -webkit-backdrop-filter: blur(16px) saturate(1.4);
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      opacity: 0.85;
+      transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      /* iOS 风格出现动画 */
+      animation: navbar-toggle-appear 0.5s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+
+    @keyframes navbar-toggle-appear {
+      0% { opacity: 0; transform: scale(0.5) translateY(-10px); }
+      100% { opacity: 0.85; transform: scale(1) translateY(0); }
+    }
+
+    :root.dark #fullscreen-navbar-toggle {
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+    }
+
+    #fullscreen-navbar-toggle:hover {
+      opacity: 1;
+      transform: scale(1.12);
+      background: color-mix(in oklch, var(--card-bg) 90%, transparent);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08);
+    }
+
+    #fullscreen-navbar-toggle:active {
+      transform: scale(0.88);
+      transition-duration: 0.15s;
+    }
+
+    /* 按钮图标旋转切换动画 */
+    #fullscreen-navbar-toggle svg {
+      transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease;
+    }
+
+    /* 导航岛iOS风格隐藏/显示动画 */
+    #navbar-wrapper {
+      transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1),
+                  opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+                  width 0.45s cubic-bezier(0.32, 0.72, 0, 1),
+                  margin 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+      overflow: hidden;
+    }
+
+    #navbar-wrapper.navbar-manual-hidden {
+      transform: translateY(-140%) scale(0.9);
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+      margin: 0;
+    }
+
+    /* 按钮在导航岛隐藏后的状态 */
+    #fullscreen-navbar-toggle.navbar-is-hidden {
+      background: color-mix(in oklch, var(--card-bg) 60%, transparent);
+      animation: navbar-toggle-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes navbar-toggle-pulse {
+      0%, 100% { opacity: 0.5; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.08); }
+    }
+
+    /* ========== iOS 风格彩蛋弹窗动画 ========== */
+    #easter-egg-overlay {
+      transition: opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    #easter-egg-sheet {
+      transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    #easter-egg-sheet .bg-\[var\(--card-bg\)\] {
+      background: color-mix(in oklch, var(--card-bg) 92%, transparent);
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    }
+
+    /* 彩蛋内容元素动画 */
+    .easter-egg-img-wrapper {
+      transform: scale(0.8) translateY(20px);
+      opacity: 0;
+      transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1) 0.15s,
+                  opacity 0.4s ease 0.15s;
+    }
+    .easter-egg-sheet-open .easter-egg-img-wrapper {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+
+    .easter-egg-img {
+      transition: transform 0.6s cubic-bezier(0.32, 0.72, 0, 1) 0.3s;
+      transform: scale(1.1);
+    }
+    .easter-egg-sheet-open .easter-egg-img {
+      transform: scale(1);
+    }
+
+    .easter-egg-title {
+      transform: translateY(15px);
+      opacity: 0;
+      transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1) 0.35s,
+                  opacity 0.35s ease 0.35s;
+    }
+    .easter-egg-sheet-open .easter-egg-title {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .easter-egg-hint {
+      transform: translateY(10px);
+      opacity: 0;
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1) 0.5s,
+                  opacity 0.3s ease 0.5s;
+    }
+    .easter-egg-sheet-open .easter-egg-hint {
+      transform: translateY(0);
+      opacity: 0.6;
+    }
+
+    /* 撒花动画 */
+    @keyframes confetti-fall {
+      0% { transform: translateY(-10vh) rotate(0deg) scale(1); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg) scale(0.5); opacity: 0; }
+    }
+    @keyframes confetti-burst {
+      0% { transform: scale(0) rotate(0deg); opacity: 1; }
+      50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+      100% { transform: scale(0) rotate(360deg); opacity: 0; }
+    }
+
+    .easter-confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      pointer-events: none;
+      animation: confetti-fall linear forwards;
+    }
+    .easter-confetti.burst {
+      animation: confetti-burst 0.8s ease-out forwards;
+    }
+
+    /* 彩蛋触发按钮呼吸动画 */
+    #easter-egg-trigger {
+      animation: easter-egg-glow 3s ease-in-out infinite;
+    }
+
+    @keyframes easter-egg-glow {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 0.9; transform: scale(1.05); }
+    }
+
+    #easter-egg-trigger:hover {
+      animation: none;
+      opacity: 1;
+      transform: scale(1.15);
     }
 
     html[data-wallpaper-mode="none"] body.sticky-navbar #sidebar-sticky,
@@ -1741,5 +1934,212 @@ function disableAnimation() {
   document.addEventListener('astro:page-load', initImageLoadFadeIn);
   document.addEventListener('swup:contentReplaced', () => {
     requestAnimationFrame(initImageLoadFadeIn);
+  });
+
+  /* ========== 全屏壁纸模式导航岛切换 ========== */
+  function toggleFullscreenNavbar() {
+    const navbarWrapper = document.getElementById("navbar-wrapper");
+    const toggleBtn = document.getElementById("fullscreen-navbar-toggle");
+    const iconUp = document.getElementById("navbar-toggle-icon-up");
+    const iconDown = document.getElementById("navbar-toggle-icon-down");
+
+    if (!navbarWrapper || !toggleBtn) return;
+
+    const isHidden = navbarWrapper.classList.contains("navbar-manual-hidden");
+
+    if (isHidden) {
+      // 显示导航岛 - 图标旋转切换
+      navbarWrapper.classList.remove("navbar-manual-hidden");
+      toggleBtn.classList.remove("navbar-is-hidden");
+      toggleBtn.setAttribute("aria-label", "隐藏导航栏");
+      if (iconUp) {
+        iconUp.style.transform = "rotate(0deg)";
+        iconUp.style.opacity = "1";
+        setTimeout(() => iconUp.classList.remove("hidden"), 50);
+      }
+      if (iconDown) {
+        iconDown.style.transform = "rotate(-90deg)";
+        iconDown.style.opacity = "0";
+        setTimeout(() => iconDown.classList.add("hidden"), 200);
+      }
+    } else {
+      // 隐藏导航岛 - 图标旋转切换
+      navbarWrapper.classList.add("navbar-manual-hidden");
+      toggleBtn.classList.add("navbar-is-hidden");
+      toggleBtn.setAttribute("aria-label", "显示导航栏");
+      if (iconUp) {
+        iconUp.style.transform = "rotate(90deg)";
+        iconUp.style.opacity = "0";
+        setTimeout(() => iconUp.classList.add("hidden"), 200);
+      }
+      if (iconDown) {
+        iconDown.style.transform = "rotate(0deg)";
+        iconDown.style.opacity = "1";
+        setTimeout(() => iconDown.classList.remove("hidden"), 50);
+      }
+    }
+  }
+
+  // 将函数暴露到全局，供内联onclick调用
+  (window as any).toggleFullscreenNavbar = toggleFullscreenNavbar;
+
+  function resetFullscreenNavbarState() {
+    const navbarWrapper = document.getElementById("navbar-wrapper");
+    const toggleBtn = document.getElementById("fullscreen-navbar-toggle");
+    const iconUp = document.getElementById("navbar-toggle-icon-up");
+    const iconDown = document.getElementById("navbar-toggle-icon-down");
+
+    if (navbarWrapper) navbarWrapper.classList.remove("navbar-manual-hidden");
+    if (toggleBtn) {
+      toggleBtn.classList.remove("navbar-is-hidden");
+      toggleBtn.setAttribute("aria-label", "隐藏导航栏");
+    }
+    if (iconUp) {
+      iconUp.classList.remove("hidden");
+      iconUp.style.transform = "rotate(0deg)";
+      iconUp.style.opacity = "1";
+    }
+    if (iconDown) {
+      iconDown.classList.add("hidden");
+      iconDown.style.transform = "rotate(-90deg)";
+      iconDown.style.opacity = "0";
+    }
+  }
+
+  // Swup页面切换后重置导航岛状态
+  function bindFullscreenNavbarReset() {
+    if (window.swup?.hooks) {
+      window.swup.hooks.on("content:replace", resetFullscreenNavbarState);
+    }
+  }
+
+  if (window.swup?.hooks) {
+    bindFullscreenNavbarReset();
+  } else {
+    document.addEventListener("swup:enable", bindFullscreenNavbarReset);
+  }
+  document.addEventListener("astro:page-load", resetFullscreenNavbarState);
+
+  /* ========== iOS 风格彩蛋弹窗 ========== */
+  function spawnConfetti() {
+    const container = document.getElementById("easter-egg-confetti");
+    if (!container) return;
+    container.innerHTML = "";
+
+    const colors = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#8b5cf6", "#f97316"];
+    const shapes = ["square", "circle", "triangle"];
+    const count = 60;
+
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement("div");
+      el.className = "easter-confetti";
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const shape = shapes[Math.floor(Math.random() * shapes.length)];
+      const left = Math.random() * 100;
+      const duration = 2 + Math.random() * 3;
+      const delay = Math.random() * 0.8;
+      const size = 6 + Math.random() * 10;
+
+      el.style.left = left + "%";
+      el.style.top = "-20px";
+      el.style.width = size + "px";
+      el.style.height = size + "px";
+      el.style.backgroundColor = color;
+      el.style.animationDuration = duration + "s";
+      el.style.animationDelay = delay + "s";
+
+      if (shape === "circle") {
+        el.style.borderRadius = "50%";
+      } else if (shape === "triangle") {
+        el.style.width = "0";
+        el.style.height = "0";
+        el.style.backgroundColor = "transparent";
+        el.style.borderLeft = size / 2 + "px solid transparent";
+        el.style.borderRight = size / 2 + "px solid transparent";
+        el.style.borderBottom = size + "px solid " + color;
+      }
+
+      container.appendChild(el);
+    }
+
+    // 清理
+    setTimeout(() => { if (container) container.innerHTML = ""; }, 6000);
+  }
+
+  function openEasterEgg() {
+    const overlay = document.getElementById("easter-egg-overlay");
+    const sheet = document.getElementById("easter-egg-sheet");
+    if (!overlay || !sheet) return;
+
+    overlay.classList.remove("opacity-0", "pointer-events-none");
+    overlay.classList.add("opacity-100", "pointer-events-auto");
+    sheet.classList.remove("translate-y-full");
+    sheet.classList.add("translate-y-0");
+
+    // 触发动画类
+    requestAnimationFrame(() => {
+      sheet.classList.add("easter-egg-sheet-open");
+    });
+
+    // 撒花效果
+    spawnConfetti();
+
+    // 添加 body 滚动锁定
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeEasterEgg() {
+    const overlay = document.getElementById("easter-egg-overlay");
+    const sheet = document.getElementById("easter-egg-sheet");
+    const confetti = document.getElementById("easter-egg-confetti");
+    if (!overlay || !sheet) return;
+
+    sheet.classList.remove("easter-egg-sheet-open");
+    overlay.classList.remove("opacity-100", "pointer-events-auto");
+    overlay.classList.add("opacity-0", "pointer-events-none");
+    sheet.classList.remove("translate-y-0");
+    sheet.classList.add("translate-y-full");
+
+    // 清除撒花
+    if (confetti) confetti.innerHTML = "";
+
+    // 恢复 body 滚动
+    document.body.style.overflow = "";
+  }
+
+  // 绑定彩蛋触发按钮
+  function bindEasterEggTrigger() {
+    const trigger = document.getElementById("easter-egg-trigger");
+    if (trigger) {
+      trigger.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openEasterEgg();
+      };
+    }
+  }
+
+  // 暴露到全局
+  (window as any).openEasterEgg = openEasterEgg;
+  (window as any).closeEasterEgg = closeEasterEgg;
+
+  // 初始化绑定
+  bindEasterEggTrigger();
+  document.addEventListener("astro:page-load", bindEasterEggTrigger);
+
+  // Swup 页面切换后重新绑定
+  if (window.swup?.hooks) {
+    window.swup.hooks.on("content:replace", bindEasterEggTrigger);
+  } else {
+    document.addEventListener("swup:enable", function() {
+      if (window.swup?.hooks) {
+        window.swup.hooks.on("content:replace", bindEasterEggTrigger);
+      }
+    });
+  }
+
+  // 键盘 ESC 关闭
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") closeEasterEgg();
   });
 </script>
