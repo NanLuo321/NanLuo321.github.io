@@ -1,7 +1,7 @@
 // 音乐播放器配置
 export type MusicPlayerConfig = {
-	// 使用方式：'meting' 或 'local'
-	mode?: "meting" | "local"; // "meting" 使用 Meting API，"local" 使用本地音乐列表
+	// 使用方式：'meting'、'local' 或 'hybrid'
+	mode?: "meting" | "local" | "hybrid"; // "meting" 使用 Meting API，"local" 使用本地音乐列表，"hybrid" 同时加载本地和在线音乐
 
 	// 默认音量 (0-1)
 	volume?: number;
