@@ -39,12 +39,11 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 		// 桌面背景图片（支持单张或多张随机）
 		// desktop: "assets/images/DesktopWallpaper/d1.avif",
 		desktop: [
-			"assets/images/DesktopWallpaper/d1.avif",
-			"assets/images/DesktopWallpaper/d2.avif",
-			"assets/images/DesktopWallpaper/d3.avif",
-			"assets/images/DesktopWallpaper/d4.avif",
-			"assets/images/DesktopWallpaper/d5.avif",
-			"assets/images/DesktopWallpaper/d6.avif",
+			"assets/images/DesktopWallpaper/nanluo-w1.png",
+			"assets/images/DesktopWallpaper/nanluo-w2.jpg",
+			"assets/images/DesktopWallpaper/nanluo-w3.png",
+			"assets/images/DesktopWallpaper/nanluo-w4.png",
+			"assets/images/DesktopWallpaper/nanluo-w5.png",
 		],
 		// 移动背景图片（支持单张或多张随机）
 		// mobile: "assets/images/MobileWallpaper/m1.avif",
@@ -73,17 +72,21 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 			// 是否启用主页横幅文字
 			enable: true,
 			// 主页横幅主标题
-			title: "Lovely firefly!",
+			title: "你好",
 			// 主页横幅主标题字体大小
 			titleSize: "4.5rem",
 			// 主页横幅副标题
 			subtitle: [
-				"In Reddened Chrysalis, I Once Rest",
-				"From Shattered Sky, I Free Fall",
-				"Amidst Silenced Stars, I Deep Sleep",
-				"Upon Lighted Fyrefly, I Soon Gaze",
-				"From Undreamt Night, I Thence Shine",
-				"In Finalized Morrow, I Full Bloom",
+				"山高路远，看世界，也找自己。",
+				"星光不问赶路人，时光不负有心人。",
+				"愿你历尽千帆，归来仍是少年。",
+				"心若有所向往，何惧道阻且长。",
+				"纵有疾风起，人生不言弃。",
+				"所有的努力都不会完全白费。",
+				"你只管努力，剩下的交给时间。",
+				"每一个不曾起舞的日子，都是对生命的辜负。",
+				"世界上只有一种英雄主义，就是看清生活的真相后依然热爱生活。",
+				"在平凡的日子里，也要闪闪发光。",
 			],
 			// 主页横幅副标题字体大小
 			subtitleSize: "1.5rem",

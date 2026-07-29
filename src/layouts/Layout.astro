@@ -693,7 +693,7 @@ const siteLang = lang.replace("_", "-");
     <!-- 个人介绍悬浮窗触发按钮 -->
     <button
       id="profile-float-trigger"
-      class="fixed bottom-5 left-5 z-[9000] w-12 h-12 rounded-full flex items-center justify-center pointer-events-auto"
+      class="fixed bottom-5 left-5 z-[9000] w-12 h-12 rounded-full flex items-center justify-center pointer-events-auto float-trigger-btn"
       aria-label="个人介绍"
       title="个人介绍"
     >
@@ -955,49 +955,222 @@ const siteLang = lang.replace("_", "-");
       50% { opacity: 1; transform: scale(1.08); }
     }
 
-    /* ========== 个人介绍悬浮窗 ========== */
-    #profile-float-trigger {
-      background: color-mix(in oklch, var(--card-bg) 75%, transparent);
-      border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 40%, transparent);
-      backdrop-filter: blur(16px) saturate(1.4);
-      -webkit-backdrop-filter: blur(16px) saturate(1.4);
-      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
-      color: var(--text-primary);
-      opacity: 0.85;
-      transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-    }
-    #profile-float-trigger:hover {
-      opacity: 1;
-      transform: scale(1.12);
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08);
-    }
-    #profile-float-trigger:active {
-      transform: scale(0.88);
-      transition-duration: 0.15s;
-    }
-    :root.dark #profile-float-trigger {
-      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
-    }
+    /* ========== 个人介绍悬浮窗触发按钮（液态玻璃） ========== */
+  /* ========== iOS 26 Liquid Glass 悬浮按钮 ========== */
 
+.float-trigger-btn,
+#profile-float-trigger,
+#music-float-trigger {
+
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,.45),
+      rgba(255,255,255,.12)
+    );
+
+
+  border:
+    1px solid rgba(255,255,255,.55);
+
+
+  backdrop-filter:
+    blur(30px)
+    saturate(180%);
+
+
+  -webkit-backdrop-filter:
+    blur(30px)
+    saturate(180%);
+
+
+  box-shadow:
+
+    inset 0 1px 20px
+    rgba(255,255,255,.55),
+
+    inset 0 -5px 20px
+    rgba(255,255,255,.15),
+
+    0 15px 40px
+    rgba(0,0,0,.25);
+
+
+  color:var(--text-primary);
+
+  opacity:.95;
+
+  overflow:hidden;
+
+
+  transition:
+    .35s cubic-bezier(.2,.8,.2,1);
+
+}
+
+
+
+/* 液态玻璃流光 */
+
+.float-trigger-btn::after,
+#profile-float-trigger::after,
+#music-float-trigger::after {
+
+
+  content:"";
+
+  position:absolute;
+
+  inset:-50%;
+
+
+  background:
+
+    linear-gradient(
+      120deg,
+      transparent 35%,
+      rgba(255,255,255,.8),
+      transparent 65%
+    );
+
+
+  transform:
+    translateX(-120%);
+
+
+  animation:
+    liquid-shine 5s infinite;
+
+
+  pointer-events:none;
+
+}
+
+
+
+/* 悬浮 */
+
+.float-trigger-btn:hover,
+#profile-float-trigger:hover,
+#music-float-trigger:hover {
+
+
+  transform:
+    scale(1.12)
+    translateY(-3px);
+
+
+  box-shadow:
+
+    inset 0 0 30px
+    rgba(255,255,255,.8),
+
+    0 20px 50px
+    rgba(0,0,0,.3);
+
+}
+
+
+
+/* 点击 */
+
+.float-trigger-btn:active,
+#profile-float-trigger:active,
+#music-float-trigger:active {
+
+
+  transform:
+    scale(.9);
+
+}
+    /* ========== 液态玻璃效果 (iOS 26 Liquid Glass) ========== */
     .profile-float {
       position: fixed;
       bottom: 80px;
       left: 20px;
       width: 280px;
       z-index: 9001;
-      background: color-mix(in oklch, var(--card-bg) 80%, transparent);
-      backdrop-filter: blur(20px) saturate(1.6);
-      -webkit-backdrop-filter: blur(20px) saturate(1.6);
-      border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 50%, transparent);
-      border-radius: 1rem;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+      /* 液态玻璃：彩虹折射 + 半透明 */
+      background:
+        linear-gradient(135deg,
+          rgba(255, 255, 255, 0.18),
+          rgba(120, 180, 255, 0.10) 40%,
+          rgba(255, 120, 200, 0.10) 60%,
+          rgba(255, 255, 255, 0.18));
+      backdrop-filter: blur(30px) saturate(200%);
+      -webkit-backdrop-filter: blur(30px) saturate(200%);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 1.25rem;
+      /* iOS 26 风格：外阴影 + 内阴影 + 边缘高光 */
+      box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.18),
+        0 4px 12px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 0 30px rgba(255, 255, 255, 0.08),
+        0 0 0 0.5px rgba(255, 255, 255, 0.3);
       overflow: hidden;
       display: flex;
       flex-direction: column;
       animation: profile-float-appear 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      --mouse-x: 50%;
+      --mouse-y: 50%;
+    }
+    /* 鼠标跟随折射光 */
+    .profile-float::before {
+      content: "";
+      position: absolute;
+      width: 250px;
+      height: 250px;
+      left: var(--mouse-x);
+      top: var(--mouse-y);
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.35), transparent 70%);
+      filter: blur(15px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .profile-float:hover::before {
+      opacity: 1;
+    }
+    /* 流动高光 */
+    .profile-float::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.25), transparent 80%);
+      transform: translateX(-100%);
+      animation: liquid-shine 6s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    @keyframes liquid-shine {
+      0%, 100% { transform: translateX(-100%); }
+      50% { transform: translateX(100%); }
     }
     :root.dark .profile-float {
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+      background:
+        linear-gradient(135deg,
+          rgba(30, 30, 38, 0.45),
+          rgba(60, 80, 120, 0.12) 40%,
+          rgba(120, 60, 100, 0.12) 60%,
+          rgba(30, 30, 38, 0.45));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.4),
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 0 30px rgba(255, 255, 255, 0.03),
+        0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    }
+    :root.dark .profile-float::before {
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.12), transparent 70%);
+    }
+    :root.dark .profile-float::after {
+      background: linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.08), transparent 80%);
     }
     .profile-float.profile-fullscreen {
       top: 0 !important;
@@ -1022,8 +1195,14 @@ const siteLang = lang.replace("_", "-");
       padding: 0.5rem 0.75rem;
       cursor: grab;
       user-select: none;
-      border-bottom: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent);
-      background: color-mix(in oklch, var(--card-bg) 60%, transparent);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.15);
+      position: relative;
+      z-index: 1;
+    }
+    :root.dark .profile-float-header {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.05);
     }
     .profile-float-header:active {
       cursor: grabbing;
@@ -1063,6 +1242,8 @@ const siteLang = lang.replace("_", "-");
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
+      position: relative;
+      z-index: 1;
     }
     .profile-float-content {
       display: flex;
@@ -1116,20 +1297,40 @@ const siteLang = lang.replace("_", "-");
       width: 2.5rem;
       height: 2.5rem;
       border-radius: 0.75rem;
-      background: color-mix(in oklch, var(--card-bg) 50%, transparent);
-      border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent);
+      background:
+        linear-gradient(135deg,
+          rgba(255, 255, 255, 0.25),
+          rgba(120, 180, 255, 0.10) 50%,
+          rgba(255, 255, 255, 0.25));
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(12px) saturate(180%);
+      -webkit-backdrop-filter: blur(12px) saturate(180%);
+      box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        0 0 0 0.5px rgba(255, 255, 255, 0.3);
       color: var(--text-secondary);
       cursor: pointer;
       transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+      position: relative;
+      overflow: hidden;
     }
     .profile-float-link:hover {
-      background: color-mix(in oklch, var(--primary) 15%, transparent);
+      background: rgba(255, 255, 255, 0.45);
       color: var(--primary);
       transform: translateY(-2px) scale(1.05);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
     }
     .profile-float-link:active {
       transform: scale(0.92);
+    }
+    :root.dark .profile-float-link {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    :root.dark .profile-float-link:hover {
+      background: rgba(255, 255, 255, 0.14);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
     }
 
     .profile-float-resize {
@@ -1141,30 +1342,86 @@ const siteLang = lang.replace("_", "-");
       cursor: nwse-resize;
       background: linear-gradient(135deg, transparent 50%, color-mix(in oklch, var(--text-secondary) 30%, transparent) 50%);
       border-bottom-right-radius: 1rem;
+      z-index: 2;
     }
 
-    /* ========== 公告/音乐悬浮窗触发按钮通用样式 ========== */
+    /* ========== 液态玻璃触发按钮 (iOS 26 Liquid Glass) ========== */
     .float-trigger-btn {
-      background: color-mix(in oklch, var(--card-bg) 75%, transparent);
-      border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 40%, transparent);
-      backdrop-filter: blur(16px) saturate(1.4);
-      -webkit-backdrop-filter: blur(16px) saturate(1.4);
-      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+      background:
+        linear-gradient(135deg,
+          rgba(255, 255, 255, 0.25),
+          rgba(120, 180, 255, 0.12) 40%,
+          rgba(255, 120, 200, 0.12) 60%,
+          rgba(255, 255, 255, 0.25));
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(20px) saturate(200%);
+      -webkit-backdrop-filter: blur(20px) saturate(200%);
+      box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 0 15px rgba(255, 255, 255, 0.08),
+        0 0 0 0.5px rgba(255, 255, 255, 0.3);
       color: var(--text-primary);
-      opacity: 0.85;
+      opacity: 0.9;
       transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      overflow: hidden;
+    }
+    /* 流动高光 */
+    .float-trigger-btn::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.3), transparent 70%);
+      transform: translateX(-100%);
+      animation: liquid-shine 6s ease-in-out infinite;
+      pointer-events: none;
     }
     .float-trigger-btn:hover {
       opacity: 1;
       transform: scale(1.12);
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08);
+      background:
+        linear-gradient(135deg,
+          rgba(255, 255, 255, 0.35),
+          rgba(120, 180, 255, 0.18) 40%,
+          rgba(255, 120, 200, 0.18) 60%,
+          rgba(255, 255, 255, 0.35));
+      box-shadow:
+        0 8px 28px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+        inset 0 0 20px rgba(255, 255, 255, 0.12),
+        0 0 0 1px rgba(255, 255, 255, 0.4);
     }
     .float-trigger-btn:active {
       transform: scale(0.88);
       transition-duration: 0.15s;
     }
     :root.dark .float-trigger-btn {
-      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+      background:
+        linear-gradient(135deg,
+          rgba(40, 40, 50, 0.4),
+          rgba(60, 80, 120, 0.15) 40%,
+          rgba(120, 60, 100, 0.15) 60%,
+          rgba(40, 40, 50, 0.4));
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 0 15px rgba(255, 255, 255, 0.03),
+        0 0 0 0.5px rgba(255, 255, 255, 0.08);
+    }
+    :root.dark .float-trigger-btn:hover {
+      background:
+        linear-gradient(135deg,
+          rgba(50, 50, 60, 0.5),
+          rgba(60, 80, 120, 0.2) 40%,
+          rgba(120, 60, 100, 0.2) 60%,
+          rgba(50, 50, 60, 0.5));
+      box-shadow:
+        0 8px 28px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        0 0 0 1px rgba(255, 255, 255, 0.12);
     }
 
     /* 公告悬浮窗特定样式 */
@@ -1184,16 +1441,37 @@ const siteLang = lang.replace("_", "-");
       display: inline-flex;
       align-items: center;
       padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
+      border-radius: 0.75rem;
       font-size: 0.875rem;
       font-weight: 500;
-      background: color-mix(in oklch, var(--primary) 15%, transparent);
+      background:
+        linear-gradient(135deg,
+          rgba(255, 255, 255, 0.25),
+          rgba(120, 180, 255, 0.10) 50%,
+          rgba(255, 255, 255, 0.25));
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(12px) saturate(180%);
+      -webkit-backdrop-filter: blur(12px) saturate(180%);
+      box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        0 0 0 0.5px rgba(255, 255, 255, 0.3);
       color: var(--primary);
-      transition: all 0.2s ease;
+      transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+      position: relative;
+      overflow: hidden;
     }
     .announce-float-link-btn:hover {
-      background: color-mix(in oklch, var(--primary) 25%, transparent);
+      background: rgba(255, 255, 255, 0.45);
       transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    :root.dark .announce-float-link-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    :root.dark .announce-float-link-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
     }
 
     /* 音乐悬浮窗特定样式 */
@@ -2956,18 +3234,40 @@ function disableAnimation() {
     initGenericFloat("music");
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initAllFloats);
-  } else {
-    initAllFloats();
+  /* ========== 液态玻璃鼠标跟随折射光 ========== */
+  function initLiquidGlassMouseTracking() {
+    const floats = document.querySelectorAll<HTMLElement>(".profile-float");
+    floats.forEach(function(floatEl) {
+      // 避免重复绑定
+      if (floatEl.dataset.liquidGlassBound) return;
+      floatEl.dataset.liquidGlassBound = "true";
+      floatEl.addEventListener("mousemove", function(e: MouseEvent) {
+        const rect = floatEl.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        floatEl.style.setProperty("--mouse-x", x + "px");
+        floatEl.style.setProperty("--mouse-y", y + "px");
+      });
+    });
   }
-  document.addEventListener("astro:page-load", initAllFloats);
+
+  function initAllLiquidGlass() {
+    initAllFloats();
+    initLiquidGlassMouseTracking();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAllLiquidGlass);
+  } else {
+    initAllLiquidGlass();
+  }
+  document.addEventListener("astro:page-load", initLiquidGlassMouseTracking);
   if (window.swup?.hooks) {
-    window.swup.hooks.on("content:replace", initAllFloats);
+    window.swup.hooks.on("content:replace", initLiquidGlassMouseTracking);
   } else {
     document.addEventListener("swup:enable", function() {
       if (window.swup?.hooks) {
-        window.swup.hooks.on("content:replace", initAllFloats);
+        window.swup.hooks.on("content:replace", initLiquidGlassMouseTracking);
       }
     });
   }

@@ -94,6 +94,12 @@ const licenseName = licenseConfig.enable ? licenseConfig.name : "None";
 // 始终显示的项目（列表）
 const mainItems = [
 	{
+		icon: "material-symbols:schedule-outline",
+		label: "当前时间",
+		value: "加载中...",
+		isClock: true,
+	},
+	{
 		icon: "material-symbols:cloud-outline",
 		label: i18n(I18nKey.siteInfoBuildPlatform),
 		value: buildPlatform,
@@ -171,7 +177,7 @@ const detailItems: {
     {/* 始终显示的项目（列表卡片） */}
     <div class="flex flex-col gap-2">
       {
-        mainItems.map((item: { icon: string; label: string; value: string; href?: string }) => (
+        mainItems.map((item: { icon: string; label: string; value: string; href?: string; isClock?: boolean }) => (
           <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-neutral-100/60 dark:bg-neutral-800/50">
             <div class="flex items-center gap-2.5">
               <div class="text-(--primary) text-lg">
@@ -181,7 +187,14 @@ const detailItems: {
                 {item.label}
               </span>
             </div>
-            {item.href ? (
+            {item.isClock ? (
+              <span
+                id="site-info-clock"
+                class="text-xs font-bold text-neutral-900 dark:text-neutral-100 text-right font-mono tabular-nums"
+              >
+                {item.value}
+              </span>
+            ) : item.href ? (
               <a
                 href={item.href}
                 target="_blank"
@@ -259,6 +272,34 @@ const detailItems: {
 </style>
 
 <script>
+  // 实时时钟（秒针时间）
+  function updateSiteInfoClock() {
+    const clockEl = document.getElementById("site-info-clock");
+    if (!clockEl) return;
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const h = String(now.getHours()).padStart(2, "0");
+    const min = String(now.getMinutes()).padStart(2, "0");
+    const s = String(now.getSeconds()).padStart(2, "0");
+    clockEl.textContent = `${y}-${m}-${d} ${h}:${min}:${s}`;
+  }
+
+  function initSiteInfoClock() {
+    updateSiteInfoClock();
+    if (!(window as any).__siteInfoClockInterval) {
+      (window as any).__siteInfoClockInterval = setInterval(updateSiteInfoClock, 1000);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSiteInfoClock);
+  } else {
+    initSiteInfoClock();
+  }
+  document.addEventListener("astro:page-load", initSiteInfoClock);
+
   class SiteInfoCollapse extends HTMLElement {
     constructor() {
       super();
