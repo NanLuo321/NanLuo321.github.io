@@ -252,8 +252,10 @@ html {
     /* 全屏壁纸模式下的半透明效果 */
     .wallpaper-transparent .card-base {
         background-color: var(--card-bg-transparent) !important;
+        backdrop-filter: blur(12px) saturate(1.2);
+        -webkit-backdrop-filter: blur(12px) saturate(1.2);
     }
- 
+
     
     .wallpaper-transparent #navbar > div {
         background-color: var(--card-bg-transparent) !important;
@@ -271,6 +273,8 @@ html {
     
     .wallpaper-transparent .btn-card {
         background-color: var(--card-bg-transparent) !important;
+        backdrop-filter: blur(12px) saturate(1.2);
+        -webkit-backdrop-filter: blur(12px) saturate(1.2);
     }
 
     .wallpaper-transparent .bg-\(--card-bg\) {

@@ -73,13 +73,13 @@ export function applyScrollBlurToDocument(enabled: boolean): void {
 	);
 	scrollBlurEnabled = enabled;
 
-	// 仅在 overlay 模式下激活滚动监听
+	// 在 overlay 和 fullscreen 模式下激活滚动监听
 	const currentMode =
 		(document.documentElement.getAttribute(
 			"data-wallpaper-mode",
 		) as WALLPAPER_MODE) || backgroundWallpaper.mode;
 
-	if (enabled && currentMode === WALLPAPER_OVERLAY) {
+	if (enabled && (currentMode === WALLPAPER_OVERLAY || currentMode === WALLPAPER_FULLSCREEN)) {
 		startScrollBlurListener();
 	} else {
 		stopScrollBlurListener();
@@ -95,14 +95,38 @@ function startScrollBlurListener(): void {
 	// 避免重复绑定
 	if (window.scrollBlurHandler) return;
 
+	const currentMode =
+		(document.documentElement.getAttribute(
+			"data-wallpaper-mode",
+		) as WALLPAPER_MODE) || backgroundWallpaper.mode;
+
 	const handler = () => {
 		const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-		const maxBlur = getStoredOverlayBlur();
-		// 线性插值：0 → maxBlur，在 SCROLL_BLUR_THRESHOLD 距离内完成
-		const blur = Math.min((scrollY / SCROLL_BLUR_THRESHOLD) * maxBlur, maxBlur);
 		const wrapper = document.getElementById("wallpaper-wrapper");
-		if (wrapper) {
+		if (!wrapper) return;
+
+		if (currentMode === WALLPAPER_OVERLAY) {
+			const maxBlur = getStoredOverlayBlur();
+			const blur = Math.min((scrollY / SCROLL_BLUR_THRESHOLD) * maxBlur, maxBlur);
 			wrapper.style.setProperty("--overlay-blur", `${blur.toFixed(2)}px`);
+		} else if (currentMode === WALLPAPER_FULLSCREEN) {
+			// fullscreen 模式：顶部清晰，向下滚动逐渐模糊
+			const fsMaxBlur = 20;
+			const vh = window.innerHeight || 1;
+			const fsThreshold = vh;
+			const fsBlur = Math.min((scrollY / fsThreshold) * fsMaxBlur, fsMaxBlur);
+			wrapper.style.setProperty("--scroll-blur", `${fsBlur.toFixed(2)}px`);
+			// 首页文字也同步模糊
+			wrapper.style.setProperty("--text-scroll-blur", `${fsBlur.toFixed(2)}px`);
+			// 清除可能残留的导航岛/正文内联 filter，确保文字保持清晰
+			const navbarEl = document.getElementById("navbar");
+			if (navbarEl && navbarEl.style.filter) {
+				navbarEl.style.filter = "";
+			}
+			const contentEl = document.getElementById("content-wrapper");
+			if (contentEl && contentEl.style.filter) {
+				contentEl.style.filter = "";
+			}
 		}
 	};
 
@@ -596,22 +620,16 @@ function showFullscreenMode(animate = false) {
 		// 添加全屏壁纸模式类
 		wallpaperWrapper.classList.add("wallpaper-fullscreen");
 
-		if (isMobile && !isHomePage) {
-			// 移动端非首页时隐藏壁纸
-			wallpaperWrapper.style.display = "none";
-			wallpaperWrapper.classList.add("mobile-hide-banner");
-		} else {
-			// 显示壁纸
-			wallpaperWrapper.style.display = "block";
-			wallpaperWrapper.style.setProperty("display", "block", "important");
-			wallpaperWrapper.style.top = "";
-			requestAnimationFrame(() => {
-				wallpaperWrapper.classList.remove("hidden");
-				wallpaperWrapper.classList.remove("opacity-0");
-				wallpaperWrapper.classList.add("opacity-100");
-				wallpaperWrapper.classList.remove("mobile-hide-banner");
-			});
-		}
+		// 全屏壁纸模式：壁纸始终全屏显示
+		wallpaperWrapper.style.display = "block";
+		wallpaperWrapper.style.setProperty("display", "block", "important");
+		wallpaperWrapper.style.top = "";
+		requestAnimationFrame(() => {
+			wallpaperWrapper.classList.remove("hidden");
+			wallpaperWrapper.classList.remove("opacity-0");
+			wallpaperWrapper.classList.add("opacity-100");
+			wallpaperWrapper.classList.remove("mobile-hide-banner");
+		});
 	}
 
 	// 显示横幅首页文本（如果启用且是首页）
@@ -641,8 +659,8 @@ function showFullscreenMode(animate = false) {
 	// 调整主内容位置
 	adjustMainContentPosition("fullscreen", animate);
 
-	// 移除透明效果（全屏壁纸模式不使用半透明）
-	adjustMainContentTransparency(false);
+	// 启用透明效果，让内容浮在壁纸上
+	adjustMainContentTransparency(true);
 
 	// 调整导航栏透明度
 	const navbar = document.getElementById("navbar");
@@ -658,6 +676,9 @@ function showFullscreenMode(animate = false) {
 			window.initSemifullScrollDetection();
 		}
 	}
+
+	// 全屏壁纸模式：启用滚动模糊，壁纸顶部清晰，向下滚动逐渐模糊
+	applyScrollBlurToDocument(true);
 }
 
 function showOverlayMode() {
@@ -840,30 +861,18 @@ function adjustMainContentPosition(
 			break;
 		}
 		case "fullscreen": {
-			// 全屏壁纸模式：壁纸已在文档流中占100vh，主内容紧跟其后
+			// 全屏壁纸模式：壁纸固定全屏，主内容在壁纸下方（top: 100vh）
 			const isFullscreenMobile = window.innerWidth < 1024;
 			const isFullscreenHome = checkIsHomePage(window.location.pathname);
-			if (isFullscreenMobile && !isFullscreenHome) {
-				// 移动端非首页：壁纸已隐藏，主内容从导航栏下方开始
-				mainContent.classList.add("mobile-main-no-banner");
-				mainContent.classList.add("no-banner-layout");
-				mainContent.style.setProperty("top", "5.5rem", "important");
-				mainContent.style.setProperty("margin-top", "0", "important");
-				mainContent.style.position = "";
-				mainContent.style.minHeight = "";
-				mainContent.style.transition = "";
-				break;
-			}
 
 			if (animate) {
-				// 运行时切换：从当前位置动画滑到壁纸下方，完成后切换为 relative
+				// 运行时切换：从当前位置动画滑到壁纸下方
 				const computedTop = mainContent.getBoundingClientRect().top;
 				mainContent.style.transition = "none";
 				mainContent.style.position = "absolute";
 				mainContent.style.zIndex = "30";
 				mainContent.style.setProperty("top", `${computedTop}px`, "important");
-				// absolute 定位下 margin-top 不影响布局，提前设好最终值避免切换 relative 时跳变
-				mainContent.style.setProperty("margin-top", "1rem", "important");
+				mainContent.style.setProperty("margin-top", "0", "important");
 				mainContent.classList.add("no-banner-layout");
 				void mainContent.offsetWidth;
 				mainContent.style.setProperty(
@@ -875,17 +884,17 @@ function adjustMainContentPosition(
 				fullscreenAnimationTimeout = setTimeout(() => {
 					mainContent.style.transition = "none";
 					mainContent.style.position = "relative";
-					mainContent.style.setProperty("top", "0", "important");
+					mainContent.style.setProperty("top", "100vh", "important");
 					void mainContent.offsetWidth;
 					mainContent.style.transition = "";
 				}, 450);
 			} else {
-				// 初始化：直接设置位置，无需动画
+				// 初始化：直接设置位置，壁纸全屏，内容在壁纸下方
 				mainContent.classList.add("no-banner-layout");
 				mainContent.style.position = "relative";
 				mainContent.style.zIndex = "30";
-				mainContent.style.setProperty("top", "0", "important");
-				mainContent.style.setProperty("margin-top", "1rem", "important");
+				mainContent.style.setProperty("top", "100vh", "important");
+				mainContent.style.setProperty("margin-top", "0", "important");
 				mainContent.style.transition = "";
 			}
 			break;

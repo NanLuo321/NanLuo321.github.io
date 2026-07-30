@@ -28,6 +28,13 @@
     border-radius 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* 全屏壁纸模式：导航栏随滚动逐渐模糊 */
+#navbar {
+    transition: filter 0.15s ease-out;
+    position: relative;
+    z-index: 100;
+}
+
 /* ============================================
  * 基础导航栏样式
  * 适用: 所有模式，所有设备

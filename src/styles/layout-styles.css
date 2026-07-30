@@ -33,6 +33,12 @@ html.is-page-transitioning .banner-home-text-overlay {
     animation: banner-fadeInUp 0.3s ease-out 0.3s both;
 }
 
+/* 全屏壁纸模式：首页文字随滚动逐渐模糊 */
+#wallpaper-wrapper.wallpaper-fullscreen .banner-home-text-overlay {
+    filter: blur(var(--text-scroll-blur, 0px));
+    transition: filter 0.15s ease-out;
+}
+
 @keyframes banner-fadeInUp {
     from {
         opacity: 0;
@@ -457,9 +463,10 @@ html.is-page-transitioning .banner-home-text-overlay {
     min-height: calc(100vh - 5.5rem) !important;
 }
 
-/* 全屏壁纸模式：主内容在壁纸下方 */
+/* 全屏壁纸模式：主内容在壁纸下方，壁纸占满第一屏 */
 html[data-wallpaper-mode="fullscreen"] .absolute.w-full.z-30.no-banner-layout {
-    min-height: calc(100vh - 0.5rem) !important;
+    top: 100vh !important;
+    min-height: calc(100vh - 5.5rem) !important;
 }
 
 /* 移动端当banner被禁用时的布局样式 */
@@ -491,7 +498,7 @@ html[data-wallpaper-mode="fullscreen"] .absolute.w-full.z-30.no-banner-layout {
 
 /* 移动端横屏优化 */
 @media (max-width: 1023px) and (orientation: landscape) {
-    #wallpaper-wrapper:not(.mobile-hide-banner) {
+    #wallpaper-wrapper:not(.mobile-hide-banner):not(.wallpaper-fullscreen) {
         top: 0 !important; /* 横屏模式从顶部开始，避免被导航栏覆盖 */
         height: 65vh !important;
         transform: none !important; /* 移除桌面端的translateY偏移 */
@@ -718,19 +725,25 @@ html[data-scroll-blur="true"] #wallpaper-wrapper.wallpaper-overlay img {
 
 /* ============================================
  * Fullscreen 模式 - 全屏壁纸
- * 壁纸全屏显示，水波纹在底部，内容在壁纸下方
+ * 壁纸固定全屏显示，内容浮在壁纸上
  * ============================================ */
 #wallpaper-wrapper.wallpaper-fullscreen {
-    position: relative !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
     height: 100vh !important;
+    height: 100lvh !important;
     min-height: 100vh !important;
     max-height: 100vh !important;
-    top: 0 !important;
     transform: none !important;
     overflow: hidden !important;
     opacity: 1 !important;
     pointer-events: none !important;
     transition: none !important;
+    z-index: -1 !important;
 }
 
 /* Fullscreen 模式下非 sticky 导航栏：隐藏顶部导航栏占位 */
@@ -740,15 +753,21 @@ html[data-wallpaper-mode="fullscreen"] body:not(.sticky-navbar) #top-row {
     transition: none !important;
 }
 
-/* Fullscreen 模式下图片全屏覆盖，无模糊 */
+/* Fullscreen 模式下图片全屏覆盖，滚动时逐渐模糊 */
 #wallpaper-wrapper.wallpaper-fullscreen img,
 #wallpaper-wrapper.wallpaper-fullscreen img[class*="object-cover"] {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
     object-position: center !important;
-    filter: none !important;
+    filter: blur(var(--scroll-blur, 0px)) !important;
     opacity: 1 !important;
+    transition: filter 0.15s ease-out;
+}
+
+/* 启用滚动模糊时优化性能 */
+html[data-scroll-blur="true"] #wallpaper-wrapper.wallpaper-fullscreen img {
+    will-change: filter;
 }
 
 /* Fullscreen 模式隐藏 overlay 专属的半透明效果 */
@@ -756,6 +775,11 @@ html[data-wallpaper-mode="fullscreen"] body:not(.sticky-navbar) #top-row {
 #wallpaper-wrapper.wallpaper-fullscreen .banner-page-title-overlay,
 #wallpaper-wrapper.wallpaper-fullscreen .banner-post-meta-overlay {
     display: flex !important;
+}
+
+/* 全屏壁纸透明模式：隐藏底部渐变，让壁纸完整可见 */
+body.wallpaper-transparent #wallpaper-wrapper.wallpaper-fullscreen .wallpaper-gradient {
+    display: none !important;
 }
 
 /* Fullscreen 模式下非首页隐藏主页标题文字（Swup 页面切换时通过 hidden 类控制） */
