@@ -29,6 +29,9 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 		icon: "material-symbols:mail-outline-rounded",
 	});
 
+	// 友链
+	links.push(LinkPresets.Friends);
+
 	// 关于及其子菜单
 	links.push({
 		name: "关于",

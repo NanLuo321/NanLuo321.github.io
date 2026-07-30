@@ -7,6 +7,7 @@ import CodeGroupManager from "@components/features/CodeGroupManager.astro";
 import FancyboxManager from "@components/features/FancyboxManager.astro";
 import FontSetup from "@components/features/FontSetup.astro";
 import MusicManager from "@components/features/MusicManager.astro";
+import CustomCursor from "@components/features/CustomCursor.astro";
 import SakuraEffect from "@components/features/SakuraEffect.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
 import { Icon } from "astro-icon/components";
@@ -643,6 +644,8 @@ const siteLang = lang.replace("_", "-");
   >
 
     <div id="progress-bar"></div>
+
+    <CustomCursor />
 
     {/* 卡片样式：根据 localStorage 覆盖默认配置 */}
     <script is:inline define:vars={{
@@ -1292,6 +1295,9 @@ const siteLang = lang.replace("_", "-");
       font-weight: 700;
       color: var(--text-primary);
       text-align: center;
+      /* 根据背景自动调整文字颜色：浅色背景显示深色文字，深色背景显示浅色文字 */
+      mix-blend-mode: difference;
+      filter: invert(1) hue-rotate(180deg);
     }
     .profile-float-divider {
       width: 1.5rem;
@@ -1305,6 +1311,9 @@ const siteLang = lang.replace("_", "-");
       color: var(--text-secondary);
       text-align: center;
       margin-bottom: 1rem;
+      /* 根据背景自动调整文字颜色 */
+      mix-blend-mode: difference;
+      filter: invert(1) hue-rotate(180deg);
     }
     .profile-float-links {
       display: flex;

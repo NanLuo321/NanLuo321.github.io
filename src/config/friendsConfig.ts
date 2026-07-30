@@ -25,14 +25,14 @@ export const friendsConfig: FriendLink[] = [
 	{
 		title: "Jerrynis",
 		imgurl: "/assets/images/jerrynis-avatar.jpg",
-		desc: "喜欢刷雷霆B站，喜欢当一个垃圾佬折腾硬件，喜欢玩BlueArchieve。",
-		siteurl: "https://www.jerry-nis.top/about/",
+		desc: "喜欢刷雷霆B站，喜欢当一个垃圾佬折腾硬件，喜欢玩BlueArchieve",
+		siteurl: "https://www.jerry-nis.top/",
 		tags: ["Blog"],
 		weight: 10, // 权重，数字越大排序越靠前
 		enabled: true, // 是否启用
 	},
 	{
-		title: "Firefly Docs",
+		title: "Firefly（感谢firefiy模板的大力支持）",
 		imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
 		desc: "Firefly主题模板文档",
 		siteurl: "https://docs-firefly.cuteleaf.cn",

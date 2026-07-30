@@ -1,0 +1,331 @@
+---
+// 自定义鼠标光标圆点 - iOS 风格弹性动画 + 液态玻璃效果
+// 仅在桌面端（支持 hover 的设备）显示
+---
+
+<div id="custom-cursor" aria-hidden="true">
+  <div id="cursor-dot"></div>
+  <div id="cursor-ring"></div>
+</div>
+<div id="cursor-ripple-container" aria-hidden="true"></div>
+
+<style is:global>
+  /* 桌面端强制隐藏系统光标：覆盖所有元素和伪元素，含文本选择光标 */
+  @media (hover: hover) and (pointer: fine) {
+    body.custom-cursor-active,
+    body.custom-cursor-active *,
+    body.custom-cursor-active *::before,
+    body.custom-cursor-active *::after {
+      cursor: none !important;
+    }
+    /* 覆盖 caret/text 等特殊光标类型 */
+    body.custom-cursor-active input,
+    body.custom-cursor-active textarea,
+    body.custom-cursor-active [contenteditable],
+    body.custom-cursor-active [contenteditable="true"],
+    body.custom-cursor-active .ProseMirror,
+    body.custom-cursor-active select,
+    body.custom-cursor-active [role="textbox"] {
+      cursor: none !important;
+      caret-color: transparent;
+    }
+    /* 覆盖下拉菜单/二级菜单/弹出层中的光标 */
+    body.custom-cursor-active .dropdown-menu,
+    body.custom-cursor-active .dropdown-content,
+    body.custom-cursor-active .dropdown-item,
+    body.custom-cursor-active .dropdown-container,
+    body.custom-cursor-active .dropdown-container *,
+    body.custom-cursor-active .mobile-dropdown,
+    body.custom-cursor-active .mobile-dropdown *,
+    body.custom-cursor-active .mobile-submenu,
+    body.custom-cursor-active .mobile-submenu *,
+    body.custom-cursor-active [data-dropdown],
+    body.custom-cursor-active [data-dropdown] *,
+    body.custom-cursor-active [data-dropdown-menu],
+    body.custom-cursor-active [data-dropdown-menu] *,
+    body.custom-cursor-active [data-mobile-dropdown],
+    body.custom-cursor-active [data-mobile-dropdown] *,
+    body.custom-cursor-active .float-panel,
+    body.custom-cursor-active .float-panel *,
+    body.custom-cursor-active [role="menu"],
+    body.custom-cursor-active [role="menuitem"],
+    body.custom-cursor-active [role="listbox"],
+    body.custom-cursor-active [role="option"] {
+      cursor: none !important;
+    }
+  }
+</style>
+
+<style>
+  #custom-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 99999;
+  }
+
+  #cursor-dot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
+    will-change: transform;
+    transition: width 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                height 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                margin 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.2s ease;
+  }
+
+  #cursor-ring {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 36px;
+    height: 36px;
+    margin: -18px 0 0 -18px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(2px);
+    will-change: transform;
+    opacity: 0.7;
+    transition: width 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                height 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                margin 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                border-color 0.25s ease,
+                background 0.25s ease,
+                opacity 0.25s ease;
+  }
+
+  /* 悬停在可交互元素上 */
+  #custom-cursor.cursor-hover #cursor-dot {
+    width: 5px;
+    height: 5px;
+    margin: -2.5px 0 0 -2.5px;
+    opacity: 0.9;
+  }
+
+  #custom-cursor.cursor-hover #cursor-ring {
+    width: 48px;
+    height: 48px;
+    margin: -24px 0 0 -24px;
+    border-color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.12);
+    opacity: 1;
+  }
+
+  /* 点击动画 - iOS 风格弹性缩放 */
+  #custom-cursor.cursor-click #cursor-dot {
+    animation: cursor-dot-click 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  #custom-cursor.cursor-click #cursor-ring {
+    animation: cursor-ring-click 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes cursor-dot-click {
+    0% {
+      width: 8px;
+      height: 8px;
+      margin: -4px 0 0 -4px;
+    }
+    40% {
+      width: 20px;
+      height: 20px;
+      margin: -10px 0 0 -10px;
+      opacity: 0.3;
+    }
+    100% {
+      width: 8px;
+      height: 8px;
+      margin: -4px 0 0 -4px;
+      opacity: 1;
+    }
+  }
+
+  @keyframes cursor-ring-click {
+    0% {
+      width: 36px;
+      height: 36px;
+      margin: -18px 0 0 -18px;
+      opacity: 0.7;
+    }
+    50% {
+      width: 64px;
+      height: 64px;
+      margin: -32px 0 0 -32px;
+      opacity: 0;
+      border-width: 2px;
+    }
+    100% {
+      width: 36px;
+      height: 36px;
+      margin: -18px 0 0 -18px;
+      opacity: 0.7;
+    }
+  }
+
+  /* 鼠标离开窗口时隐藏 */
+  #custom-cursor.cursor-hidden {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  /* 点击波纹容器 */
+  #cursor-ripple-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 99998;
+  }
+
+  /* 单个波纹：固定大小，用 scale 瞬间出现并扩散 */
+  .cursor-ripple {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 120px;
+    height: 120px;
+    margin: -60px 0 0 -60px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.1);
+    pointer-events: none;
+    transform: scale(0);
+    animation: cursor-ripple-expand 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes cursor-ripple-expand {
+    0% {
+      transform: scale(0);
+      opacity: 0.9;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 0;
+    }
+  }
+
+  /* 移动端 / 不支持 hover 的设备隐藏 */
+  @media (hover: none), (pointer: coarse) {
+    #custom-cursor {
+      display: none !important;
+    }
+  }
+
+  /* 减少动画偏好 */
+  @media (prefers-reduced-motion: reduce) {
+    #custom-cursor {
+      display: none !important;
+    }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    // 仅在支持 hover 的设备上启用
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+    var dot = document.getElementById("cursor-dot");
+    var ring = document.getElementById("cursor-ring");
+    var cursor = document.getElementById("custom-cursor");
+    if (!dot || !ring || !cursor) return;
+
+    // 通过 body 类名激活全局 cursor:none，确保所有元素（含链接）都隐藏系统光标
+    document.body.classList.add("custom-cursor-active");
+
+    var mouseX = window.innerWidth / 2;
+    var mouseY = window.innerHeight / 2;
+    var dotX = mouseX, dotY = mouseY;
+    var ringX = mouseX, ringY = mouseY;
+    var rafId = null;
+
+    // 跟随插值因子：1 = 即时无延迟
+    var dotEase = 1;
+    var ringEase = 1;
+
+    function animate() {
+      dotX += (mouseX - dotX) * dotEase;
+      dotY += (mouseY - dotY) * dotEase;
+      ringX += (mouseX - ringX) * ringEase;
+      ringY += (mouseY - ringY) * ringEase;
+
+      dot.style.transform = "translate(" + dotX + "px, " + dotY + "px)";
+      ring.style.transform = "translate(" + ringX + "px, " + ringY + "px)";
+
+      rafId = requestAnimationFrame(animate);
+    }
+
+    // 鼠标移动
+    document.addEventListener("mousemove", function (e) {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      if (!rafId) animate();
+    });
+
+    // 鼠标进入/离开窗口
+    document.addEventListener("mouseenter", function () {
+      cursor.classList.remove("cursor-hidden");
+    });
+    document.addEventListener("mouseleave", function () {
+      cursor.classList.add("cursor-hidden");
+    });
+
+    // 点击动画 + 波纹
+    document.addEventListener("mousedown", function (e) {
+      cursor.classList.add("cursor-click");
+      // 创建波纹
+      var rippleContainer = document.getElementById("cursor-ripple-container");
+      if (rippleContainer) {
+        var ripple = document.createElement("div");
+        ripple.className = "cursor-ripple";
+        ripple.style.transform = "translate(" + e.clientX + "px, " + e.clientY + "px)";
+        rippleContainer.appendChild(ripple);
+        // 动画结束后移除
+        ripple.addEventListener("animationend", function () {
+          ripple.remove();
+        });
+        // 兜底移除
+        setTimeout(function () {
+          if (ripple.parentNode) ripple.remove();
+        }, 1000);
+      }
+    });
+    document.addEventListener("mouseup", function () {
+      cursor.classList.remove("cursor-click");
+    });
+
+    // 悬停在可交互元素上
+    var hoverSelector = "a, button, [role='button'], input, textarea, select, label, .cursor-pointer, [onclick], .floating-btn, #navbar a, #navbar button";
+
+    function checkHover(e) {
+      var target = e.target;
+      if (target && target.closest && target.closest(hoverSelector)) {
+        cursor.classList.add("cursor-hover");
+      } else {
+        cursor.classList.remove("cursor-hover");
+      }
+    }
+
+    document.addEventListener("mouseover", checkHover);
+
+    // Swup 页面切换后重新激活全局 cursor:none
+    document.addEventListener("swup:contentReplaced", function () {
+      document.body.classList.add("custom-cursor-active");
+    });
+
+    // 启动动画
+    animate();
+  })();
+</script>
