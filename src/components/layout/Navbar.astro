@@ -169,6 +169,18 @@ if (isLocalSrcLogo) {
                 <span class="bg-player-icon-pause hidden"><Icon is:inline name="material-symbols:pause-rounded" class="text-[1.5rem]" /></span>
             </button>
         )}
+        <button
+            aria-label="切换樱花和雨滴"
+            title="切换樱花和雨滴"
+            class="btn-plain scale-animation rounded-lg h-9 w-9 md:h-11 md:w-11 active:scale-90 flex items-center justify-center"
+            id="effect-mode-toggle"
+            data-mode="rain"
+        >
+            <span class="effect-icon-rain"><Icon is:inline name="material-symbols:water-drop-rounded" class="text-[1.25rem]" /></span>
+            <span class="effect-icon-sakura hidden"><Icon is:inline name="material-symbols:local-florist-rounded" class="text-[1.25rem]" /></span>
+            <span class="effect-icon-leaf hidden"><Icon is:inline name="material-symbols:eco-rounded" class="text-[1.25rem]" /></span>
+            <span class="effect-icon-all hidden text-[1rem] font-black leading-none">A</span>
+        </button>
         {/* @ts-ignore */}
         <LightDarkSwitch client:load></LightDarkSwitch>
     </div>
@@ -189,6 +201,57 @@ if (isLocalSrcLogo) {
 </div>
 
 <script>
+function initEffectModeToggle() {
+    const button = document.getElementById('effect-mode-toggle') as HTMLButtonElement | null;
+    if (!button) return;
+    const buttonEl = button;
+
+    const rainIcon = buttonEl.querySelector('.effect-icon-rain') as HTMLElement | null;
+    const sakuraIcon = buttonEl.querySelector('.effect-icon-sakura') as HTMLElement | null;
+    const leafIcon = buttonEl.querySelector('.effect-icon-leaf') as HTMLElement | null;
+    const allIcon = buttonEl.querySelector('.effect-icon-all') as HTMLElement | null;
+
+    function applyMode(mode: 'rain' | 'sakura' | 'leaf' | 'all') {
+        buttonEl.dataset.mode = mode;
+        buttonEl.title =
+            mode === 'rain'
+                ? '当前：雨滴，点击切换樱花'
+                : mode === 'sakura'
+                    ? '当前：樱花，点击切换树叶'
+                    : mode === 'leaf'
+                        ? '当前：树叶，点击切换全部特效'
+                        : '当前：全部特效，点击切换雨滴';
+        buttonEl.setAttribute('aria-label', buttonEl.title);
+        rainIcon?.classList.toggle('hidden', mode !== 'rain');
+        sakuraIcon?.classList.toggle('hidden', mode !== 'sakura');
+        leafIcon?.classList.toggle('hidden', mode !== 'leaf');
+        allIcon?.classList.toggle('hidden', mode !== 'all');
+        localStorage.setItem('visualEffectMode', mode);
+        window.dispatchEvent(new CustomEvent('effectModeChange', { detail: { mode } }));
+    }
+
+    const storedMode = localStorage.getItem('visualEffectMode');
+    applyMode(storedMode === 'sakura' || storedMode === 'leaf' || storedMode === 'all' ? storedMode : 'rain');
+
+    if (buttonEl.dataset.bound === 'true') return;
+    buttonEl.dataset.bound = 'true';
+    buttonEl.addEventListener('click', () => {
+        const currentMode = buttonEl.dataset.mode;
+        applyMode(
+            currentMode === 'rain'
+                ? 'sakura'
+                : currentMode === 'sakura'
+                    ? 'leaf'
+                    : currentMode === 'leaf'
+                        ? 'all'
+                        : 'rain',
+        );
+    });
+}
+
+initEffectModeToggle();
+document.addEventListener('astro:page-load', initEffectModeToggle);
+
 // 手机端浮空导航岛：移动到 body 层级并同步显隐
 function initMobileNavIsland() {
     const mobileNavIsland = document.getElementById('mobile-nav-island');

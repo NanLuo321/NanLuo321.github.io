@@ -543,10 +543,12 @@
 		}
 		window.sakuraInitialized = true;
 
-		// 读取用户设置(localStorage 优先,缺省回退到配置默认值)
+		// 读取用户设置：导航岛特效模式优先，默认只显示雨滴，避免樱花和雨滴同时运行
+		const visualEffectMode = localStorage.getItem("visualEffectMode") || "rain";
 		const storedEnabled = localStorage.getItem("sakuraEnabled");
 		const isEnabled =
-			storedEnabled !== null ? storedEnabled === "true" : sakuraConfig.enable;
+			(visualEffectMode === "sakura" || visualEffectMode === "all") &&
+			(storedEnabled !== null ? storedEnabled === "true" : sakuraConfig.enable);
 		const cfg: SakuraConfig = Object.assign({}, sakuraConfig, {
 			enable: isEnabled,
 		});
@@ -562,6 +564,21 @@
 				mgr.config.enable = true;
 				void mgr.init();
 			} else if (!detail.enabled && mgr.getIsRunning()) {
+				mgr.stop();
+			}
+		});
+
+		window.addEventListener("effectModeChange", (e: Event) => {
+			const detail = (e as CustomEvent<{ mode: "rain" | "sakura" | "leaf" | "all" }>)
+				.detail;
+			if (!detail) return;
+			const mgr = window.sakuraManager;
+			if (!mgr) return;
+			if ((detail.mode === "sakura" || detail.mode === "all") && !mgr.getIsRunning()) {
+				mgr.config.enable = true;
+				localStorage.setItem("sakuraEnabled", "true");
+				void mgr.init();
+			} else if (detail.mode !== "sakura" && detail.mode !== "all" && mgr.getIsRunning()) {
 				mgr.stop();
 			}
 		});

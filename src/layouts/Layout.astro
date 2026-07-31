@@ -8,6 +8,8 @@ import FancyboxManager from "@components/features/FancyboxManager.astro";
 import FontSetup from "@components/features/FontSetup.astro";
 import MusicManager from "@components/features/MusicManager.astro";
 import CustomCursor from "@components/features/CustomCursor.astro";
+import RainEffect from "@components/RainEffect.astro";
+import LeafEffect from "@components/LeafEffect.astro";
 import SakuraEffect from "@components/features/SakuraEffect.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
 import { Icon } from "astro-icon/components";
@@ -759,6 +761,8 @@ const siteLang = lang.replace("_", "-");
     {shouldShowTopHighlight && <div class="top-gradient-highlight" />}
     <ConfigCarrier />
     <MusicManager />
+    <RainEffect />
+    <LeafEffect />
     <slot />
 
 
