@@ -194,51 +194,56 @@ function initMobileNavIsland() {
     const mobileNavIsland = document.getElementById('mobile-nav-island');
     const navbarWrapper = document.getElementById('navbar-wrapper');
     if (!mobileNavIsland || !navbarWrapper) return;
+    const mobileNavIslandEl = mobileNavIsland as HTMLElement;
+    const navbarWrapperEl = navbarWrapper as HTMLElement;
 
     // 将浮空岛移动到 body 层级，避免父元素 transform 影响 fixed 定位
-    if (mobileNavIsland.parentElement !== document.body) {
-        document.body.appendChild(mobileNavIsland);
+    if (mobileNavIslandEl.parentElement !== document.body) {
+        document.body.appendChild(mobileNavIslandEl);
     }
 
-    // 使用像素值精确居中
-    function centerIsland() {
+    // 手机端将导航岛放到整个网页右下角
+    function positionIsland() {
         const vw = document.documentElement.clientWidth;
-        const islandWidth = mobileNavIsland.offsetWidth;
-        mobileNavIsland.style.left = ((vw - islandWidth) / 2) + 'px';
+        mobileNavIslandEl.style.right = '0.75rem';
+        mobileNavIslandEl.style.left = 'auto';
+        mobileNavIslandEl.style.top = 'auto';
+        mobileNavIslandEl.style.bottom = '1.25rem';
+        mobileNavIslandEl.style.maxWidth = `${Math.max(120, vw - 24)}px`;
     }
 
     // 同步显隐状态
     function syncVisibility() {
-        const hidden = navbarWrapper.classList.contains('navbar-manual-hidden') ||
-                       navbarWrapper.classList.contains('navbar-hidden') ||
-                       navbarWrapper.classList.contains('navbar-video-hidden');
-        centerIsland();
+        const hidden = navbarWrapperEl.classList.contains('navbar-manual-hidden') ||
+                       navbarWrapperEl.classList.contains('navbar-hidden') ||
+                       navbarWrapperEl.classList.contains('navbar-video-hidden');
+        positionIsland();
         if (hidden) {
-            mobileNavIsland.style.transform = 'translateY(-140%) scale(0.9)';
-            mobileNavIsland.style.opacity = '0';
-            mobileNavIsland.style.pointerEvents = 'none';
+            mobileNavIslandEl.style.transform = 'translateY(140%) scale(0.9)';
+            mobileNavIslandEl.style.opacity = '0';
+            mobileNavIslandEl.style.pointerEvents = 'none';
         } else {
-            mobileNavIsland.style.transform = 'translateY(0) scale(1)';
-            mobileNavIsland.style.opacity = '';
-            mobileNavIsland.style.pointerEvents = '';
+            mobileNavIslandEl.style.transform = 'translateY(0) scale(1)';
+            mobileNavIslandEl.style.opacity = '';
+            mobileNavIslandEl.style.pointerEvents = '';
         }
     }
 
-    // 窗口大小变化时重新居中
-    window.addEventListener('resize', centerIsland);
+    // 窗口大小变化时重新定位
+    window.addEventListener('resize', positionIsland);
 
     // 使用 MutationObserver 监听导航栏 class 变化
     const observer = new MutationObserver(syncVisibility);
-    observer.observe(navbarWrapper, { attributes: true, attributeFilter: ['class'] });
+    observer.observe(navbarWrapperEl, { attributes: true, attributeFilter: ['class'] });
 
     // 监听背景视频播放状态，播放时自动隐藏两个导航岛
     window.addEventListener('bg-player-state-change', function(e: Event) {
         const ce = e as CustomEvent;
         const playing = ce.detail && ce.detail.playing;
         if (playing) {
-            navbarWrapper.classList.add('navbar-video-hidden');
+            navbarWrapperEl.classList.add('navbar-video-hidden');
         } else {
-            navbarWrapper.classList.remove('navbar-video-hidden');
+            navbarWrapperEl.classList.remove('navbar-video-hidden');
         }
     });
 

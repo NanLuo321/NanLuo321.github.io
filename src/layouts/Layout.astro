@@ -636,30 +636,32 @@ const siteLang = lang.replace("_", "-");
     <!-- Font Setup (Astro Font API) -->
     <FontSetup />
 
-    {/* 开发者工具检测提示 - 每个会话只提示一次 */}
+    {/* 开发者工具检测提示 - 每次打开开发者工具时提示一次 */}
     <script is:inline>
       (function() {
-        // 使用 sessionStorage 确保每个浏览器会话只提示一次
-        if (sessionStorage.getItem('devtools-warned') === '1') return;
-        let devtoolsShown = false;
+        let devtoolsOpen = false;
+        let warningShowing = false;
         function showDevToolsWarning() {
-          if (devtoolsShown) return;
-          devtoolsShown = true;
-          sessionStorage.setItem('devtools-warned', '1');
+          if (warningShowing) return;
+          warningShowing = true;
           const overlay = document.createElement('div');
           overlay.id = 'devtools-warning';
           overlay.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:rgba(0,0,0,0.85);color:#fff;padding:24px 40px;border-radius:16px;backdrop-filter:blur(20px);font-size:18px;font-weight:bold;text-align:center;pointer-events:none;animation:devtoolsFadeIn 0.3s ease;display:flex;align-items:center;gap:12px;';
           overlay.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#facc15;color:#000;font-size:20px;font-weight:900;flex-shrink:0;">!</span><strong style="font-size:20px;letter-spacing:1px;">请合理使用开发者工具！</strong>';
           document.body.appendChild(overlay);
           setTimeout(() => { overlay.style.transition='opacity 0.5s'; overlay.style.opacity='0'; }, 2500);
-          setTimeout(() => { if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 3000);
+          setTimeout(() => { if(overlay.parentNode) overlay.parentNode.removeChild(overlay); warningShowing = false; }, 3000);
         }
         const threshold = 160;
         setInterval(function() {
           const widthDiff = window.outerWidth - window.innerWidth;
           const heightDiff = window.outerHeight - window.innerHeight;
-          if (widthDiff > threshold || heightDiff > threshold) {
+          const opened = widthDiff > threshold || heightDiff > threshold;
+          if (opened && !devtoolsOpen) {
+            devtoolsOpen = true;
             showDevToolsWarning();
+          } else if (!opened) {
+            devtoolsOpen = false;
           }
         }, 1000);
       })();

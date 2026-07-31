@@ -361,11 +361,13 @@ body.wallpaper-transparent #navbar > div {
 
 /* ============================================
  * 手机端独立浮空导航岛
- * 显示在导航栏下方，居中悬浮
+ * 显示在整个网页右下角
  * ============================================ */
 #mobile-nav-island {
-    top: calc(0.75rem + 3.5rem + 0.5rem); /* 导航栏 top-3 + h-14 + 间距 */
-    max-width: calc(100vw - 2rem);
+    right: 0.75rem;
+    top: auto;
+    bottom: 1.25rem;
+    max-width: calc(100vw - 1.5rem);
     transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1),
                 opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -429,8 +431,7 @@ body.wallpaper-transparent #mobile-nav-island .mobile-nav-island-inner {
 body:has(#navbar-wrapper.navbar-manual-hidden) #mobile-nav-island,
 body:has(#navbar-wrapper.navbar-hidden) #mobile-nav-island,
 body:has(#navbar-wrapper.navbar-video-hidden) #mobile-nav-island {
-    transform: translateY(-140%) scale(0.9) !important;
+    transform: translateY(140%) scale(0.9) !important;
     opacity: 0 !important;
     pointer-events: none !important;
 }
-
