@@ -1,0 +1,156 @@
+<canvas id="leaf-effect"></canvas>
+
+<style>
+	#leaf-effect {
+		position: fixed;
+		inset: 0;
+		z-index: 1;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		opacity: 0.78;
+		filter: drop-shadow(0 6px 10px rgba(120, 70, 0, 0.25));
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#leaf-effect {
+			display: none;
+		}
+	}
+</style>
+
+<script is:inline>
+	(function () {
+		const canvas = document.getElementById("leaf-effect");
+		if (!canvas) return;
+
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return;
+
+		let w = 0;
+		let h = 0;
+		let leaves = [];
+		const initialMode = localStorage.getItem("visualEffectMode") || "rain";
+		let active = initialMode === "leaf" || initialMode === "all";
+		const leafCount = window.matchMedia("(max-width: 768px)").matches ? 36 : 64;
+
+		function createLeaf(fromTop) {
+			return {
+				x: Math.random() * w,
+				y: fromTop ? -40 - Math.random() * h * 0.35 : Math.random() * h,
+				size: Math.random() * 9 + 8,
+				speedY: Math.random() * 1.25 + 0.65,
+				speedX: Math.random() * 0.65 + 0.25,
+				phase: Math.random() * Math.PI * 2,
+				spin: Math.random() * 0.035 + 0.012,
+				angle: Math.random() * Math.PI * 2,
+				alpha: Math.random() * 0.35 + 0.5,
+				hue: Math.random() * 28 + 38,
+				tail: Math.random() * 18 + 18,
+			};
+		}
+
+		function resize() {
+			const dpr = Math.min(window.devicePixelRatio || 1, 2);
+			w = window.innerWidth;
+			h = window.innerHeight;
+			canvas.width = Math.floor(w * dpr);
+			canvas.height = Math.floor(h * dpr);
+			canvas.style.width = w + "px";
+			canvas.style.height = h + "px";
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+			leaves = [];
+			for (let i = 0; i < leafCount; i++) {
+				leaves.push(createLeaf(false));
+			}
+		}
+
+		function applyVisibility() {
+			canvas.style.display = active ? "block" : "none";
+			if (!active) {
+				ctx.clearRect(0, 0, w, h);
+			}
+		}
+
+		function drawLeaf(leaf) {
+			const sway = Math.sin(leaf.phase) * 26;
+			const x = leaf.x + sway;
+			const y = leaf.y;
+			const s = leaf.size;
+
+			ctx.save();
+			ctx.translate(x, y);
+			ctx.rotate(leaf.angle);
+			ctx.scale(1, 0.72 + Math.sin(leaf.phase * 1.4) * 0.12);
+
+			const tailGradient = ctx.createLinearGradient(0, s * 0.55, 0, s + leaf.tail);
+			tailGradient.addColorStop(0, "hsla(" + (leaf.hue - 8) + ", 85%, 46%, " + (leaf.alpha * 0.5) + ")");
+			tailGradient.addColorStop(1, "hsla(" + (leaf.hue - 12) + ", 80%, 42%, 0)");
+
+			ctx.beginPath();
+			ctx.moveTo(0, s * 0.58);
+			ctx.bezierCurveTo(s * 0.22, s + leaf.tail * 0.28, -s * 0.18, s + leaf.tail * 0.65, 0, s + leaf.tail);
+			ctx.strokeStyle = tailGradient;
+			ctx.lineWidth = Math.max(1, s * 0.16);
+			ctx.lineCap = "round";
+			ctx.stroke();
+
+			const gradient = ctx.createLinearGradient(-s, -s, s, s);
+			gradient.addColorStop(0, "hsla(" + (leaf.hue + 14) + ", 95%, 72%, " + leaf.alpha + ")");
+			gradient.addColorStop(0.55, "hsla(" + leaf.hue + ", 90%, 56%, " + leaf.alpha + ")");
+			gradient.addColorStop(1, "hsla(" + (leaf.hue - 10) + ", 82%, 42%, " + leaf.alpha + ")");
+
+			ctx.beginPath();
+			ctx.moveTo(0, -s);
+			ctx.bezierCurveTo(s * 0.95, -s * 0.55, s * 0.8, s * 0.55, 0, s);
+			ctx.bezierCurveTo(-s * 0.8, s * 0.55, -s * 0.95, -s * 0.55, 0, -s);
+			ctx.fillStyle = gradient;
+			ctx.fill();
+
+			ctx.beginPath();
+			ctx.moveTo(0, -s * 0.82);
+			ctx.lineTo(0, s * 0.82);
+			ctx.strokeStyle = "rgba(120, 70, 0, 0.32)";
+			ctx.lineWidth = 0.8;
+			ctx.stroke();
+
+			ctx.restore();
+		}
+
+		function draw() {
+			if (!active) {
+				requestAnimationFrame(draw);
+				return;
+			}
+
+			ctx.clearRect(0, 0, w, h);
+
+			leaves.forEach((leaf, index) => {
+				leaf.phase += 0.025 + leaf.spin;
+				leaf.angle += leaf.spin;
+				leaf.y += leaf.speedY;
+				leaf.x += leaf.speedX;
+
+				if (leaf.y > h + 60 || leaf.x > w + 80) {
+					leaves[index] = createLeaf(true);
+					leaves[index].x = Math.random() * w * 0.82 - w * 0.08;
+				} else {
+					drawLeaf(leaf);
+				}
+			});
+
+			requestAnimationFrame(draw);
+		}
+
+		resize();
+		applyVisibility();
+		window.addEventListener("resize", resize, { passive: true });
+		window.addEventListener("effectModeChange", (event) => {
+			const mode = event.detail && event.detail.mode;
+			active = mode === "leaf" || mode === "all";
+			applyVisibility();
+		});
+		draw();
+	})();
+</script>

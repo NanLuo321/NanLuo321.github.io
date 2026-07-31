@@ -53,6 +53,12 @@ if (pnpmMatch) {
 
 // 构建时间
 const buildTime = formatDateI18nWithTime(new Date());
+const initialCurrentTime = new Date().toLocaleTimeString("zh-CN", {
+	hour: "2-digit",
+	minute: "2-digit",
+	second: "2-digit",
+	hour12: false,
+});
 
 // 构建平台检测（使用 ci-info 自动识别 CI 环境）
 const unknownBuildPlatform =
@@ -94,9 +100,10 @@ const licenseName = licenseConfig.enable ? licenseConfig.name : "None";
 // 始终显示的项目（列表卡片）
 const mainItems = [
 	{
-		icon: "material-symbols:build-outline",
-		label: i18n(I18nKey.siteInfoBuildTime),
-		value: buildTime,
+		icon: "material-symbols:schedule-rounded",
+		label: i18n(I18nKey.siteInfo),
+		value: initialCurrentTime,
+		realtime: true,
 	},
 	{
 		icon: "mdi:clover",
@@ -177,7 +184,7 @@ const detailItems: {
     {/* 始终显示的项目（列表卡片） */}
     <div class="flex flex-col gap-2">
       {
-        mainItems.map((item: { icon: string; label: string; value: string; href?: string }) => (
+        mainItems.map((item: { icon: string; label: string; value: string; href?: string; realtime?: boolean }) => (
           <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-neutral-100/60 dark:bg-neutral-800/50">
             <div class="flex items-center gap-2.5">
               <div class="text-(--primary) text-lg">
@@ -199,6 +206,7 @@ const detailItems: {
               </a>
             ) : (
               <span
+                data-current-time={item.realtime ? "true" : undefined}
                 class="text-xs font-bold text-neutral-900 dark:text-neutral-100 text-right max-w-[55%] truncate"
                 title={item.value}
               >
@@ -294,5 +302,28 @@ const detailItems: {
 
   if (!customElements.get("site-info-collapse")) {
     customElements.define("site-info-collapse", SiteInfoCollapse);
+  }
+
+  const currentTimeElements = document.querySelectorAll<HTMLElement>(
+    "[data-current-time='true']",
+  );
+
+  function updateCurrentTime() {
+    const currentTime = new Date().toLocaleTimeString("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+
+    currentTimeElements.forEach((element) => {
+      element.textContent = currentTime;
+      element.title = currentTime;
+    });
+  }
+
+  if (currentTimeElements.length > 0) {
+    updateCurrentTime();
+    setInterval(updateCurrentTime, 1000);
   }
 </script>

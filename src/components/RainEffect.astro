@@ -1,0 +1,175 @@
+<canvas id="rain"></canvas>
+<div id="rain-reflection" aria-hidden="true"></div>
+
+<style>
+	#rain {
+		position: fixed;
+		inset: 0;
+		z-index: 1;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		opacity: 0.55;
+		filter: blur(0.4px);
+		mix-blend-mode: screen;
+	}
+
+	#rain-reflection {
+		position: fixed;
+		left: 0;
+		bottom: 0;
+		z-index: 1;
+		width: 100%;
+		height: 35%;
+		pointer-events: none;
+		background:
+			radial-gradient(ellipse at 48% 100%, rgba(170, 210, 255, 0.14), transparent 55%),
+			linear-gradient(transparent, rgba(100, 150, 200, 0.15));
+		mix-blend-mode: screen;
+		opacity: 0.75;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#rain,
+		#rain-reflection {
+			display: none;
+		}
+	}
+</style>
+
+<script is:inline>
+	(function () {
+		const canvas = document.getElementById("rain");
+		if (!canvas) return;
+		const reflection = document.getElementById("rain-reflection");
+
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return;
+
+		let w = 0;
+		let h = 0;
+		let drops = [];
+		let ripples = [];
+		const dropCount = window.matchMedia("(max-width: 768px)").matches ? 220 : 380;
+		const initialMode = localStorage.getItem("visualEffectMode") || "rain";
+		let active = initialMode === "rain" || initialMode === "all";
+
+		function applyVisibility() {
+			canvas.style.display = active ? "block" : "none";
+			if (reflection) {
+				reflection.style.display = active ? "block" : "none";
+			}
+			if (!active) {
+				ctx.clearRect(0, 0, w, h);
+			}
+		}
+
+		function resize() {
+			const dpr = Math.min(window.devicePixelRatio || 1, 2);
+			w = window.innerWidth;
+			h = window.innerHeight;
+			canvas.width = Math.floor(w * dpr);
+			canvas.height = Math.floor(h * dpr);
+			canvas.style.width = w + "px";
+			canvas.style.height = h + "px";
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+			drops = [];
+
+			for (let i = 0; i < dropCount; i++) {
+				drops.push({
+					x: Math.random() * w,
+					y: Math.random() * h,
+					speed: Math.random() * 8 + 8,
+					length: Math.random() * 20 + 10,
+					alpha: Math.random() * 0.22 + 0.16,
+				});
+			}
+		}
+
+		function addRipple(x) {
+			if (ripples.length > 36) ripples.shift();
+			ripples.push({
+				x,
+				y: h * (0.82 + Math.random() * 0.12),
+				radius: 1,
+				maxRadius: Math.random() * 18 + 14,
+				alpha: Math.random() * 0.16 + 0.1,
+			});
+		}
+
+		function drawRipples() {
+			for (let i = ripples.length - 1; i >= 0; i--) {
+				const r = ripples[i];
+				r.radius += 0.7;
+				r.alpha *= 0.95;
+
+				if (r.radius > r.maxRadius || r.alpha < 0.01) {
+					ripples.splice(i, 1);
+					continue;
+				}
+
+				ctx.beginPath();
+				ctx.ellipse(r.x, r.y, r.radius * 1.7, r.radius * 0.42, 0, 0, Math.PI * 2);
+				ctx.strokeStyle = "rgba(180,210,255," + r.alpha + ")";
+				ctx.lineWidth = 1;
+				ctx.stroke();
+			}
+		}
+
+		function draw() {
+			if (!active) {
+				requestAnimationFrame(draw);
+				return;
+			}
+
+			ctx.clearRect(0, 0, w, h);
+
+			const groundGradient = ctx.createLinearGradient(0, h * 0.62, 0, h);
+			groundGradient.addColorStop(0, "rgba(100,150,220,0)");
+			groundGradient.addColorStop(1, "rgba(100,150,220,0.08)");
+			ctx.fillStyle = groundGradient;
+			ctx.fillRect(0, h * 0.62, w, h * 0.38);
+
+			ctx.lineWidth = 1;
+			ctx.lineCap = "round";
+
+			drops.forEach((d) => {
+				const gradient = ctx.createLinearGradient(d.x, d.y, d.x, d.y + d.length);
+				gradient.addColorStop(0, "rgba(180,210,255,0)");
+				gradient.addColorStop(0.25, "rgba(180,210,255," + d.alpha + ")");
+				gradient.addColorStop(1, "rgba(230,245,255," + (d.alpha * 0.85) + ")");
+
+				ctx.beginPath();
+				ctx.strokeStyle = gradient;
+				ctx.moveTo(d.x, d.y);
+				ctx.lineTo(d.x, d.y + d.length);
+				ctx.stroke();
+
+				d.y += d.speed;
+
+				if (d.y > h) {
+					if (Math.random() > 0.55) addRipple(d.x);
+					d.y = -20;
+					d.x = Math.random() * w;
+					d.speed = Math.random() * 8 + 8;
+					d.length = Math.random() * 20 + 10;
+					d.alpha = Math.random() * 0.22 + 0.16;
+				}
+			});
+
+			drawRipples();
+			requestAnimationFrame(draw);
+		}
+
+		resize();
+		applyVisibility();
+		window.addEventListener("resize", resize, { passive: true });
+		window.addEventListener("effectModeChange", (event) => {
+			const mode = event.detail && event.detail.mode;
+			active = mode === "rain" || mode === "all";
+			applyVisibility();
+		});
+		draw();
+	})();
+</script>
