@@ -34,7 +34,9 @@ html.is-page-transitioning .banner-home-text-overlay {
 }
 
 /* 全屏壁纸模式：首页文字随滚动逐渐模糊 */
-#wallpaper-wrapper.wallpaper-fullscreen .banner-home-text-overlay {
+#wallpaper-wrapper.wallpaper-fullscreen .banner-home-text-overlay,
+#wallpaper-wrapper.wallpaper-fullscreen .banner-page-title-overlay,
+#wallpaper-wrapper.wallpaper-fullscreen .banner-post-meta-overlay {
     filter: blur(var(--text-scroll-blur, 0px));
     transition: filter 0.15s ease-out;
 }

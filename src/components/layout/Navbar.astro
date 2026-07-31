@@ -18,7 +18,6 @@ import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
 import { isHomePage } from "@/utils/layout-utils";
 import { url } from "@/utils/url-utils";
 import DropdownMenu from "./DropdownMenu.astro";
-import NavMenuPanel from "./NavMenuPanel.astro";
 
 const className = Astro.props.class;
 
@@ -69,7 +68,6 @@ function filterLinks(link: NavBarLink): NavBarLink | null {
 	const filteredChildren = link.children.filter(isPageEnabled);
 
 	if (filteredChildren.length === 0) return null;
-	if (filteredChildren.length === 1) return filteredChildren[0];
 	return { ...link, children: filteredChildren };
 }
 
@@ -100,7 +98,7 @@ if (isLocalSrcLogo) {
 	}
 }
 ---
-<div id="navbar" class="w-max" style={`--navbar-glass-blur: ${navbarBlur}px;`} data-transparent-mode={navbarTransparentMode} data-enable-blur={String(navbarEnableBlur)} data-is-home={isHomePageCheck} data-full-width={navbarWidthFull}>
+<div id="navbar" class="w-max max-w-[calc(100vw-5rem)]" style={`--navbar-glass-blur: ${navbarBlur}px;`} data-transparent-mode={navbarTransparentMode} data-enable-blur={String(navbarEnableBlur)} data-is-home={isHomePageCheck} data-full-width={navbarWidthFull}>
     <div class:list={[
         className,
         "overflow-visible! h-14 px-4 rounded-2xl"
@@ -117,12 +115,12 @@ if (isLocalSrcLogo) {
                     siteConfig.navbar.followTheme ? "text-(--primary)" : "dark:text-white text-black"
                 ]} style="font-family: var(--font-navbar-title, inherit)">
                                     {siteConfig.navbar.logo?.type === "icon" ? (
-                                        <Icon is:inline name={siteConfig.navbar.logo.value || "material-symbols:home-pin-outline"} class="text-[1.75rem] mb-1 mr-2" />
+                                        <Icon is:inline name={siteConfig.navbar.logo.value || "material-symbols:home-pin-outline"} class="text-[1.75rem] mr-2" />
                                     ) : siteConfig.navbar.logo?.type === "image" && logoImg ? (
                                         <Picture
                                             src={logoImg}
                                             alt={siteConfig.navbar.logo.alt || siteConfig.title}
-                                            class="h-9 w-auto mb-1 mr-2 object-contain"
+                                            class="h-9 w-auto mr-2 object-contain"
                                             formats={getImageFormats()}
                                             fallbackFormat={getFallbackFormat()}
                                             widths={[36, 72]}
@@ -130,9 +128,9 @@ if (isLocalSrcLogo) {
                                             fetchpriority="high"
                                         />
                                     ) : siteConfig.navbar.logo?.type === "image" ? (
-                                        <img src={url(siteConfig.navbar.logo.value)} alt={siteConfig.navbar.logo.alt || siteConfig.title} class="h-9 w-auto mb-1 mr-2 object-contain" fetchpriority="high" />
+                                        <img src={url(siteConfig.navbar.logo.value)} alt={siteConfig.navbar.logo.alt || siteConfig.title} class="h-9 w-auto mr-2 object-contain" fetchpriority="high" />
                                     ) : siteConfig.navbar.logo?.type === "url" ? (
-                                        <img src={siteConfig.navbar.logo.value} alt={siteConfig.navbar.logo.alt || siteConfig.title} class="h-9 w-auto mb-1 mr-2 object-contain" fetchpriority="high" />
+                                        <img src={siteConfig.navbar.logo.value} alt={siteConfig.navbar.logo.alt || siteConfig.title} class="h-9 w-auto mr-2 object-contain" fetchpriority="high" />
                                     ) : null}
                     <span class="font-extrabold text-lg tracking-wide">{showNavbarTitle && navbarTitle}</span>
                 </div>
@@ -148,11 +146,10 @@ if (isLocalSrcLogo) {
                 })}
             </div>
         </div>
-        <NavMenuPanel links={links}></NavMenuPanel>
     </div>
 </div>
 <!-- 独立悬浮按钮岛 -->
-<div id="navbar-actions" class="pointer-events-auto">
+<div id="navbar-actions" class="pointer-events-auto" style={`--navbar-glass-blur: ${navbarBlur}px;`}>
     <div class="navbar-actions-inner flex items-center gap-1 h-14 px-2 rounded-2xl">
         <DynamicIslandSearch client:load />
         {musicPlayerConfig.showInNavbar && (
@@ -174,24 +171,90 @@ if (isLocalSrcLogo) {
         )}
         {/* @ts-ignore */}
         <LightDarkSwitch client:load></LightDarkSwitch>
-        <button aria-label="Menu" name="Nav Menu" class="btn-plain scale-animation rounded-lg w-9 h-9 md:w-11 md:h-11 active:scale-90 lg:hidden!" id="nav-menu-switch">
-            <Icon is:inline name="material-symbols:menu-rounded" class="text-[1.25rem]"></Icon>
-        </button>
+    </div>
+</div>
+<!-- 手机端独立浮空导航岛 - 显示在导航栏下方，居中于视口 -->
+<div id="mobile-nav-island" class="lg:hidden fixed z-50 pointer-events-auto">
+    <div class="mobile-nav-island-inner flex items-center gap-0.5 px-2 py-1.5 rounded-full">
+        {links.map((l) => (
+            <a
+                href={l.external ? l.url : url(l.url)}
+                class="shrink-0 px-2.5 py-1 text-xs font-medium text-black/60 dark:text-white/60 rounded-full hover:bg-(--btn-plain-bg-hover) hover:text-(--primary) active:text-(--primary) transition"
+                target={l.external ? "_blank" : null}
+            >
+                {l.name}
+            </a>
+        ))}
     </div>
 </div>
 
 <script>
-function loadButtonScript() {
-    let menuBtn = document.getElementById("nav-menu-switch");
-    if (menuBtn) {
-        menuBtn.onclick = function () {
-            let menuPanel = document.getElementById("nav-menu-panel");
-            if (menuPanel) {
-                menuPanel.classList.toggle("float-panel-closed");
-            }
-        };
+// 手机端浮空导航岛：移动到 body 层级并同步显隐
+function initMobileNavIsland() {
+    const mobileNavIsland = document.getElementById('mobile-nav-island');
+    const navbarWrapper = document.getElementById('navbar-wrapper');
+    if (!mobileNavIsland || !navbarWrapper) return;
+
+    // 将浮空岛移动到 body 层级，避免父元素 transform 影响 fixed 定位
+    if (mobileNavIsland.parentElement !== document.body) {
+        document.body.appendChild(mobileNavIsland);
     }
 
+    // 使用像素值精确居中
+    function centerIsland() {
+        const vw = document.documentElement.clientWidth;
+        const islandWidth = mobileNavIsland.offsetWidth;
+        mobileNavIsland.style.left = ((vw - islandWidth) / 2) + 'px';
+    }
+
+    // 同步显隐状态
+    function syncVisibility() {
+        const hidden = navbarWrapper.classList.contains('navbar-manual-hidden') ||
+                       navbarWrapper.classList.contains('navbar-hidden') ||
+                       navbarWrapper.classList.contains('navbar-video-hidden');
+        centerIsland();
+        if (hidden) {
+            mobileNavIsland.style.transform = 'translateY(-140%) scale(0.9)';
+            mobileNavIsland.style.opacity = '0';
+            mobileNavIsland.style.pointerEvents = 'none';
+        } else {
+            mobileNavIsland.style.transform = 'translateY(0) scale(1)';
+            mobileNavIsland.style.opacity = '';
+            mobileNavIsland.style.pointerEvents = '';
+        }
+    }
+
+    // 窗口大小变化时重新居中
+    window.addEventListener('resize', centerIsland);
+
+    // 使用 MutationObserver 监听导航栏 class 变化
+    const observer = new MutationObserver(syncVisibility);
+    observer.observe(navbarWrapper, { attributes: true, attributeFilter: ['class'] });
+
+    // 监听背景视频播放状态，播放时自动隐藏两个导航岛
+    window.addEventListener('bg-player-state-change', function(e: Event) {
+        const ce = e as CustomEvent;
+        const playing = ce.detail && ce.detail.playing;
+        if (playing) {
+            navbarWrapper.classList.add('navbar-video-hidden');
+        } else {
+            navbarWrapper.classList.remove('navbar-video-hidden');
+        }
+    });
+
+    // 初始同步
+    syncVisibility();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMobileNavIsland);
+} else {
+    initMobileNavIsland();
+}
+document.addEventListener('astro:page-load', initMobileNavIsland);
+document.addEventListener('swup:contentReplaced', initMobileNavIsland);
+
+function loadButtonScript() {
     // 背景视频播放器控制按钮
     let bgPlayerBtn = document.getElementById("bg-player-toggle");
     if (bgPlayerBtn) {
@@ -235,27 +298,11 @@ function loadButtonScript() {
             });
         }
     }
-
-    let themeSwitchBtn = document.getElementById("scheme-switch");
-    // theme-mode-panel 已移除，切换器现在是内联分段控件
-
-    document.addEventListener("click", function(event) {
-        const panels = ["nav-menu-panel"];
-        const buttons = ["nav-menu-switch"];
-
-        panels.forEach((id, index) => {
-            const panel = document.getElementById(id);
-            const button = document.getElementById(buttons[index]);
-            if (panel && button && !panel.classList.contains("float-panel-closed")) {
-                if (event.target instanceof Node && !panel.contains(event.target) && !button.contains(event.target)) {
-                    panel.classList.add("float-panel-closed");
-                }
-            }
-        });
-    });
 }
 
 loadButtonScript();
+document.addEventListener("astro:page-load", loadButtonScript);
+document.addEventListener("swup:contentReplaced", loadButtonScript);
 
 // 为semifull模式添加滚动检测逻辑
 function initSemifullScrollDetection() {

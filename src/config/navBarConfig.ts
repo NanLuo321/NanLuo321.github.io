@@ -32,16 +32,8 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 	// 友链
 	links.push(LinkPresets.Friends);
 
-	// 关于及其子菜单
-	links.push({
-		name: "关于",
-		url: "#",
-		icon: "material-symbols:info",
-		children: [
-			// 关于页面
-			LinkPresets.About,
-		],
-	});
+	// 关于我 - 直接导航到关于页
+	links.push(LinkPresets.About);
 
 	// 文档链接
 	// links.push({

@@ -566,7 +566,8 @@ const siteLang = lang.replace("_", "-");
           : rawVal === "true";
         document.documentElement.setAttribute("data-scroll-blur", String(scrollBlurEnabled));
 
-        if (!scrollBlurEnabled) return;
+        var textScrollBlurEnabled = wallpaperMode === WALLPAPER_FULLSCREEN;
+        if (!scrollBlurEnabled && !textScrollBlurEnabled) return;
         if (wallpaperMode !== WALLPAPER_OVERLAY && wallpaperMode !== WALLPAPER_FULLSCREEN) return;
 
         var SCROLL_BLUR_THRESHOLD = 400;
@@ -591,8 +592,12 @@ const siteLang = lang.replace("_", "-");
             var vh = window.innerHeight || 1;
             var fsThreshold = vh; // 滚动一屏的距离内完成模糊
             var fsBlur = Math.min((scrollY / fsThreshold) * fsMaxBlur, fsMaxBlur);
-            wrapper.style.setProperty("--scroll-blur", fsBlur.toFixed(2) + "px");
-            // 首页文字也同步模糊
+            if (scrollBlurEnabled) {
+              wrapper.style.setProperty("--scroll-blur", fsBlur.toFixed(2) + "px");
+            } else {
+              wrapper.style.setProperty("--scroll-blur", "0px");
+            }
+            // 首页文字独立随滚动模糊，不受滚动模糊开关影响
             wrapper.style.setProperty("--text-scroll-blur", fsBlur.toFixed(2) + "px");
             // 清除可能残留的导航岛/正文内联 filter，确保文字保持清晰
             var navbarEl = document.getElementById("navbar");
@@ -630,6 +635,66 @@ const siteLang = lang.replace("_", "-");
 
     <!-- Font Setup (Astro Font API) -->
     <FontSetup />
+
+    {/* 开发者工具检测提示 - 每个会话只提示一次 */}
+    <script is:inline>
+      (function() {
+        // 使用 sessionStorage 确保每个浏览器会话只提示一次
+        if (sessionStorage.getItem('devtools-warned') === '1') return;
+        let devtoolsShown = false;
+        function showDevToolsWarning() {
+          if (devtoolsShown) return;
+          devtoolsShown = true;
+          sessionStorage.setItem('devtools-warned', '1');
+          const overlay = document.createElement('div');
+          overlay.id = 'devtools-warning';
+          overlay.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:rgba(0,0,0,0.85);color:#fff;padding:24px 40px;border-radius:16px;backdrop-filter:blur(20px);font-size:18px;font-weight:bold;text-align:center;pointer-events:none;animation:devtoolsFadeIn 0.3s ease;display:flex;align-items:center;gap:12px;';
+          overlay.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#facc15;color:#000;font-size:20px;font-weight:900;flex-shrink:0;">!</span><strong style="font-size:20px;letter-spacing:1px;">请合理使用开发者工具！</strong>';
+          document.body.appendChild(overlay);
+          setTimeout(() => { overlay.style.transition='opacity 0.5s'; overlay.style.opacity='0'; }, 2500);
+          setTimeout(() => { if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 3000);
+        }
+        const threshold = 160;
+        setInterval(function() {
+          const widthDiff = window.outerWidth - window.innerWidth;
+          const heightDiff = window.outerHeight - window.innerHeight;
+          if (widthDiff > threshold || heightDiff > threshold) {
+            showDevToolsWarning();
+          }
+        }, 1000);
+      })();
+    </script>
+
+    {/* 手机端点击波纹效果 - 白色，从中心涌出 */}
+    <style is:inline>
+      .touch-ripple {
+        position: fixed;
+        pointer-events: none;
+        border-radius: 50%;
+        z-index: 99998;
+        background: rgba(255, 255, 255, 0.35);
+        transform: translate(-50%, -50%) scale(0);
+        animation: touchRippleExpand 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      @keyframes touchRippleExpand {
+        0% {
+          width: 0;
+          height: 0;
+          opacity: 0.5;
+          transform: translate(-50%, -50%) scale(0);
+        }
+        100% {
+          width: 160px;
+          height: 160px;
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+      @keyframes devtoolsFadeIn {
+        from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      }
+    </style>
   </head>
   <body
     class="min-h-screen"
@@ -662,6 +727,29 @@ const siteLang = lang.replace("_", "-");
         var follow = stored !== null ? stored === "true" : defaultFollowTheme;
         if (follow) document.body.classList.add("card-follow-theme-hue");
         else document.body.classList.remove("card-follow-theme-hue");
+      })();
+    </script>
+
+    {/* 手机端点击波纹效果 */}
+    <script is:inline>
+      (function() {
+        function createRipple(x, y) {
+          const ripple = document.createElement('div');
+          ripple.className = 'touch-ripple';
+          ripple.style.left = x + 'px';
+          ripple.style.top = y + 'px';
+          document.body.appendChild(ripple);
+          setTimeout(function() { if(ripple.parentNode) ripple.parentNode.removeChild(ripple); }, 600);
+        }
+        function isMobile() {
+          return window.matchMedia('(max-width: 1023px)').matches || ('ontouchstart' in window);
+        }
+        if (isMobile()) {
+          document.addEventListener('pointerdown', function(e) {
+            if (e.target.closest('a, button, input, textarea, select, [role="button"]')) return;
+            createRipple(e.clientX, e.clientY);
+          }, { passive: true });
+        }
       })();
     </script>
 
@@ -969,6 +1057,13 @@ const siteLang = lang.replace("_", "-");
       pointer-events: none;
     }
 
+    /* 视频播放时自动隐藏导航岛 */
+    #navbar-wrapper.navbar-video-hidden {
+      transform: translateY(-140%) scale(0.9);
+      opacity: 0;
+      pointer-events: none;
+    }
+
     /* 按钮在导航岛隐藏后的状态 */
     #fullscreen-navbar-toggle.navbar-is-hidden {
       background: color-mix(in oklch, var(--card-bg) 60%, transparent);
@@ -985,6 +1080,7 @@ const siteLang = lang.replace("_", "-");
 
 .float-trigger-btn,
 #profile-float-trigger,
+#announce-float-trigger,
 #music-float-trigger {
 
 
@@ -1001,13 +1097,15 @@ const siteLang = lang.replace("_", "-");
 
 
   backdrop-filter:
-    blur(30px)
-    saturate(180%);
+    blur(42px)
+    saturate(220%)
+    brightness(1.08);
 
 
   -webkit-backdrop-filter:
-    blur(30px)
-    saturate(180%);
+    blur(42px)
+    saturate(220%)
+    brightness(1.08);
 
 
   box-shadow:
@@ -1027,6 +1125,7 @@ const siteLang = lang.replace("_", "-");
   opacity:.95;
 
   overflow:hidden;
+  isolation:isolate;
 
 
   transition:
@@ -1040,6 +1139,7 @@ const siteLang = lang.replace("_", "-");
 
 .float-trigger-btn::after,
 #profile-float-trigger::after,
+#announce-float-trigger::after,
 #music-float-trigger::after {
 
 
@@ -1078,6 +1178,7 @@ const siteLang = lang.replace("_", "-");
 
 .float-trigger-btn:hover,
 #profile-float-trigger:hover,
+#announce-float-trigger:hover,
 #music-float-trigger:hover {
 
 
@@ -1102,6 +1203,7 @@ const siteLang = lang.replace("_", "-");
 
 .float-trigger-btn:active,
 #profile-float-trigger:active,
+#announce-float-trigger:active,
 #music-float-trigger:active {
 
 
@@ -1115,6 +1217,10 @@ const siteLang = lang.replace("_", "-");
       bottom: 80px;
       left: 20px;
       width: 280px;
+      min-width: 220px;
+      min-height: 200px;
+      max-width: calc(100vw - 20px);
+      max-height: calc(100vh - 20px);
       z-index: 9001;
       /* 液态玻璃：彩虹折射 + 半透明 */
       background:
@@ -1136,6 +1242,7 @@ const siteLang = lang.replace("_", "-");
         inset 0 0 30px rgba(255, 255, 255, 0.08),
         0 0 0 0.5px rgba(255, 255, 255, 0.3);
       overflow: hidden;
+      resize: both;
       display: flex;
       flex-direction: column;
       animation: profile-float-appear 0.4s cubic-bezier(0.32, 0.72, 0, 1);
@@ -1206,6 +1313,7 @@ const siteLang = lang.replace("_", "-");
       max-height: 100vh !important;
       border-radius: 0 !important;
       border: none !important;
+      resize: none !important;
     }
 
     @keyframes profile-float-appear {
@@ -1265,6 +1373,7 @@ const siteLang = lang.replace("_", "-");
 
     .profile-float-body {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
       position: relative;
@@ -1368,25 +1477,48 @@ const siteLang = lang.replace("_", "-");
       position: absolute;
       bottom: 0;
       right: 0;
-      width: 16px;
-      height: 16px;
-      cursor: nwse-resize;
-      background: linear-gradient(135deg, transparent 50%, color-mix(in oklch, var(--text-secondary) 30%, transparent) 50%);
+      width: 28px;
+      height: 28px;
+      cursor: nwse-resize !important;
+      background:
+        linear-gradient(135deg, transparent 45%, color-mix(in oklch, var(--primary) 45%, transparent) 45%),
+        radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.55), transparent 42%);
       border-bottom-right-radius: 1rem;
-      z-index: 2;
+      z-index: 5;
+      opacity: 0.75;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      touch-action: none;
+    }
+    .profile-float-resize::before {
+      content: "";
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      width: 12px;
+      height: 12px;
+      border-right: 2px solid color-mix(in oklch, var(--text-primary) 55%, transparent);
+      border-bottom: 2px solid color-mix(in oklch, var(--text-primary) 55%, transparent);
+      border-radius: 0 0 0.2rem 0;
+    }
+    .profile-float-resize:hover {
+      opacity: 1;
+      transform: scale(1.08);
+    }
+    .profile-fullscreen .profile-float-resize {
+      display: none;
     }
 
     /* ========== 液态玻璃触发按钮 (iOS 26 Liquid Glass) ========== */
     .float-trigger-btn {
       background:
         linear-gradient(135deg,
-          rgba(255, 255, 255, 0.25),
-          rgba(120, 180, 255, 0.12) 40%,
-          rgba(255, 120, 200, 0.12) 60%,
-          rgba(255, 255, 255, 0.25));
+          rgba(255, 255, 255, 0.42),
+          rgba(120, 180, 255, 0.18) 40%,
+          rgba(255, 120, 200, 0.18) 60%,
+          rgba(255, 255, 255, 0.42));
       border: 1px solid rgba(255, 255, 255, 0.4);
-      backdrop-filter: blur(20px) saturate(200%);
-      -webkit-backdrop-filter: blur(20px) saturate(200%);
+      backdrop-filter: blur(42px) saturate(220%) brightness(1.08);
+      -webkit-backdrop-filter: blur(42px) saturate(220%) brightness(1.08);
       box-shadow:
         0 4px 20px rgba(0, 0, 0, 0.12),
         inset 0 1px 0 rgba(255, 255, 255, 0.7),
@@ -1395,6 +1527,7 @@ const siteLang = lang.replace("_", "-");
         0 0 0 0.5px rgba(255, 255, 255, 0.3);
       color: var(--text-primary);
       opacity: 0.9;
+      isolation: isolate;
       transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
       overflow: hidden;
     }
@@ -1431,10 +1564,10 @@ const siteLang = lang.replace("_", "-");
     :root.dark .float-trigger-btn {
       background:
         linear-gradient(135deg,
-          rgba(40, 40, 50, 0.4),
-          rgba(60, 80, 120, 0.15) 40%,
-          rgba(120, 60, 100, 0.15) 60%,
-          rgba(40, 40, 50, 0.4));
+          rgba(40, 40, 50, 0.58),
+          rgba(60, 80, 120, 0.22) 40%,
+          rgba(120, 60, 100, 0.22) 60%,
+          rgba(40, 40, 50, 0.58));
       border: 1px solid rgba(255, 255, 255, 0.15);
       box-shadow:
         0 4px 20px rgba(0, 0, 0, 0.35),
@@ -1458,6 +1591,7 @@ const siteLang = lang.replace("_", "-");
     /* 公告悬浮窗特定样式 */
     .announce-float {
       width: 320px;
+      height: 260px;
     }
     .announce-float-content {
       padding: 1.25rem;
@@ -1508,6 +1642,7 @@ const siteLang = lang.replace("_", "-");
     /* 音乐悬浮窗特定样式 */
     .music-float {
       width: 340px;
+      height: 520px;
     }
     .music-float .music-player-widget {
       padding: 0.75rem;

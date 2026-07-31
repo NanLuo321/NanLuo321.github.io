@@ -126,7 +126,7 @@ body:has(#wallpaper-wrapper) #navbar[data-transparent-mode="semifull"]:not(.scro
     body:has(#wallpaper-wrapper) #navbar[data-transparent-mode="semi"][data-is-home="true"]>div {
         backdrop-filter: blur(var(--navbar-glass-blur, 20px)) !important;
         background: color-mix(in oklch, var(--card-bg) calc(var(--opacity-55) * 100%), transparent) !important;
-        border-radius: 0 0 0.75rem 0.75rem !important;
+        border-radius: 9999px !important;
         box-shadow: var(--shadow-navbar) !important;
     }
 
@@ -146,7 +146,7 @@ body:has(#wallpaper-wrapper) #navbar[data-transparent-mode="semifull"]:not(.scro
         backdrop-filter: blur(0) !important;
         background: transparent !important;
         border: none !important;
-        border-radius: 0 0 0.75rem 0.75rem !important;
+        border-radius: 9999px !important;
         box-shadow: none !important;
     }
 
@@ -155,7 +155,7 @@ body:has(#wallpaper-wrapper) #navbar[data-transparent-mode="semifull"]:not(.scro
     body:has(#wallpaper-wrapper) #navbar[data-transparent-mode="semifull"][data-is-home="true"].scrolled>div {
         backdrop-filter: blur(var(--navbar-glass-blur, 20px)) !important;
         background: color-mix(in oklch, var(--card-bg) calc(var(--opacity-55) * 100%), transparent) !important;
-        border-radius: 0 0 0.75rem 0.75rem !important;
+        border-radius: 9999px !important;
         box-shadow: var(--shadow-navbar) !important;
     }
 }
@@ -349,5 +349,88 @@ body:has(#wallpaper-wrapper) #navbar-actions .navbar-actions-inner {
 body.wallpaper-transparent #navbar-actions .navbar-actions-inner {
     background: color-mix(in oklch, var(--card-bg) calc(var(--opacity-55) * 100%), transparent) !important;
     backdrop-filter: blur(12px) !important;
+}
+
+/* 壁纸透明模式下导航栏标题容器与按钮岛保持一致的玻璃效果 */
+body.wallpaper-transparent #navbar[data-transparent-mode] > div,
+body.wallpaper-transparent #navbar > div {
+    background: color-mix(in oklch, var(--card-bg) calc(var(--opacity-55) * 100%), transparent) !important;
+    backdrop-filter: blur(var(--navbar-glass-blur, 12px)) !important;
+    border-radius: 9999px !important;
+}
+
+/* ============================================
+ * 手机端独立浮空导航岛
+ * 显示在导航栏下方，居中悬浮
+ * ============================================ */
+#mobile-nav-island {
+    top: calc(0.75rem + 3.5rem + 0.5rem); /* 导航栏 top-3 + h-14 + 间距 */
+    max-width: calc(100vw - 2rem);
+    transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1),
+                opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* 在 navbar-wrapper 内时隐藏（JS 会移动到 body） */
+#navbar-wrapper #mobile-nav-island {
+    display: none;
+}
+
+#mobile-nav-island .mobile-nav-island-inner {
+    background-color: color-mix(in oklch, var(--card-bg) 88%, transparent);
+    border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent);
+    border-radius: 9999px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    transition: background-color 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+                backdrop-filter 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#mobile-nav-island .mobile-nav-island-inner::-webkit-scrollbar {
+    display: none;
+}
+
+:root.dark #mobile-nav-island .mobile-nav-island-inner {
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
+}
+
+/* Banner 模式下浮空导航岛跟随导航栏透明风格 */
+#wallpaper-wrapper ~ * #mobile-nav-island .mobile-nav-island-inner,
+body:has(#wallpaper-wrapper) #mobile-nav-island .mobile-nav-island-inner {
+    backdrop-filter: blur(var(--navbar-glass-blur, 20px)) !important;
+    background: color-mix(in oklch, var(--card-bg) calc(var(--opacity-55) * 100%), transparent) !important;
+    box-shadow: var(--shadow-navbar) !important;
+}
+
+:root.dark #wallpaper-wrapper ~ * #mobile-nav-island .mobile-nav-island-inner,
+:root.dark body:has(#wallpaper-wrapper) #mobile-nav-island .mobile-nav-island-inner {
+    box-shadow: var(--shadow-navbar-dark) !important;
+}
+
+/* 壁纸透明模式下浮空导航岛样式 */
+body.wallpaper-transparent #mobile-nav-island .mobile-nav-island-inner {
+    background: color-mix(in oklch, var(--card-bg) calc(var(--opacity-55) * 100%), transparent) !important;
+    backdrop-filter: blur(12px) !important;
+}
+
+/* 桌面端隐藏浮空导航岛 */
+@media (min-width: 1024px) {
+    #mobile-nav-island {
+        display: none !important;
+    }
+}
+
+/* 当导航栏隐藏时，浮空导航岛也隐藏 */
+body:has(#navbar-wrapper.navbar-manual-hidden) #mobile-nav-island,
+body:has(#navbar-wrapper.navbar-hidden) #mobile-nav-island,
+body:has(#navbar-wrapper.navbar-video-hidden) #mobile-nav-island {
+    transform: translateY(-140%) scale(0.9) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 

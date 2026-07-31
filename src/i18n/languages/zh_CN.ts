@@ -344,7 +344,7 @@ export const zh_CN: Translation = {
 	[Key.today]: "今天",
 
 	// 站点信息
-	[Key.siteInfo]: "站点信息",
+	[Key.siteInfo]: "当前时间",
 	[Key.siteInfoBuildTime]: "构建时间",
 	[Key.siteInfoBuildPlatform]: "构建平台",
 	[Key.siteInfoBlogVersion]: "博客版本",
