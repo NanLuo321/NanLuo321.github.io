@@ -16,6 +16,7 @@ const processedLinks = Astro.props.links;
                 /* 有子菜单的项目 */
                 <div class="mobile-dropdown" data-mobile-dropdown>
                     <button
+                        type="button"
                         class="group flex justify-between items-center py-2 pl-3 pr-1 rounded-lg gap-8 w-full text-left
                             hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) transition"
                         data-mobile-dropdown-trigger
@@ -87,35 +88,45 @@ const processedLinks = Astro.props.links;
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const mobileDropdowns = document.querySelectorAll('[data-mobile-dropdown]');
+    function bindMobileDropdownDelegation() {
+        if ((window as any).__fireflyMobileDropdownDelegatedBound) return;
 
-        mobileDropdowns.forEach(dropdown => {
-            const trigger = dropdown.querySelector('[data-mobile-dropdown-trigger]');
-            const submenu = dropdown.querySelector('[data-mobile-submenu]');
+        document.addEventListener("click", function(e) {
+            const target = e.target;
+            if (!(target instanceof Element)) return;
 
-            if (!trigger || !submenu) return;
+            const trigger = target.closest("[data-mobile-dropdown-trigger]");
+            if (!trigger) return;
 
-            trigger.addEventListener('click', function(e) {
-                e.preventDefault();
-                const isExpanded = dropdown.getAttribute('data-expanded') === 'true';
+            const dropdown = trigger.closest("[data-mobile-dropdown]");
+            const menuPanel = trigger.closest("#nav-menu-panel");
+            if (!dropdown || !menuPanel) return;
 
-                // 关闭其他打开的下拉菜单
-                mobileDropdowns.forEach(otherDropdown => {
-                    if (otherDropdown !== dropdown) {
-                        otherDropdown.setAttribute('data-expanded', 'false');
-                        const otherTrigger = otherDropdown.querySelector('[data-mobile-dropdown-trigger]');
-                        if (otherTrigger) {
-                            otherTrigger.setAttribute('aria-expanded', 'false');
-                        }
+            e.preventDefault();
+            e.stopPropagation();
+
+            const mobileDropdowns = menuPanel.querySelectorAll("[data-mobile-dropdown]");
+            const isExpanded = dropdown.getAttribute("data-expanded") === "true";
+
+            mobileDropdowns.forEach(otherDropdown => {
+                if (otherDropdown !== dropdown) {
+                    otherDropdown.setAttribute("data-expanded", "false");
+                    const otherTrigger = otherDropdown.querySelector("[data-mobile-dropdown-trigger]");
+                    if (otherTrigger) {
+                        otherTrigger.setAttribute("aria-expanded", "false");
                     }
-                });
-
-                // 切换当前下拉菜单
-                const newState = !isExpanded;
-                dropdown.setAttribute('data-expanded', newState.toString());
-                trigger.setAttribute('aria-expanded', newState.toString());
+                }
             });
-        });
-    });
+
+            const newState = !isExpanded;
+            dropdown.setAttribute("data-expanded", newState.toString());
+            trigger.setAttribute("aria-expanded", newState.toString());
+        }, true);
+
+        (window as any).__fireflyMobileDropdownDelegatedBound = true;
+    }
+
+    bindMobileDropdownDelegation();
+    document.addEventListener("astro:page-load", bindMobileDropdownDelegation);
+    document.addEventListener("swup:contentReplaced", bindMobileDropdownDelegation);
 </script>

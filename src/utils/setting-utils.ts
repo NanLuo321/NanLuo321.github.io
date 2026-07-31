@@ -79,7 +79,10 @@ export function applyScrollBlurToDocument(enabled: boolean): void {
 			"data-wallpaper-mode",
 		) as WALLPAPER_MODE) || backgroundWallpaper.mode;
 
-	if (enabled && (currentMode === WALLPAPER_OVERLAY || currentMode === WALLPAPER_FULLSCREEN)) {
+	if (
+		(enabled && currentMode === WALLPAPER_OVERLAY) ||
+		currentMode === WALLPAPER_FULLSCREEN
+	) {
 		startScrollBlurListener();
 	} else {
 		stopScrollBlurListener();
@@ -91,7 +94,7 @@ export function applyScrollBlurToDocument(enabled: boolean): void {
 }
 
 function startScrollBlurListener(): void {
-	if (typeof window === "undefined" || scrollBlurEnabled === false) return;
+	if (typeof window === "undefined") return;
 	// 避免重复绑定
 	if (window.scrollBlurHandler) return;
 
@@ -115,8 +118,12 @@ function startScrollBlurListener(): void {
 			const vh = window.innerHeight || 1;
 			const fsThreshold = vh;
 			const fsBlur = Math.min((scrollY / fsThreshold) * fsMaxBlur, fsMaxBlur);
-			wrapper.style.setProperty("--scroll-blur", `${fsBlur.toFixed(2)}px`);
-			// 首页文字也同步模糊
+			if (scrollBlurEnabled) {
+				wrapper.style.setProperty("--scroll-blur", `${fsBlur.toFixed(2)}px`);
+			} else {
+				wrapper.style.setProperty("--scroll-blur", "0px");
+			}
+			// 首页文字独立随滚动模糊，不受滚动模糊开关影响
 			wrapper.style.setProperty("--text-scroll-blur", `${fsBlur.toFixed(2)}px`);
 			// 清除可能残留的导航岛/正文内联 filter，确保文字保持清晰
 			const navbarEl = document.getElementById("navbar");
@@ -779,6 +786,12 @@ function updateNavbarTransparency(mode: WALLPAPER_MODE) {
 	navbar.setAttribute("data-transparent-mode", transparentMode);
 	navbar.setAttribute("data-enable-blur", String(enableBlur));
 	navbar.style.setProperty("--navbar-glass-blur", `${blurAmount}px`);
+
+	// 同步更新按钮岛的模糊变量，保持玻璃效果一致
+	const navbarActions = document.getElementById("navbar-actions");
+	if (navbarActions) {
+		navbarActions.style.setProperty("--navbar-glass-blur", `${blurAmount}px`);
+	}
 
 	// 移除现有的透明模式类
 	navbar.classList.remove(
