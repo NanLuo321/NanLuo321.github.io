@@ -94,9 +94,9 @@ const licenseName = licenseConfig.enable ? licenseConfig.name : "None";
 // 始终显示的项目（列表卡片）
 const mainItems = [
 	{
-		icon: "material-symbols:cloud-outline",
-		label: i18n(I18nKey.siteInfoBuildPlatform),
-		value: buildPlatform,
+		icon: "material-symbols:build-outline",
+		label: i18n(I18nKey.siteInfoBuildTime),
+		value: buildTime,
 	},
 	{
 		icon: "mdi:clover",
@@ -123,6 +123,12 @@ const detailItems: {
 		icon: "material-symbols:language",
 		label: i18n(I18nKey.siteInfoDomain),
 		value: siteDomain,
+		fullWidth: true,
+	},
+	{
+		icon: "material-symbols:cloud-outline",
+		label: i18n(I18nKey.siteInfoBuildPlatform),
+		value: buildPlatform,
 		fullWidth: true,
 	},
 	{
