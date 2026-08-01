@@ -361,12 +361,13 @@ body.wallpaper-transparent #navbar > div {
 
 /* ============================================
  * 手机端独立浮空导航岛
- * 显示在整个网页右下角
+ * 显示在左下角三个悬浮按钮下方
  * ============================================ */
 #mobile-nav-island {
-    right: 0.75rem;
+    left: 0.75rem;
+    right: auto;
     top: auto;
-    bottom: 1.25rem;
+    bottom: 0.25rem;
     max-width: calc(100vw - 1.5rem);
     transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1),
                 opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1);
