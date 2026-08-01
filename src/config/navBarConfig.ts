@@ -19,8 +19,8 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 	// 文章 - 直接导航到归档页
 	links.push(LinkPresets.Archive);
 
-	// 音乐
-	links.push(LinkPresets.Music);
+	// 音乐播放器
+	links.push(LinkPresets.Mineradio);
 
 	// 联系
 	links.push({
@@ -128,6 +128,11 @@ export const LinkPresets: Record<string, NavBarLink> = {
 		url: "/music/",
 		icon: "material-symbols:music-note-rounded",
 		pageKey: "music",
+	},
+	Mineradio: {
+		name: "音乐",
+		url: "/mineradio-app/index.html",
+		icon: "material-symbols:radio-rounded",
 	},
 };
 

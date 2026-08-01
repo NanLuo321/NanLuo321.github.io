@@ -1,0 +1,7 @@
+{
+	"private": true,
+	"type": "commonjs",
+	"dependencies": {
+		"NeteaseCloudMusicApi": "^4.32.0"
+	}
+}
