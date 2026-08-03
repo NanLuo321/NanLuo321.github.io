@@ -943,12 +943,16 @@ async function refreshQr() {
   try {
     var k = await apiJson('/api/login/qr/key');
     if (!isLoginRefreshCurrent(refreshProvider, refreshSeq)) return;
-    if (!k.key) throw new Error('获取 key 失败');
-    qrKey = k.key;
-    var q = await apiJson('/api/login/qr/create?key=' + encodeURIComponent(qrKey));
+    var keyData = k && k.data && typeof k.data === 'object' ? k.data : {};
+    var nextQrKey = k && (k.key || k.unikey) || keyData.key || keyData.unikey;
+    if (!nextQrKey) throw new Error('获取 key 失败');
+    qrKey = nextQrKey;
+    var q = await apiJson('/api/login/qr/create?key=' + encodeURIComponent(qrKey) + '&qrimg=true');
     if (!isLoginRefreshCurrent(refreshProvider, refreshSeq)) return;
-    if (!q.img) throw new Error('生成二维码失败');
-    document.getElementById('qr-img').src = q.img;
+    var qrData = q && q.data && typeof q.data === 'object' ? q.data : {};
+    var qrImage = q && (q.img || q.qrimg) || qrData.img || qrData.qrimg;
+    if (!qrImage) throw new Error('生成二维码失败');
+    document.getElementById('qr-img').src = qrImage;
     document.getElementById('qr-status').textContent = '请使用网易云音乐 App 扫码';
     startQrPoll();
   } catch (e) {
@@ -1403,15 +1407,21 @@ async function submitNeteaseCookieLogin() {
 async function checkQr() {
   if (!qrKey) return;
   try {
-    var r = await apiJson('/api/login/qr/check?key=' + encodeURIComponent(qrKey));
+    var raw = await apiJson('/api/login/qr/check?key=' + encodeURIComponent(qrKey) + '&timestamp=' + Date.now());
+    var r = raw && raw.data && typeof raw.data === 'object' && raw.data.code ? raw.data : raw;
     var $st = document.getElementById('qr-status');
     if (r.code === 800) { $st.textContent = '二维码已过期, 请刷新'; $st.className = 'fail'; stopQrPoll(); }
     else if (r.code === 801) { $st.textContent = '请在 App 中扫码'; $st.className = ''; }
     else if (r.code === 802) { $st.textContent = '已扫码, 请在手机确认…'; $st.className = 'scan'; }
-    else if (r.code === 803 && (r.loggedIn || r.hasCookie)) {
+    else if (r.code === 803 && (r.loggedIn || r.hasCookie || r.cookie || r.profile || r.account)) {
+      var loginCookie = r.cookie || raw && raw.cookie || raw && raw.data && raw.data.cookie || '';
+      if (loginCookie) {
+        try { localStorage.setItem(window.MINERADIO_NETEASE_COOKIE_KEY || 'mineradio-netease-cookie-v1', loginCookie); } catch (_) { }
+        r.hasCookie = true;
+      }
       $st.textContent = r.pendingProfile ? '登录成功，正在同步账号资料…' : '登录成功！'; $st.className = 'scan';
       stopQrPoll();
-      loginStatus = r.loggedIn ? r : Object.assign({}, r, { loggedIn: true, pendingProfile: true, nickname: r.nickname || '网易云用户' });
+      loginStatus = r.loggedIn ? r : Object.assign({}, r, { loggedIn: true, pendingProfile: true, nickname: r.nickname || r.profile && r.profile.nickname || '网易云用户' });
       activeAccountProvider = 'netease';
       renderUserBtn();
       setTimeout(async function () {

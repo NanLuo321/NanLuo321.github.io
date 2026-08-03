@@ -131,7 +131,7 @@ export const LinkPresets: Record<string, NavBarLink> = {
 	},
 	Mineradio: {
 		name: "音乐",
-		url: "/mineradio-app/index.html",
+		url: "/music/index.html",
 		icon: "material-symbols:radio-rounded",
 	},
 };

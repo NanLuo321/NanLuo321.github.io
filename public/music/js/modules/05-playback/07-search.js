@@ -557,7 +557,7 @@ async function findControlSourceMatchResult(song, provider) {
   var query = controlSourceSwitchQuery(song);
   if (!query) return { song: null, issue: 'no_source' };
   var data = await apiJson(controlSourceSearchUrl(provider, query), { timeoutMs: 6000 });
-  var list = data && (data.songs || data.result || []);
+  var list = extractProviderSearchSongs(data, provider);
   if (!Array.isArray(list) || !list.length) return { song: null, issue: 'no_source' };
   var best = null;
   var bestScore = -Infinity;
@@ -796,6 +796,42 @@ function searchProviderUrl(provider, q, limit, offset) {
   if (provider === 'qishui') return '/api/qishui/search?keywords=' + encodeURIComponent(q) + suffix;
   if (provider === 'spotify') return '/api/spotify/search?keywords=' + encodeURIComponent(q) + suffix;
   return '/api/search?keywords=' + encodeURIComponent(q) + suffix;
+}
+function normalizeNeteaseSearchSong(song) {
+  if (!song || typeof song !== 'object') return song;
+  if (song.artist && (song.cover || song.picUrl || song.albumPic)) return song;
+  var artists = Array.isArray(song.ar) ? song.ar : (Array.isArray(song.artists) ? song.artists : []);
+  var album = song.al || song.album || {};
+  var albumName = typeof album === 'string' ? album : (album.name || '');
+  var cover = song.cover || song.picUrl || song.albumPic || album.picUrl || album.blurPicUrl || '';
+  return Object.assign({}, song, {
+    provider: 'netease',
+    source: 'netease',
+    id: song.id,
+    mid: song.id,
+    name: song.name || song.title || '',
+    artist: song.artist || artists.map(function (a) { return a && a.name; }).filter(Boolean).join(' / '),
+    artists: artists,
+    album: albumName,
+    cover: cover,
+    picUrl: cover,
+    duration: song.duration || song.dt || 0,
+    fee: song.fee,
+    playable: song.playable !== false
+  });
+}
+function extractProviderSearchSongs(value, provider) {
+  value = value || {};
+  var list = [];
+  if (Array.isArray(value.songs)) list = value.songs;
+  else if (value.result && Array.isArray(value.result.songs)) list = value.result.songs;
+  else if (Array.isArray(value.result)) list = value.result;
+  if (provider === 'netease') return list.map(normalizeNeteaseSearchSong);
+  return list;
+}
+function providerSearchTotal(value) {
+  value = value || {};
+  return Number(value.total || value.songCount || value.result && (value.result.songCount || value.result.total) || 0) || 0;
 }
 function simpleSearchNorm(text) {
   return String(text || '').toLowerCase()
@@ -1099,20 +1135,22 @@ async function fetchMusicSearchResults(q, mode, previousPages) {
     }
     var response = entry.value || {};
     var value = response.value || {};
-    var songs = Array.isArray(value.songs) ? value.songs : [];
+    var songs = extractProviderSearchSongs(value, provider);
     var offset = response.offset;
     var requestedLimit = response.requestedLimit;
     var nextOffset = Number(value.nextOffset);
     if (!isFinite(nextOffset) || nextOffset <= offset) nextOffset = offset + songs.length;
     var hasMore = value.hasMore === true;
-    if (value.hasMore == null) hasMore = songs.length >= requestedLimit;
+    var total = providerSearchTotal(value);
+    if (value.hasMore == null && total) hasMore = offset + songs.length < total;
+    else if (value.hasMore == null) hasMore = songs.length >= requestedLimit;
     if (!songs.length || nextOffset <= offset) hasMore = false;
     providerPages[provider] = {
       offset: offset,
       limit: Number(value.limit) || requestedLimit,
       nextOffset: nextOffset,
       hasMore: hasMore,
-      total: Number(value.total) || 0,
+      total: total,
       failed: false
     };
     songsByProvider[provider] = songs;

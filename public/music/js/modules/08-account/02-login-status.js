@@ -102,7 +102,18 @@ function auditProviderVipState(provider, status) {
 
 async function refreshLoginStatus(force) {
   try {
-    var info = await apiJson('/api/login/status?t=' + Date.now());
+    var rawInfo = await apiJson('/api/login/status?t=' + Date.now());
+    var infoData = rawInfo && rawInfo.data && typeof rawInfo.data === 'object' ? rawInfo.data : null;
+    var profile = rawInfo && rawInfo.profile || infoData && infoData.profile || null;
+    var account = rawInfo && rawInfo.account || infoData && infoData.account || null;
+    var info = profile ? Object.assign({}, rawInfo, infoData || {}, {
+      loggedIn: true,
+      profile: profile,
+      account: account,
+      nickname: profile.nickname || rawInfo.nickname || '网易云用户',
+      userId: profile.userId || account && account.id || rawInfo.userId || '',
+      avatar: profile.avatarUrl || rawInfo.avatar || ''
+    }) : (rawInfo || { loggedIn: false });
     loginStatusChecked = true;
     loginStatusCheckFailed = false;
     loginStatus = info || { loggedIn: false };
