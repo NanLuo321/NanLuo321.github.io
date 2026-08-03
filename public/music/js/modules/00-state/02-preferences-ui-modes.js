@@ -277,7 +277,7 @@ function isDiyMode() {
   return !!diyPlayerMode;
 }
 function syncDiyModeButton() {
-  ['diy-mode-btn', 'fullscreen-diy-btn'].forEach(function (id) {
+  ['diy-mode-btn', 'fullscreen-diy-btn', 'homepage-player-diy-btn'].forEach(function (id) {
     var btn = document.getElementById(id);
     if (!btn) return;
     btn.classList.toggle('on', diyPlayerMode);
@@ -306,7 +306,7 @@ function applyDiyMode(on, opts) {
   }
   if (opts.toast) showToast(diyPlayerMode ? 'DIY 玩家模式已开启' : '已切回简约模式');
   if (opts.animate && window.gsap) {
-    ['diy-mode-btn', 'fullscreen-diy-btn'].forEach(function (id) {
+    ['diy-mode-btn', 'fullscreen-diy-btn', 'homepage-player-diy-btn'].forEach(function (id) {
       var btn = document.getElementById(id);
       if (btn) window.gsap.fromTo(btn, { scale: 0.94 }, { scale: 1, duration: 0.34, ease: 'back.out(1.8)', overwrite: true });
     });

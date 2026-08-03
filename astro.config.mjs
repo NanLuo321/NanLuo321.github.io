@@ -33,7 +33,7 @@ import {
 	mermaidConfig,
 	plantumlConfig,
 	siteConfig,
-} from "./src/config";
+} from "./src/config/index.ts";
 import I18nKey from "./src/i18n/i18nKey";
 import { i18n } from "./src/i18n/translation";
 import { GithubCardComponent } from "./src/plugins/rehype-component-github-card.mjs";

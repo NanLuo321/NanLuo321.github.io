@@ -235,7 +235,9 @@
       <span class="homepage-player-island-dot" aria-hidden="true"></span>
       <span>音乐播放器</span>
     </div>
-    <a href="/mineradio-app/index.html" target="_blank" rel="noopener">新窗口打开</a>
+    <button id="homepage-player-diy-btn" type="button" onclick="toggleDiyMode()" title="开启 DIY 玩家模式"
+      aria-label="开启 DIY 玩家模式" aria-pressed="false">DIY</button>
+    <a href="./index.html" target="_blank" rel="noopener">新窗口打开</a>
     <button id="homepage-player-island-hide" type="button" aria-label="隐藏快捷岛">隐藏</button>
   </nav>
   <button id="homepage-player-island-show" class="homepage-player-island-toggle" type="button" aria-label="显示快捷岛">
@@ -307,10 +309,10 @@
 
       <!-- 主内容 -->
       <div class="splash-content">
-        <div class="splash-wordmark" id="splash-wordmark" aria-label="Mineradio">
-          <span class="splash-word-mine">Mine</span>
-          <span class="splash-word-radio" aria-label="radio">rad<span class="splash-word-i"
-              aria-hidden="true"></span><span class="splash-word-o">o</span></span>
+        <div class="splash-wordmark" id="splash-wordmark" aria-label="音乐播放器">
+          <span class="splash-word-mine">Music</span>
+          <span class="splash-word-radio" aria-label="visual">vis<span class="splash-word-i"
+              aria-hidden="true"></span><span class="splash-word-o">n</span></span>
         </div>
         <div class="splash-signal-line"></div>
         <div class="splash-sub">private visual radio</div>
@@ -383,15 +385,15 @@
       </div>
     </div>
 
-    <!-- 音乐 Home：只承载当前 Mineradio 数据，不引入外部仓库的服务端接口。 -->
-    <section id="empty-home" aria-label="Mineradio 音乐首页">
+    <!-- 音乐 Home：只承载当前播放数据，不引入外部仓库的服务端接口。 -->
+    <section id="empty-home" aria-label="音乐首页">
       <div class="empty-home-shell">
         <div class="home-hero" aria-live="polite">
           <div class="daily-review-card">
             <div id="daily-review-date" class="daily-review-date"></div>
             <div id="daily-review-time" class="daily-review-time">--:--</div>
             <div class="daily-review-quote">“让今天的声音，从你喜欢的地方开始。”</div>
-            <div class="daily-review-source">— Mineradio</div>
+            <div class="daily-review-source">— 音乐播放器</div>
             <div class="daily-review-actions">
               <button type="button" onclick="homeDashboardNextReview()">换一条</button>
               <button id="home-dashboard-video-choose" type="button" onclick="openHomeDashboardVideoPicker()">选择 MP4</button>
@@ -421,7 +423,7 @@
             onclick="playHomeDaily()">
             <div class="home-card-label">DAILY MIX</div>
             <div class="home-card-title">每日推荐</div>
-            <div class="home-card-sub">使用当前 Mineradio 推荐数据</div>
+            <div class="home-card-sub">使用当前推荐数据</div>
             <div class="home-card-art"></div>
           </button>
           <button class="home-card home-card-quick" data-home-tone="playlist" type="button"
@@ -568,12 +570,18 @@
       <div class="fx-head">
         <div>
           <div class="fx-title">视觉控制台</div>
-          <div class="fx-sub">MINERADIO VISUALS · 鼠标移开自动隐藏</div>
+          <div class="fx-sub">VISUALS · 鼠标移开自动隐藏</div>
         </div>
       </div>
 
       <div class="fx-section-label">视觉预设</div>
       <div class="preset-grid" id="preset-grid"></div>
+      <div class="preset-standalone-row">
+        <button id="sonic-workshop-preset-button" class="preset-standalone-button" type="button" onclick="setPreset(8)">
+          <span class="psb-main">音域回响</span>
+          <span class="psb-sub">Wallpaper Engine · 作者 CmzYa</span>
+        </button>
+      </div>
       <div class="fx-section-label">用户存档</div>
       <div class="user-archive-grid" id="user-archive-grid"></div>
       <div class="fx-section-label">自定义颜色</div>
@@ -1026,7 +1034,7 @@
             <div class="fx-toggle" id="t-desktopLyricsHighlight" onclick="toggleFx('desktopLyricsHighlight')"
               title="桌面歌词按播放进度高亮"><span>桌面歌词高亮跟随</span><span class="dot"></span></div>
             <div class="fx-toggle" id="t-wallpaperMode" onclick="toggleFx('wallpaperMode')"
-              title="把当前完整 Mineradio 放到 Windows 桌面；右上控制器可显示、隐藏桌面图标，Esc 退出">
+              title="把当前完整播放器放到 Windows 桌面；右上控制器可显示、隐藏桌面图标，Esc 退出">
               <span>完整桌面模式<em class="fx-dev-badge">试验</em></span><span class="dot"></span></div>
           </div>
           <div class="fx-section-label">桌面 / 壁纸</div>
@@ -1218,7 +1226,7 @@
           <div class="fx-sub memory-status-sub" id="memory-status-sub">后台先压缩播放器进程；系统级释放可清工作集、修改页、待机页</div>
           <div class="fx-toggle-grid">
             <div class="fx-toggle" id="t-memoryAutoTrimApp" onclick="toggleFx('memoryAutoTrimApp')"
-              title="最小化、托盘后台或深度后台时压缩 Mineradio / Electron 工作集"><span>自动压缩播放器</span><span class="dot"></span></div>
+              title="最小化、托盘后台或深度后台时压缩播放器工作集"><span>自动压缩播放器</span><span class="dot"></span></div>
             <div class="fx-toggle" id="t-memoryAutoTrimOnBackground" onclick="toggleFx('memoryAutoTrimOnBackground')"
               title="只在最小化、隐藏或不可见后台触发自动压缩，前台播放不打断"><span>后台触发压缩</span><span class="dot"></span></div>
             <div class="fx-toggle" id="t-memoryAutoSystemTrim" onclick="toggleFx('memoryAutoSystemTrim')"
@@ -2001,7 +2009,7 @@
         <div class="update-panel-inner">
           <div class="update-panel-head">
             <div>
-              <div class="update-kicker">MINERADIO</div>
+              <div class="update-kicker">PLAYER</div>
               <div id="update-modal-title" class="update-title">New release</div>
               <div id="update-modal-version" class="update-version">v2.1.0</div>
             </div>

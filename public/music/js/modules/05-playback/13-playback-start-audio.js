@@ -476,6 +476,27 @@ function neteasePlaybackMatchQuery(song, opts) {
     '&skipDirect=' + (opts.skipDirect ? '1' : '');
 }
 
+function normalizePlaybackApiData(data, provider) {
+  if (!data || typeof data !== 'object') return data;
+  if (data.url) return data;
+  var item = null;
+  if (Array.isArray(data.data) && data.data[0]) item = data.data[0];
+  else if (data.data && typeof data.data === 'object') item = data.data;
+  if (!item || typeof item !== 'object') return data;
+  var normalized = Object.assign({}, data, item);
+  if (!normalized.level && item.level) normalized.level = item.level;
+  if (!normalized.source && provider) normalized.source = provider;
+  return normalized;
+}
+
+function mineradioPlaybackAudioSrc(url) {
+  url = String(url || '');
+  if (!url) return '';
+  var apiBase = String(window.MINERADIO_API_BASE || '');
+  if (/^https?:\/\/music-api\.jerry-nis\.top\/?/i.test(apiBase)) return url;
+  return '/api/audio?url=' + encodeURIComponent(url);
+}
+
 function clearNeteaseSourceMatchMetadata(song) {
   if (!song) return song;
   song.neteaseSourceMatched = false;
@@ -532,6 +553,7 @@ async function retryNeteaseSourceMatchPlayback(song, data, idx, token, opts, req
   }
   if (token !== trackSwitchToken) return false;
   if (sourceRecovery && (nextData === sourceFallbackBudgetTimeoutResult || !sourceFallbackRecoveryCanContinue(sourceRecovery))) return null;
+  nextData = normalizePlaybackApiData(nextData, 'netease');
   if (!nextData || !nextData.url || !nextData.sourceMatch) return null;
   var retryOpts = Object.assign({}, opts, {
     albumGaplessHandoff: false,
@@ -762,8 +784,9 @@ async function scheduleAlbumGaplessPreloadForCurrent(token, reason) {
       || queueItemKey(playQueue[nextIdx]) !== nextKey
       || !albumGaplessQueueCanAdvance(currentIdx)
     ) return false;
+    data = normalizePlaybackApiData(data, normalizePlaybackProvider(songProviderKey(resolvedSong)));
     if (!data || !data.url) return false;
-    var proxyAudioUrl = '/api/audio?url=' + encodeURIComponent(data.url);
+    var proxyAudioUrl = mineradioPlaybackAudioSrc(data.url);
     var media = new Audio();
     media.crossOrigin = 'anonymous';
     media.preload = 'auto';
@@ -1142,6 +1165,7 @@ async function playQueueAt(idx, opts) {
       } else {
         data = await apiJson('/api/song/url?id=' + encodeURIComponent(song.id || '') + neteasePlaybackMatchQuery(song) + qualityParam, { timeoutMs: 14000 });
       }
+      data = normalizePlaybackApiData(data, playbackProvider);
       if (token !== trackSwitchToken) return;
       if (
         typeof sourceFallbackRecoveryFromOptions === 'function'
@@ -1206,7 +1230,7 @@ async function playQueueAt(idx, opts) {
         document.getElementById('trial-banner').classList.add('show');
       }
       markPlayPhase('audio-element');
-      var proxyAudioUrl = opts.preloadedProxyAudioUrl || '/api/audio?url=' + encodeURIComponent(data.url);
+      var proxyAudioUrl = opts.preloadedProxyAudioUrl || mineradioPlaybackAudioSrc(data.url);
       if (albumGaplessHandoff) {
         audioFadeSerial++;
         clearAudioFadeTimers();

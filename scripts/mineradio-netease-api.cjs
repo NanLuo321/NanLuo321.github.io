@@ -541,6 +541,6 @@ server.listen(PORT, HOST, () => {
 	console.log("======================================================");
 	console.log(` Mineradio 网易云 API → http://${HOST}:${PORT}`);
 	console.log(` 登录态: ${userCookie ? "已加载 Cookie" : "未登录"}`);
-	console.log(" 在另一个终端运行 pnpm dev，然后打开 /mineradio-app/");
+	console.log(" 在另一个终端运行 pnpm dev，然后打开 /music/");
 	console.log("======================================================");
 });

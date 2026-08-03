@@ -8,6 +8,7 @@ function buildPresetGrid() {
     return ok;
   });
   presetMeta.forEach(function (_, id) {
+    if (presetStandaloneButtons && presetStandaloneButtons[id]) return;
     if (!seen[id]) order.push(id);
   });
   grid.innerHTML = order.map(function (i) {
@@ -26,6 +27,8 @@ function refreshPresetGrid() {
   document.querySelectorAll('.preset-card').forEach(function (el) {
     el.classList.toggle('active', Number(el.dataset.preset) === fx.preset);
   });
+  var workshopBtn = document.getElementById('sonic-workshop-preset-button');
+  if (workshopBtn) workshopBtn.classList.toggle('active', fx.preset === SONIC_WORKSHOP_PRESET_INDEX);
 }
 function triggerPresetParticleTransition(fromPreset, toPreset) {
   presetTransition.active = true;
@@ -42,6 +45,7 @@ function triggerPresetParticleTransition(fromPreset, toPreset) {
     triggerRipple((Math.random() - 0.5) * 3.4, (Math.random() - 0.5) * 3.4, 0.58 + Math.random() * 0.32);
   }
   var card = document.querySelector('.preset-card[data-preset="' + toPreset + '"]');
+  if (!card && toPreset === SONIC_WORKSHOP_PRESET_INDEX) card = document.getElementById('sonic-workshop-preset-button');
   if (card) {
     card.classList.remove('switching');
     void card.offsetWidth;
