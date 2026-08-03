@@ -1,7 +1,8 @@
 'use strict';
 
 (function loadMineradioIndexModules() {
-  var modulePaths = [
+  const moduleCacheBust = String(Date.now());
+  const modulePaths = [
     'js/modules/00-state/00-core-stores.js',
     'js/modules/00-state/01-perf-render-state.js',
     'js/modules/00-state/02-preferences-ui-modes.js',
@@ -106,18 +107,19 @@
     'js/modules/11-main-loop.js',
   ];
 
-  // Use fetch + Promise.all for parallel loading (much faster than sync XHR)
-  // No cache-busting param, so browser cache works on repeat visits
-  Promise.all(modulePaths.map(function (path) {
-    return fetch(path).then(function (resp) {
-      if (!resp.ok) throw new Error('Failed to load module: ' + path + ' (' + resp.status + ')');
-      return resp.text();
-    });
-  })).then(function (sources) {
-    var script = document.createElement('script');
-    script.text = sources.join('\n') + '\n//# sourceURL=mineradio-index-modules.js\n';
-    document.currentScript.parentNode.insertBefore(script, document.currentScript.nextSibling);
-  }).catch(function (err) {
-    console.error('[index-loader]', err);
-  });
+  function readModule(path) {
+    const request = new XMLHttpRequest();
+    request.open('GET', path + (path.indexOf('?') >= 0 ? '&' : '?') + 'v=' + moduleCacheBust, false);
+    request.send(null);
+
+    if ((request.status < 200 || request.status >= 300) && request.status !== 0) {
+      throw new Error('Failed to load Mineradio module: ' + path + ' (' + request.status + ')');
+    }
+
+    return request.responseText;
+  }
+
+  const script = document.createElement('script');
+  script.text = modulePaths.map(readModule).join('') + '\n//# sourceURL=mineradio-index-modules.js\n';
+  document.currentScript.parentNode.insertBefore(script, document.currentScript.nextSibling);
 })();
