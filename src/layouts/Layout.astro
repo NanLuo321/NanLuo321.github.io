@@ -14,6 +14,7 @@ import SakuraEffect from "@components/features/SakuraEffect.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
 import { Icon } from "astro-icon/components";
 import MusicPlayer from "@/components/features/MusicPlayer.astro";
+import RainWeather from "@/components/features/RainWeather.astro";
 import { announcementConfig } from "@/config/announcementConfig";
 
 import {
@@ -935,6 +936,7 @@ const siteLang = lang.replace("_", "-");
       </div>
       <div class="profile-float-resize" id="music-float-resize"></div>
     </div>
+    <RainWeather />
   </body>
 </html>
 
