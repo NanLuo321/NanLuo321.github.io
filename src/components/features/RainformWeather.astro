@@ -852,6 +852,25 @@ import { Icon } from "astro-icon/components";
 		if (overlay.dataset.rwInit) return;
 		overlay.dataset.rwInit = "true";
 
+		function showOpenSourceToast() {
+			var existing = document.getElementById("rw-opensource-toast");
+			if (existing) existing.remove();
+			var toast = document.createElement("div");
+			toast.id = "rw-opensource-toast";
+			toast.innerHTML = '🌧️ 本天气场景基于开源项目 Rainform 构建';
+			toast.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);z-index:100001;background:rgba(20,20,30,0.75);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);color:#fff;padding:14px 28px;border-radius:14px;font-size:14px;font-weight:600;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.4s ease,transform 0.4s ease;border:1px solid rgba(255,255,255,0.12);box-shadow:0 8px 32px rgba(0,0,0,0.3);";
+			document.body.appendChild(toast);
+			requestAnimationFrame(function() {
+				toast.style.opacity = "1";
+				toast.style.transform = "translate(-50%,-50%) scale(1)";
+			});
+			setTimeout(function() {
+				toast.style.opacity = "0";
+				toast.style.transform = "translate(-50%,-50%) scale(0.9)";
+				setTimeout(function() { toast.remove(); }, 400);
+			}, 2000);
+		}
+
 		function openWeather() {
 			console.log("[RainformWeather] openWeather() 被调用, iframe.src =", iframe.src);
 			// 更可靠的 src 检查：用 getAttribute 和 indexOf 双重检查
@@ -866,6 +885,8 @@ import { Icon } from "astro-icon/components";
 			overlay.setAttribute("aria-hidden", "false");
 			if (closeBtn) closeBtn.classList.add("is-visible");
 			document.body.style.overflow = "hidden";
+			// 显示开源提示浮窗（2秒）
+			showOpenSourceToast();
 			// 延迟获取天气数据
 			setTimeout(fetchWeatherData, 500);
 			// 恢复面板位置
