@@ -35,7 +35,7 @@ const fakeResult: SearchResult[] = [
 const expand = (): void => {
 	isExpanded = true;
 	requestAnimationFrame(() => {
-		setTimeout(() => inputEl?.focus(), 120);
+		setTimeout(() => inputEl?.focus({ preventScroll: true } as FocusOptions), 120);
 	});
 };
 
@@ -224,7 +224,7 @@ $effect(() => {
 	align-items: center;
 }
 
-/* ====== 胶囊形搜索面板 - 从图标弹性展开 ====== */
+/* ====== iOS 灵动岛风格搜索面板 - 从中间挤出 ====== */
 .dis-panel {
 	position: absolute;
 	top: calc(100% + 0.5rem);
@@ -232,41 +232,46 @@ $effect(() => {
 	z-index: 60;
 	overflow: hidden;
 
-	/* 与导航栏一致的玻璃质感 */
-	background-color: color-mix(in oklch, var(--card-bg) 88%, transparent);
-	border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
-	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+	/* 毛玻璃质感 */
+	background-color: rgba(255, 255, 255, 0.55);
+	backdrop-filter: blur(24px) saturate(180%);
+	-webkit-backdrop-filter: blur(24px) saturate(180%);
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	box-shadow:
+		0 8px 32px rgba(0, 0, 0, 0.12),
+		0 2px 8px rgba(0, 0, 0, 0.06),
+		inset 0 1px 0 rgba(255, 255, 255, 0.5);
 
-	/* 胶囊形圆角 - 与导航栏一致 */
+	/* 胶囊形圆角 */
 	border-radius: 9999px;
 
-	/* 收起态：缩小到图标大小，不可见 */
+	/* 收起态：压缩成窄条 */
 	width: 320px;
 	max-width: calc(100vw - 2rem);
 	opacity: 0;
-	transform: translateX(-50%) scale(0.1);
+	transform: translateX(-50%) scaleX(0.05) scaleY(0.15);
 	transform-origin: top center;
 	pointer-events: none;
 
-	/* 弹性展开动画 */
+	/* iOS 弹性挤出动画 - 分阶段弹性 */
 	transition:
-		opacity 0.2s ease-out,
-		transform 0.4s cubic-bezier(0.32, 0.72, 0, 1),
-		border-radius 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+		opacity 0.25s ease-out,
+		transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+		border-radius 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+		background-color 0.3s ease,
+		box-shadow 0.3s ease;
 }
 
-/* 展开态：弹性放大到完整尺寸 */
+/* 展开态：从中间弹性挤出 */
 .dis-panel.open {
 	opacity: 1;
-	transform: translateX(-50%) scale(1);
+	transform: translateX(-50%) scaleX(1) scaleY(1);
 	pointer-events: auto;
 }
 
 /* 有搜索结果时切换为圆角矩形 */
 .dis-panel.open.has-results {
-	border-radius: 0.75rem;
+	border-radius: 1.25rem;
 }
 
 /* 面板内容容器 */
@@ -275,9 +280,14 @@ $effect(() => {
 	padding: 0.5rem;
 }
 
-/* 暗色模式 - 与导航栏暗色阴影一致 */
+/* 暗色模式毛玻璃 */
 :global(.dark) .dis-panel {
-	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
+	background-color: rgba(30, 30, 35, 0.55);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	box-shadow:
+		0 8px 32px rgba(0, 0, 0, 0.4),
+		0 2px 8px rgba(0, 0, 0, 0.2),
+		inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* 小屏幕：右对齐避免溢出屏幕 */
@@ -285,22 +295,26 @@ $effect(() => {
 	.dis-panel {
 		left: auto;
 		right: 0;
-		transform: scale(0.1);
+		transform: scaleX(0.05) scaleY(0.15);
 		transform-origin: top right;
 	}
 
 	.dis-panel.open {
-		transform: scale(1);
+		transform: scaleX(1) scaleY(1);
 	}
 }
 
-/* 输入框行 */
+/* 输入框行 - 毛玻璃内嵌 */
 .dis-input-row {
-	background: rgba(0, 0, 0, 0.04);
+	background: rgba(255, 255, 255, 0.35);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	border: 1px solid rgba(255, 255, 255, 0.25) !important;
 }
 
 :global(.dark) .dis-input-row {
-	background: rgba(255, 255, 255, 0.06);
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 /* 搜索结果 */

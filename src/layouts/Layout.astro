@@ -1070,7 +1070,8 @@ const siteLang = lang.replace("_", "-");
                   opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1),
                   width 0.45s cubic-bezier(0.32, 0.72, 0, 1),
                   margin 0.45s cubic-bezier(0.32, 0.72, 0, 1);
-      overflow: hidden;
+      overflow-x: clip;
+      overflow-y: visible;
     }
 
     #navbar-wrapper.navbar-manual-hidden {
@@ -3307,6 +3308,25 @@ function disableAnimation() {
   }
 
   /* ========== 通用悬浮窗初始化（公告/音乐） ========== */
+  function showMusicOpenSourceToast() {
+    const existing = document.getElementById("music-opensource-toast");
+    if (existing) existing.remove();
+    const toast = document.createElement("div");
+    toast.id = "music-opensource-toast";
+    toast.innerHTML = "🎵 本音乐播放器基于开源项目 Mineradio 构建";
+    toast.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);z-index:100001;background:rgba(20,20,30,0.75);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);color:#fff;padding:14px 28px;border-radius:14px;font-size:14px;font-weight:600;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.4s ease,transform 0.4s ease;border:1px solid rgba(255,255,255,0.12);box-shadow:0 8px 32px rgba(0,0,0,0.3);";
+    document.body.appendChild(toast);
+    requestAnimationFrame(function() {
+      toast.style.opacity = "1";
+      toast.style.transform = "translate(-50%,-50%) scale(1)";
+    });
+    setTimeout(function() {
+      toast.style.opacity = "0";
+      toast.style.transform = "translate(-50%,-50%) scale(0.9)";
+      setTimeout(function() { toast.remove(); }, 400);
+    }, 2000);
+  }
+
   function initGenericFloat(prefix: string) {
     const float = document.getElementById(prefix + "-float") as HTMLElement | null;
     const trigger = document.getElementById(prefix + "-float-trigger");
@@ -3340,6 +3360,10 @@ function disableAnimation() {
       // 音乐悬浮窗打开时初始化播放器
       if (prefix === "music" && (window as any).__fireflyMusic) {
         (window as any).__fireflyMusic.init();
+      }
+      // 显示开源提示浮窗（2秒）
+      if (prefix === "music") {
+        showMusicOpenSourceToast();
       }
     }
     function hideFloat() {
