@@ -1,0 +1,1045 @@
+---
+// RainformWeather — Rainform 数据成雨天气场景全屏覆盖
+// iframe 加载 Rainform 雨幕粒子背景 + 实时天气数据面板
+// 数据源: uapis.cn (当前天气) + Open-Meteo (逐小时降水预报)
+import { Icon } from "astro-icon/components";
+---
+
+<!-- 右上角关闭按钮（独立于 overlay，避免 iframe 拦截事件） -->
+<button class="rw-close-corner" id="rainform-weather-close" aria-label="关闭" title="关闭天气">
+	<Icon is:inline name="material-symbols:close-rounded" class="text-[1.4rem]" />
+</button>
+
+<div id="rainform-weather-overlay" class="rw-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="实时天气">
+	<iframe id="rainform-weather-iframe" class="rw-iframe" src="about:blank" title="Rainform 数据成雨" allow="autoplay; fullscreen" loading="lazy"></iframe>
+
+	<!-- 晴天太阳图标（无雨时显示） -->
+	<div class="rw-sun-overlay" id="rw-sun-overlay" style="display:none;">
+		<svg viewBox="0 0 24 24" fill="currentColor" class="rw-sun-icon">
+			<circle cx="12" cy="12" r="5"/>
+			<path d="M12 1a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM4.2 4.2a1 1 0 0 1 1.4 0l1.5 1.5a1 1 0 1 1-1.4 1.4L4.2 5.6a1 1 0 0 1 0-1.4zm12.7 12.7a1 1 0 0 1 1.4 0l1.5 1.5a1 1 0 0 1-1.4 1.4l-1.5-1.5a1 1 0 0 1 0-1.4zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM4.2 19.8a1 1 0 0 1 0-1.4l1.5-1.5a1 1 0 1 1 1.4 1.4l-1.5 1.5a1 1 0 0 1-1.4 0zM16.9 7.1a1 1 0 0 1 0-1.4l1.5-1.5a1 1 0 1 1 1.4 1.4l-1.5 1.5a1 1 0 0 1-1.4 0z"/>
+		</svg>
+	</div>
+
+	<!-- 天气数据面板 -->
+	<div class="rw-panel" id="rw-panel">
+		<!-- 面板头部（拖拽手柄 + 最小化按钮） -->
+		<div class="rw-panel-header" id="rw-panel-header">
+			<div class="rw-panel-drag-handle" title="拖动移动">
+				<Icon is:inline name="material-symbols:drag-indicator-rounded" class="rw-drag-icon" />
+				<span class="rw-panel-title">实时天气</span>
+			</div>
+			<div class="rw-panel-actions">
+				<button class="rw-icon-btn" id="rainform-weather-minimize" aria-label="最小化" title="最小化">
+					<Icon is:inline name="material-symbols:remove-rounded" class="text-[1.2rem]" />
+				</button>
+			</div>
+		</div>
+		<!-- 加载状态 -->
+		<div class="rw-loading" id="rw-loading">
+			<Icon is:inline name="material-symbols:progress-activity" class="rw-loading-icon" />
+			<span>获取天气数据中...</span>
+		</div>
+
+		<!-- 天气内容 -->
+		<div class="rw-content" id="rw-content" style="display:none;">
+			<!-- 当前天气 -->
+			<div class="rw-current">
+				<div class="rw-location-row">
+					<Icon is:inline name="material-symbols:location-on-rounded" class="rw-pin" />
+					<span class="rw-city" id="rw-city">--</span>
+				</div>
+				<div class="rw-temp" id="rw-temp">--°</div>
+				<div class="rw-condition" id="rw-condition">--</div>
+				<div class="rw-details">
+					<span id="rw-humidity">湿度 --</span>
+					<span class="rw-sep">·</span>
+					<span id="rw-wind">风 --</span>
+				</div>
+			</div>
+
+			<!-- 逐小时降水预报 -->
+			<div class="rw-forecast">
+				<div class="rw-forecast-title">
+					<Icon is:inline name="material-symbols:schedule-rounded" class="rw-forecast-icon" />
+					<span>未来 12 小时降水预报</span>
+				</div>
+				<div class="rw-timeline" id="rw-timeline"></div>
+				<div class="rw-rain-summary" id="rw-rain-summary"></div>
+			</div>
+		</div>
+	</div>
+
+	<!-- 最小化状态（左下角浮动按钮） -->
+	<div class="rw-minimized" id="rw-minimized" style="display:none;">
+		<button class="rw-restore-btn" id="rainform-weather-restore" aria-label="恢复天气面板" title="恢复天气面板">
+			<Icon is:inline name="material-symbols:rainy-rounded" class="rw-minimized-icon" />
+			<span class="rw-minimized-label">天气</span>
+		</button>
+	</div>
+</div>
+
+<style is:global>
+.rw-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	z-index: 9999;
+	background: #000;
+	opacity: 0;
+	pointer-events: none;
+	visibility: hidden;
+	overflow: hidden;
+	transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.4s;
+}
+.rw-overlay.is-open {
+	opacity: 1;
+	pointer-events: auto;
+	visibility: visible;
+}
+
+.rw-iframe {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	border: none;
+	z-index: 1;
+}
+
+/* 晴天太阳图标 */
+.rw-sun-overlay {
+	position: fixed;
+	top: 80px;
+	right: 80px;
+	z-index: 2;
+	pointer-events: none;
+	animation: rw-sun-glow 4s ease-in-out infinite alternate;
+}
+.rw-sun-icon {
+	width: clamp(60px, 10vw, 100px);
+	height: clamp(60px, 10vw, 100px);
+	color: #ffb74d;
+	filter: drop-shadow(0 0 30px rgba(255, 183, 77, 0.5));
+}
+@keyframes rw-sun-glow {
+	from { opacity: 0.7; transform: translateX(-50%) scale(0.95); }
+	to { opacity: 1; transform: translateX(-50%) scale(1.05); }
+}
+
+/* 顶部工具栏 */
+.rw-toolbar {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: max(16px, env(safe-area-inset-top)) 20px 12px;
+	background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent);
+	pointer-events: none;
+}
+.rw-toolbar > * { pointer-events: auto; }
+.rw-toolbar-label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	color: rgba(194, 203, 219, 0.75);
+}
+.rw-toolbar-dot {
+	width: 7px; height: 7px;
+	border-radius: 50%;
+	background: #0091ff;
+	box-shadow: 0 0 8px rgba(0, 145, 255, 0.4);
+	animation: rw-pulse 2s ease-in-out infinite;
+}
+@keyframes rw-pulse {
+	0%, 100% { opacity: 0.5; }
+	50% { opacity: 1; }
+}
+
+.rw-close-btn {
+	display: grid;
+	place-items: center;
+	width: 40px; height: 40px;
+	border: 1px solid rgba(250, 251, 255, 0.12);
+	border-radius: 50%;
+	background: rgba(250, 251, 255, 0.06);
+	color: rgba(218, 225, 238, 0.75);
+	cursor: pointer;
+	transition: all 0.2s;
+	backdrop-filter: blur(10px);
+}
+.rw-close-btn:hover {
+	background: rgba(250, 251, 255, 0.12);
+	color: #fafbff;
+	border-color: rgba(250, 251, 255, 0.3);
+}
+
+/* 天气面板 — 浮动毛玻璃窗 */
+.rw-panel {
+	position: absolute;
+	bottom: 28px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 5;
+	width: min(440px, calc(100vw - 32px));
+	max-height: 70vh;
+	overflow-y: auto;
+	padding: 22px 24px;
+	border-radius: 24px;
+	background: rgba(8, 12, 20, 0.45);
+	backdrop-filter: blur(30px) saturate(180%);
+	-webkit-backdrop-filter: blur(30px) saturate(180%);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* 面板头部（拖拽手柄 + 按钮） */
+.rw-panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 0 12px;
+	margin-bottom: 14px;
+	cursor: grab;
+	user-select: none;
+	-webkit-user-select: none;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.rw-panel-header:active { cursor: grabbing; }
+.rw-panel-drag-handle {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.rw-drag-icon {
+	font-size: 18px;
+	color: rgba(194, 203, 219, 0.35);
+}
+.rw-drag-icon svg { width: 1em; height: 1em; }
+.rw-panel-title {
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	color: rgba(194, 203, 219, 0.75);
+}
+.rw-panel-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.rw-icon-btn {
+	display: grid;
+	place-items: center;
+	width: 28px; height: 28px;
+	border: 1px solid rgba(250, 251, 255, 0.1);
+	border-radius: 50%;
+	background: rgba(250, 251, 255, 0.04);
+	color: rgba(218, 225, 238, 0.6);
+	cursor: pointer;
+	transition: all 0.2s;
+}
+.rw-icon-btn:hover {
+	background: rgba(250, 251, 255, 0.1);
+	color: #fafbff;
+	border-color: rgba(250, 251, 255, 0.25);
+}
+
+/* 右上角关闭按钮 */
+.rw-close-corner {
+	position: fixed;
+	top: 20px;
+	right: 20px;
+	z-index: 10001;
+	display: none;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	border: 1px solid rgba(250, 251, 255, 0.15);
+	border-radius: 50%;
+	background: rgba(20, 25, 40, 0.45);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	color: rgba(218, 225, 238, 0.8);
+	cursor: pointer;
+	pointer-events: auto;
+	transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+.rw-close-corner.is-visible {
+	display: grid;
+}
+.rw-close-corner:hover {
+	background: rgba(220, 80, 80, 0.35);
+	color: #fff;
+	border-color: rgba(250, 100, 100, 0.4);
+	transform: scale(1.08);
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+.rw-close-corner:active {
+	transform: scale(0.95);
+}
+
+/* 拖拽状态 */
+.rw-panel.is-dragging {
+	transition: none !important;
+	cursor: grabbing;
+}
+.rw-panel.is-dragged {
+	bottom: auto;
+	transform: none;
+}
+
+/* 最小化状态（左下角浮动按钮） */
+.rw-minimized {
+	position: fixed;
+	bottom: 28px;
+	left: 28px;
+	z-index: 10;
+}
+.rw-restore-btn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 16px;
+	border-radius: 16px;
+	background: rgba(8, 12, 20, 0.6);
+	backdrop-filter: blur(30px) saturate(180%);
+	-webkit-backdrop-filter: blur(30px) saturate(180%);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	color: rgba(218, 225, 238, 0.85);
+	cursor: pointer;
+	transition: all 0.2s;
+}
+.rw-restore-btn:hover {
+	background: rgba(8, 12, 20, 0.75);
+	border-color: rgba(255, 255, 255, 0.2);
+	transform: translateY(-2px);
+}
+.rw-minimized-icon {
+	font-size: 20px;
+	color: #4fc3f7;
+}
+.rw-minimized-icon svg { width: 1em; height: 1em; }
+.rw-minimized-label {
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+}
+
+/* 加载状态 */
+.rw-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding: 30px;
+	color: rgba(194, 203, 219, 0.6);
+	font-size: 14px;
+}
+.rw-loading-icon {
+	font-size: 32px;
+	animation: rw-spin 1.2s linear infinite;
+}
+.rw-loading-icon svg { width: 1em; height: 1em; }
+@keyframes rw-spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+/* 天气内容 */
+.rw-content {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	max-width: 900px;
+	margin: 0 auto;
+}
+
+/* 当前天气 */
+.rw-current {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.rw-location-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 15px;
+	color: rgba(194, 203, 219, 0.85);
+}
+.rw-pin {
+	font-size: 18px;
+	color: #ff4081;
+	filter: drop-shadow(0 0 4px rgba(255, 64, 129, 0.4));
+}
+.rw-pin svg { width: 1em; height: 1em; }
+.rw-city { font-weight: 600; }
+
+.rw-temp {
+	font-size: clamp(48px, 8vw, 80px);
+	font-weight: 700;
+	line-height: 1;
+	letter-spacing: -3px;
+	color: #fafbff;
+	text-shadow: 0 2px 20px rgba(0, 145, 255, 0.15);
+}
+.rw-condition {
+	font-size: clamp(16px, 2.5vw, 20px);
+	color: rgba(194, 203, 219, 0.75);
+	font-weight: 500;
+}
+.rw-details {
+	font-size: 13px;
+	color: rgba(194, 203, 219, 0.5);
+	display: flex;
+	gap: 8px;
+}
+.rw-sep { opacity: 0.4; }
+
+/* 逐小时降水预报 */
+.rw-forecast {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.rw-forecast-title {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: rgba(194, 203, 219, 0.6);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+.rw-forecast-icon {
+	font-size: 16px;
+	color: #0091ff;
+}
+.rw-forecast-icon svg { width: 1em; height: 1em; }
+
+.rw-timeline {
+	display: flex;
+	gap: 3px;
+	overflow-x: auto;
+	padding-bottom: 3px;
+ scrollbar-width: thin;
+ scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+.rw-timeline::-webkit-scrollbar { height: 3px; }
+.rw-timeline::-webkit-scrollbar-track { background: transparent; }
+.rw-timeline::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.rw-hour {
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	min-width: 44px;
+	padding: 6px 4px;
+	border-radius: 9px;
+	background: rgba(250, 251, 255, 0.03);
+	border: 1px solid rgba(250, 251, 255, 0.06);
+	transition: all 0.2s;
+}
+.rw-hour:hover {
+	background: rgba(250, 251, 255, 0.06);
+	border-color: rgba(250, 251, 255, 0.12);
+}
+.rw-hour.is-rain {
+	background: rgba(0, 145, 255, 0.08);
+	border-color: rgba(0, 145, 255, 0.2);
+}
+.rw-hour.is-now {
+	border-color: rgba(0, 145, 255, 0.4);
+	box-shadow: 0 0 0 1px rgba(0, 145, 255, 0.2);
+}
+.rw-hour-time {
+	font-size: 9px;
+	color: rgba(194, 203, 219, 0.6);
+	font-weight: 500;
+}
+.rw-hour-icon {
+	font-size: 15px;
+	color: rgba(194, 203, 219, 0.8);
+}
+.rw-hour-icon svg { width: 1em; height: 1em; }
+.rw-hour-icon.sunny { color: #ffb74d; }
+.rw-hour-icon.rainy { color: #4fc3f7; }
+.rw-hour-icon.snowy { color: #b3e5fc; }
+.rw-hour-icon.cloudy { color: #90a4ae; }
+.rw-hour-icon.stormy { color: #ce93d8; }
+.rw-hour-precip {
+	font-size: 9px;
+	font-weight: 600;
+	color: rgba(194, 203, 219, 0.5);
+}
+.rw-hour-precip.has-rain {
+	color: #4fc3f7;
+}
+
+/* 降水摘要 */
+.rw-rain-summary {
+	font-size: 13px;
+	color: rgba(194, 203, 219, 0.6);
+	padding: 10px 14px;
+	border-radius: 10px;
+	background: rgba(0, 145, 255, 0.06);
+	border: 1px solid rgba(0, 145, 255, 0.12);
+	display: none;
+}
+.rw-rain-summary.is-visible { display: block; }
+.rw-rain-summary strong { color: #4fc3f7; }
+
+/* 移动端 */
+@media (max-width: 640px) {
+	.rw-panel { padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
+	.rw-hour { min-width: 38px; padding: 5px 3px; }
+	.rw-minimized { bottom: 20px; left: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.rw-overlay { transition: none; }
+	.rw-toolbar-dot, .rw-loading-icon { animation: none; }
+}
+</style>
+
+<script is:inline>
+(function () {
+	if (window.__rainformWeatherInit) return;
+	window.__rainformWeatherInit = true;
+	var weatherDataFetched = false;
+
+	// WMO 天气码 → 中文 + 图标类型
+	var wmoMap = {
+		0: { text: "晴", icon: "sunny", name: "material-symbols:sunny-rounded" },
+		1: { text: "晴间多云", icon: "cloudy", name: "material-symbols:partly-cloudy-day-rounded" },
+		2: { text: "多云", icon: "cloudy", name: "material-symbols:cloud-rounded" },
+		3: { text: "阴", icon: "cloudy", name: "material-symbols:cloud-rounded" },
+		45: { text: "雾", icon: "cloudy", name: "material-symbols:foggy-rounded" },
+		48: { text: "雾凇", icon: "cloudy", name: "material-symbols:foggy-rounded" },
+		51: { text: "毛毛雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		53: { text: "毛毛雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		55: { text: "毛毛雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		56: { text: "冻毛毛雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		57: { text: "冻毛毛雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		61: { text: "小雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		63: { text: "中雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		65: { text: "大雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		66: { text: "冻雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		67: { text: "冻雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		71: { text: "小雪", icon: "snowy", name: "material-symbols:weather-snowy-rounded" },
+		73: { text: "中雪", icon: "snowy", name: "material-symbols:weather-snowy-rounded" },
+		75: { text: "大雪", icon: "snowy", name: "material-symbols:weather-snowy-rounded" },
+		77: { text: "雪粒", icon: "snowy", name: "material-symbols:weather-snowy-rounded" },
+		80: { text: "阵雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		81: { text: "阵雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		82: { text: "强阵雨", icon: "rainy", name: "material-symbols:rainy-rounded" },
+		85: { text: "阵雪", icon: "snowy", name: "material-symbols:weather-snowy-rounded" },
+		86: { text: "阵雪", icon: "snowy", name: "material-symbols:weather-snowy-rounded" },
+		95: { text: "雷暴", icon: "stormy", name: "material-symbols:thunderstorm-rounded" },
+		96: { text: "雷暴冰雹", icon: "stormy", name: "material-symbols:thunderstorm-rounded" },
+		99: { text: "雷暴冰雹", icon: "stormy", name: "material-symbols:thunderstorm-rounded" },
+	};
+
+	function getWmoInfo(code) {
+		return wmoMap[code] || { text: "未知", icon: "cloudy", name: "material-symbols:cloud-rounded" };
+	}
+
+	function isRainCode(code) {
+		return [51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99].indexOf(code) !== -1;
+	}
+
+	function isSnowCode(code) {
+		return [71,73,75,77,85,86].indexOf(code) !== -1;
+	}
+
+	function createIconSvg(iconName) {
+		// 使用内联 SVG 图标（简化版，匹配 material-symbols 风格）
+		var iconPaths = {
+			"material-symbols:sunny-rounded": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0-5a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1zm0 17a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM4.2 4.2a1 1 0 0 1 1.4 0l1.5 1.5a1 1 0 1 1-1.4 1.4L4.2 5.6a1 1 0 0 1 0-1.4zm12.7 12.7a1 1 0 0 1 1.4 0l1.5 1.5a1 1 0 0 1-1.4 1.4l-1.5-1.5a1 1 0 0 1 0-1.4zM2 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H3a1 1 0 0 1-1-1zm17 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM4.2 19.8a1 1 0 0 1 0-1.4l1.5-1.5a1 1 0 1 1 1.4 1.4l-1.5 1.5a1 1 0 0 1-1.4 0zM16.9 7.1a1 1 0 0 1 0-1.4l1.5-1.5a1 1 0 1 1 1.4 1.4l-1.5 1.5a1 1 0 0 1-1.4 0z"/></svg>',
+			"material-symbols:cloud-rounded": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19a5 5 0 0 1-1-9.9A7 7 0 0 1 19 9a5 5 0 0 1-1 10H6z"/></svg>',
+			"material-symbols:partly-cloudy-day-rounded": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19a5 5 0 0 1-1-9.9A7 7 0 0 1 15 7a5 5 0 0 1 3 9.9L18 17H6zm12-8a5 5 0 0 0-5-5 5 5 0 0 0-1 .1A8 8 0 0 0 4 13a6 6 0 0 0 0 12h14a4 4 0 0 0 0-8z" opacity=".3"/><path d="M12 4a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V5a1 1 0 0 1 1-1zm5.7 2.3a1 1 0 0 1 0 1.4l-.7.7a1 1 0 0 1-1.4-1.4l.7-.7a1 1 0 0 1 1.4 0zM20 11a1 1 0 0 1 0 2h-1a1 1 0 0 1 0-2h1zM4 11a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2h1z"/></svg>',
+			"material-symbols:rainy-rounded": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 15a5 5 0 0 1-1-9.9A7 7 0 0 1 19 5a5 5 0 0 1-1 10H6z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>',
+			"material-symbols:weather-snowy-rounded": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 14a5 5 0 0 1-1-9.9A7 7 0 0 1 19 4a5 5 0 0 1-1 10H6z" opacity=".5"/><circle cx="8" cy="19" r="1"/><circle cx="12" cy="20" r="1"/><circle cx="16" cy="19" r="1"/><circle cx="10" cy="17" r="1"/><circle cx="14" cy="17" r="1"/></svg>',
+			"material-symbols:thunderstorm-rounded": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 14a5 5 0 0 1-1-9.9A7 7 0 0 1 19 4a5 5 0 0 1-1 10H6z" opacity=".5"/><path d="M11 14l-2 4h2l-1 3 3-5h-2l1-2z"/></svg>',
+			"material-symbols:foggy-rounded": '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 15a5 5 0 0 1-1-9.9A7 7 0 0 1 19 5a5 5 0 0 1-1 10H6z" opacity=".5"/><path d="M3 18h18v1.5H3zM3 21h14v1.5H3z"/></svg>',
+		};
+		return iconPaths[iconName] || iconPaths["material-symbols:cloud-rounded"];
+	}
+
+	function fetchWeatherData() {
+		if (weatherDataFetched) return;
+		weatherDataFetched = true;
+
+		var loading = document.getElementById("rw-loading");
+		var content = document.getElementById("rw-content");
+
+		// 1. 先用 uapis.cn 获取当前天气（含城市名）
+		fetch("https://uapis.cn/api/v1/misc/weather")
+			.then(function(r) { return r.json(); })
+			.then(function(data) {
+				// 显示当前天气
+				if (loading) loading.style.display = "none";
+				if (content) content.style.display = "flex";
+
+				var cityEl = document.getElementById("rw-city");
+				if (cityEl && data.city) cityEl.textContent = data.city;
+
+				var tempStr = (data.temperature !== undefined ? data.temperature : "--") + "°";
+				var tempEl = document.getElementById("rw-temp");
+				if (tempEl) tempEl.textContent = tempStr;
+
+				var condEl = document.getElementById("rw-condition");
+				if (condEl && data.weather) condEl.textContent = data.weather;
+
+				var humEl = document.getElementById("rw-humidity");
+				if (humEl && data.humidity !== undefined) humEl.textContent = "湿度 " + data.humidity + "%";
+
+				var windEl = document.getElementById("rw-wind");
+				if (windEl) {
+					var windText = "风 ";
+					if (data.wind_direction) windText += data.wind_direction;
+					if (data.wind_power) windText += " " + data.wind_power;
+					windEl.textContent = windText;
+				}
+
+				// 2. 获取经纬度，用 Open-Meteo 获取逐小时降水预报
+				getCoordinates(data.city, function(lat, lon) {
+					fetchHourlyForecast(lat, lon);
+				}, function() {
+					// 定位失败，使用默认上海坐标
+					fetchHourlyForecast(31.23, 121.47);
+				});
+
+				return data;
+			})
+			.catch(function(err) {
+				console.warn("[RainformWeather] uapis.cn 请求失败:", err);
+				// 降级：直接用 Open-Meteo + 默认坐标
+				if (loading) loading.style.display = "none";
+				if (content) content.style.display = "flex";
+				fetchHourlyForecast(31.23, 121.47);
+			});
+	}
+
+	function getCoordinates(cityName, onSuccess, onFail) {
+		// 先尝试浏览器定位
+		if (navigator.geolocation) {
+			navigator.geolocation.getCurrentPosition(
+				function(pos) {
+					onSuccess(pos.coords.latitude, pos.coords.longitude);
+				},
+				function() {
+					// 浏览器定位失败，尝试 Open-Meteo 地名编码
+					if (cityName) {
+						fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(cityName) + "&count=1&language=zh")
+							.then(function(r) { return r.json(); })
+							.then(function(data) {
+								if (data.results && data.results.length > 0) {
+									onSuccess(data.results[0].latitude, data.results[0].longitude);
+								} else {
+									onFail();
+								}
+							})
+							.catch(function() { onFail(); });
+					} else {
+						onFail();
+					}
+				},
+				{ timeout: 5000 }
+			);
+		} else if (cityName) {
+			fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(cityName) + "&count=1&language=zh")
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					if (data.results && data.results.length > 0) {
+						onSuccess(data.results[0].latitude, data.results[0].longitude);
+					} else {
+						onFail();
+					}
+				})
+				.catch(function() { onFail(); });
+		} else {
+			onFail();
+		}
+	}
+
+	function fetchHourlyForecast(lat, lon) {
+		var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+			"&hourly=precipitation,temperature_2m,weathercode&current_weather=true&timezone=Asia/Shanghai&forecast_days=2";
+
+		fetch(url)
+			.then(function(r) { return r.json(); })
+			.then(function(data) {
+				if (!data.hourly || !data.hourly.time) return;
+
+				var now = new Date();
+				var times = data.hourly.time;
+				var precips = data.hourly.precipitation || [];
+				var temps = data.hourly.temperature_2m || [];
+				var codes = data.hourly.weathercode || [];
+
+				// 提取全天降水数据（00:00-24:00，25个点）注入 Rainform
+				// 注意：Open-Meteo API 使用 timezone=Asia/Shanghai，不能用 toISOString()（UTC 时间）
+				// 必须用本地时间（浏览器时区）构造日期字符串，确保与 API 返回的时间匹配
+				var todayStr = now.getFullYear() + "-" +
+					String(now.getMonth() + 1).padStart(2, "0") + "-" +
+					String(now.getDate()).padStart(2, "0");
+				var allDayPrecip = [];
+				for (var d = 0; d < times.length; d++) {
+					if (times[d].startsWith(todayStr)) {
+						allDayPrecip.push(precips[d] || 0);
+					}
+				}
+				console.log("[RainformWeather] 日期过滤: todayStr=" + todayStr + ", 匹配小时数=" + allDayPrecip.length);
+				// 补齐第 25 个点（次日 00:00 = 24:00）
+				var nextDay = new Date(now);
+				nextDay.setDate(nextDay.getDate() + 1);
+				var nextStr = nextDay.getFullYear() + "-" +
+					String(nextDay.getMonth() + 1).padStart(2, "0") + "-" +
+					String(nextDay.getDate()).padStart(2, "0");
+				for (var d2 = 0; d2 < times.length; d2++) {
+					if (times[d2].startsWith(nextStr) && times[d2].endsWith("00:00")) {
+						allDayPrecip.push(precips[d2] || 0);
+						break;
+					}
+				}
+				console.log("[RainformWeather] 补齐后 allDayPrecip 长度=" + allDayPrecip.length + ", 前5=" + allDayPrecip.slice(0, 5));
+				if (allDayPrecip.length >= 24) {
+					injectRainformData(allDayPrecip.slice(0, 25));
+				} else {
+					console.warn("[RainformWeather] allDayPrecip 长度不足 24，跳过注入");
+				}
+
+				// 找到当前小时开始的索引
+				var startIdx = 0;
+				for (var i = 0; i < times.length; i++) {
+					var t = new Date(times[i]);
+					if (t >= now) { startIdx = i; break; }
+				}
+
+				// 取未来 12 小时
+				var timeline = document.getElementById("rw-timeline");
+				if (!timeline) return;
+				timeline.innerHTML = "";
+
+				var rainHours = [];
+
+				for (var j = 0; j < 12 && (startIdx + j) < times.length; j++) {
+					var idx = startIdx + j;
+					var time = new Date(times[idx]);
+					var hh = time.getHours().toString().padStart(2, "0");
+					var mm = time.getMinutes().toString().padStart(2, "0");
+					var precip = precips[idx] || 0;
+					var code = codes[idx] || 0;
+					var wmoInfo = getWmoInfo(code);
+					var isRain = precip > 0 || isRainCode(code);
+
+					if (isRain) {
+						rainHours.push({ time: hh + ":" + mm, precip: precip, code: code, text: wmoInfo.text });
+					}
+
+					var hourDiv = document.createElement("div");
+					hourDiv.className = "rw-hour" + (isRain ? " is-rain" : "") + (j === 0 ? " is-now" : "");
+
+					var timeSpan = document.createElement("span");
+					timeSpan.className = "rw-hour-time";
+					timeSpan.textContent = (j === 0 ? "现在" : hh + ":00");
+					hourDiv.appendChild(timeSpan);
+
+					var iconSpan = document.createElement("span");
+					iconSpan.className = "rw-hour-icon " + wmoInfo.icon;
+					iconSpan.innerHTML = createIconSvg(wmoInfo.name);
+					hourDiv.appendChild(iconSpan);
+
+					var precipSpan = document.createElement("span");
+					precipSpan.className = "rw-hour-precip" + (precip > 0 ? " has-rain" : "");
+					precipSpan.textContent = precip > 0 ? precip.toFixed(1) + "mm" : "—";
+					hourDiv.appendChild(precipSpan);
+
+					timeline.appendChild(hourDiv);
+				}
+
+				// 降水摘要
+				var summary = document.getElementById("rw-rain-summary");
+				if (summary) {
+					if (rainHours.length > 0) {
+						var totalRain = 0;
+						for (var k = 0; k < rainHours.length; k++) {
+							totalRain += rainHours[k].precip;
+						}
+						var firstRain = rainHours[0].time;
+						var lastRain = rainHours[rainHours.length - 1].time;
+						summary.innerHTML = "<strong>" + firstRain + " - " + lastRain + "</strong> 有雨 · 预计降水 <strong>" + totalRain.toFixed(1) + "mm</strong>";
+						summary.classList.add("is-visible");
+					} else {
+						summary.innerHTML = "未来 12 小时无降水";
+						summary.classList.add("is-visible");
+					}
+				}
+			})
+			.catch(function(err) {
+				console.warn("[RainformWeather] Open-Meteo 请求失败:", err);
+				var summary = document.getElementById("rw-rain-summary");
+				if (summary) {
+					summary.textContent = "降水预报获取失败";
+					summary.classList.add("is-visible");
+				}
+			});
+	}
+
+	// 将全天降水数据注入 Rainform 雨幕强度 UI
+	function injectRainformData(allDayPrecip) {
+		var iframe = document.getElementById("rainform-weather-iframe");
+		if (!iframe || !iframe.contentWindow) {
+			console.warn("[RainformWeather] iframe 不存在，无法注入数据");
+			return;
+		}
+
+		console.log("[RainformWeather] injectRainformData 被调用，数据长度:", allDayPrecip.length, "前5:", allDayPrecip.slice(0, 5));
+
+		// 判断是否有雨
+		var hasRain = false;
+		for (var i = 0; i < allDayPrecip.length; i++) {
+			if (allDayPrecip[i] > 0) { hasRain = true; break; }
+		}
+
+		// 显示/隐藏太阳图标
+		var sunOverlay = document.getElementById("rw-sun-overlay");
+		if (sunOverlay) sunOverlay.style.display = hasRain ? "none" : "block";
+
+		// 通过 postMessage 发送降水数据到 iframe 内部脚本
+		// 带重试机制：iframe 可能尚未加载完成，首次发送可能丢失
+		var sendCount = 0;
+		function sendToIframe() {
+			if (!iframe || !iframe.contentWindow) return;
+			try {
+				iframe.contentWindow.postMessage({
+					type: "setRainfall",
+					values: allDayPrecip
+				}, "*");
+				console.log("[RainformWeather] postMessage 已发送, 第", sendCount + 1, "次");
+			} catch(e) {
+				console.warn("[RainformWeather] postMessage 发送失败:", e);
+			}
+			sendCount++;
+			if (sendCount < 3) setTimeout(sendToIframe, 2000);
+		}
+		sendToIframe();
+	}
+
+	function initRainformWeather() {
+		var overlay = document.getElementById("rainform-weather-overlay");
+		var iframe = document.getElementById("rainform-weather-iframe");
+		var closeBtn = document.getElementById("rainform-weather-close");
+		var navBtn = document.getElementById("rainform-weather-toggle");
+
+		if (!overlay || !iframe) return;
+		if (overlay.dataset.rwInit) return;
+		overlay.dataset.rwInit = "true";
+
+		function openWeather() {
+			console.log("[RainformWeather] openWeather() 被调用, iframe.src =", iframe.src);
+			// 更可靠的 src 检查：用 getAttribute 和 indexOf 双重检查
+			var srcAttr = iframe.getAttribute("src") || "";
+			if (srcAttr === "about:blank" || srcAttr === "" || iframe.src === "about:blank" || iframe.src === "" || iframe.src === window.location.href || srcAttr.indexOf("weather-widget") === -1) {
+				iframe.src = "/weather-widget/index.html";
+				console.log("[RainformWeather] iframe.src 已设置为 /weather-widget/index.html");
+			} else {
+				console.log("[RainformWeather] iframe.src 已存在，不重复设置:", iframe.src);
+			}
+			overlay.classList.add("is-open");
+			overlay.setAttribute("aria-hidden", "false");
+			if (closeBtn) closeBtn.classList.add("is-visible");
+			document.body.style.overflow = "hidden";
+			// 延迟获取天气数据
+			setTimeout(fetchWeatherData, 500);
+			// 恢复面板位置
+			setTimeout(restorePanelPosition, 100);
+			// iframe 加载后触发 resize 让 Three.js 重新计算画布尺寸
+			iframe.addEventListener("load", function () {
+				try {
+					var win = iframe.contentWindow;
+					if (!win) return;
+					[100, 300, 600, 1000, 2000].forEach(function (delay) {
+						setTimeout(function () {
+							win.dispatchEvent(new win.Event("resize"));
+						}, delay);
+					});
+				} catch (e) {}
+			});
+		}
+
+		function closeWeather() {
+			overlay.classList.remove("is-open");
+			overlay.setAttribute("aria-hidden", "true");
+			if (closeBtn) closeBtn.classList.remove("is-visible");
+			document.body.style.overflow = "";
+			// 重置最小化状态
+			var p = document.getElementById("rw-panel");
+			var m = document.getElementById("rw-minimized");
+			if (p) p.style.display = "";
+			if (m) m.style.display = "none";
+			setTimeout(function() {
+				if (!overlay.classList.contains("is-open")) {
+					iframe.src = "about:blank";
+				}
+			}, 500);
+		}
+
+		if (closeBtn) closeBtn.addEventListener("click", closeWeather);
+		if (navBtn) navBtn.addEventListener("click", openWeather);
+
+		// === 拖拽功能 ===
+		var panel = document.getElementById("rw-panel");
+		var panelHeader = document.getElementById("rw-panel-header");
+		var minimizeBtn = document.getElementById("rainform-weather-minimize");
+		var minimizedEl = document.getElementById("rw-minimized");
+		var restoreBtn = document.getElementById("rainform-weather-restore");
+
+		var isDragging = false;
+		var dragOffsetX = 0;
+		var dragOffsetY = 0;
+		var panelPosKey = "rw-panel-position";
+
+		function restorePanelPosition() {
+			if (!panel) return;
+			var saved = null;
+			try { saved = JSON.parse(localStorage.getItem(panelPosKey)); } catch(e) {}
+			if (saved && typeof saved.left === "number" && typeof saved.top === "number") {
+				// 确保位置在当前视口范围内
+				var maxX = window.innerWidth - 80;
+				var maxY = window.innerHeight - 80;
+				var left = Math.min(saved.left, maxX);
+				var top = Math.min(saved.top, maxY);
+				panel.style.left = left + "px";
+				panel.style.top = top + "px";
+				panel.style.bottom = "auto";
+				panel.style.transform = "none";
+				panel.classList.add("is-dragged");
+			}
+		}
+
+		function savePanelPosition(left, top) {
+			try { localStorage.setItem(panelPosKey, JSON.stringify({ left: left, top: top })); } catch(e) {}
+		}
+
+		function startDrag(clientX, clientY) {
+			if (!panel || panel.style.display === "none") return;
+			var rect = panel.getBoundingClientRect();
+			panel.style.left = rect.left + "px";
+			panel.style.top = rect.top + "px";
+			panel.style.bottom = "auto";
+			panel.style.transform = "none";
+			panel.classList.add("is-dragged", "is-dragging");
+			dragOffsetX = clientX - rect.left;
+			dragOffsetY = clientY - rect.top;
+			isDragging = true;
+			document.body.style.userSelect = "none";
+			document.body.style.webkitUserSelect = "none";
+		}
+
+		function onDrag(clientX, clientY) {
+			if (!isDragging || !panel) return;
+			var newLeft = clientX - dragOffsetX;
+			var newTop = clientY - dragOffsetY;
+			var maxX = window.innerWidth - panel.offsetWidth - 8;
+			var maxY = window.innerHeight - panel.offsetHeight - 8;
+			newLeft = Math.max(8, Math.min(newLeft, maxX));
+			newTop = Math.max(8, Math.min(newTop, maxY));
+			panel.style.left = newLeft + "px";
+			panel.style.top = newTop + "px";
+		}
+
+		function endDrag() {
+			if (!isDragging) return;
+			isDragging = false;
+			if (panel) {
+				panel.classList.remove("is-dragging");
+				var rect = panel.getBoundingClientRect();
+				savePanelPosition(rect.left, rect.top);
+			}
+			document.body.style.userSelect = "";
+			document.body.style.webkitUserSelect = "";
+		}
+
+		if (panelHeader) {
+			panelHeader.addEventListener("mousedown", function(e) {
+				if (e.target.closest("button")) return;
+				startDrag(e.clientX, e.clientY);
+				e.preventDefault();
+			});
+			document.addEventListener("mousemove", function(e) {
+				if (isDragging) onDrag(e.clientX, e.clientY);
+			});
+			document.addEventListener("mouseup", endDrag);
+
+			panelHeader.addEventListener("touchstart", function(e) {
+				if (e.target.closest("button")) return;
+				var t = e.touches[0];
+				startDrag(t.clientX, t.clientY);
+			}, { passive: true });
+			document.addEventListener("touchmove", function(e) {
+				if (isDragging) {
+					var t = e.touches[0];
+					onDrag(t.clientX, t.clientY);
+					e.preventDefault();
+				}
+			}, { passive: false });
+			document.addEventListener("touchend", endDrag);
+		}
+
+		// === 最小化 / 恢复 ===
+		function minimizePanel() {
+			if (!panel || !minimizedEl) return;
+			panel.style.display = "none";
+			minimizedEl.style.display = "block";
+		}
+		function restorePanel() {
+			if (!panel || !minimizedEl) return;
+			panel.style.display = "";
+			minimizedEl.style.display = "none";
+		}
+		if (minimizeBtn) minimizeBtn.addEventListener("click", minimizePanel);
+		if (restoreBtn) restoreBtn.addEventListener("click", restorePanel);
+
+		// === 时间线鼠标滚轮横向滚动 ===
+		var timeline = document.getElementById("rw-timeline");
+		if (timeline) {
+			timeline.addEventListener("wheel", function(e) {
+				if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+					e.preventDefault();
+					timeline.scrollLeft += e.deltaY;
+				}
+			}, { passive: false });
+		}
+
+		document.addEventListener("keydown", function(e) {
+			if (e.key === "Escape" && overlay.classList.contains("is-open")) {
+				closeWeather();
+			}
+		});
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initRainformWeather);
+	} else {
+		initRainformWeather();
+	}
+	document.addEventListener("astro:page-load", initRainformWeather);
+})();
+</script>

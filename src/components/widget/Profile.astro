@@ -60,15 +60,35 @@ const className = Astro.props.class;
                         : "btn-regular rounded-lg h-10 w-10 active:scale-90";
 
                     if (item.url.startsWith("mailto:")) {
-                        const encodedEmail = Buffer.from(item.url.replace("mailto:", "")).toString("base64");
-                        return <a rel="me" aria-label={item.name} href="#" data-encoded-email={encodedEmail} onclick={`
+                        const email = item.url.replace("mailto:", "");
+                        const encodedEmail = Buffer.from(email).toString("base64");
+                        return <a rel="me" aria-label={item.name} href="javascript:void(0)" data-encoded-email={encodedEmail} onclick={`
                                             (function() {
                                                 const encodedEmail = this.getAttribute('data-encoded-email');
                                                 const decodedEmail = atob(encodedEmail);
-                                                this.href = 'mailto:' + decodedEmail;
-                                                this.removeAttribute('data-encoded-email');
-                                                this.removeAttribute('onclick');
-                                                this.click();
+                                                if (navigator.clipboard && navigator.clipboard.writeText) {
+                                                    navigator.clipboard.writeText(decodedEmail).then(() => {
+                                                        this.setAttribute('title', '已复制: ' + decodedEmail);
+                                                        var orig = this.querySelector('svg');
+                                                        if (orig) {
+                                                            var tip = document.createElement('span');
+                                                            tip.textContent = '已复制!';
+                                                            tip.style.cssText = 'position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;white-space:nowrap;pointer-events:none;opacity:1;transition:opacity 0.3s;z-index:99;';
+                                                            this.style.position = 'relative';
+                                                            this.appendChild(tip);
+                                                            setTimeout(() => { tip.style.opacity = '0'; setTimeout(() => tip.remove(), 300); }, 1500);
+                                                        }
+                                                    }).catch(() => {});
+                                                } else {
+                                                    var ta = document.createElement('textarea');
+                                                    ta.value = decodedEmail;
+                                                    ta.style.position = 'fixed';
+                                                    ta.style.opacity = '0';
+                                                    document.body.appendChild(ta);
+                                                    ta.select();
+                                                    try { document.execCommand('copy'); } catch(e) {}
+                                                    document.body.removeChild(ta);
+                                                }
                                                 return false;
                                             }).call(this);
                                         `.replace(/\s+/g, " ").trim()
@@ -87,15 +107,31 @@ const className = Astro.props.class;
             )}
             {profileConfig.links.length == 1 && (function(item){
                 if (item.url.startsWith("mailto:")) {
-                        const encodedEmail = Buffer.from(item.url.replace("mailto:", "")).toString("base64");
-                        return <a rel="me" aria-label={item.name} href="#" data-encoded-email={encodedEmail} onclick={`
+                        const email = item.url.replace("mailto:", "");
+                        const encodedEmail = Buffer.from(email).toString("base64");
+                        return <a rel="me" aria-label={item.name} href="javascript:void(0)" data-encoded-email={encodedEmail} onclick={`
                                             (function() {
                                                 const encodedEmail = this.getAttribute('data-encoded-email');
                                                 const decodedEmail = atob(encodedEmail);
-                                                this.href = 'mailto:' + decodedEmail;
-                                                this.removeAttribute('data-encoded-email');
-                                                this.removeAttribute('onclick');
-                                                this.click();
+                                                if (navigator.clipboard && navigator.clipboard.writeText) {
+                                                    navigator.clipboard.writeText(decodedEmail).then(() => {
+                                                        var tip = document.createElement('span');
+                                                        tip.textContent = '已复制!';
+                                                        tip.style.cssText = 'position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;white-space:nowrap;pointer-events:none;opacity:1;transition:opacity 0.3s;z-index:99;';
+                                                        this.style.position = 'relative';
+                                                        this.appendChild(tip);
+                                                        setTimeout(() => { tip.style.opacity = '0'; setTimeout(() => tip.remove(), 300); }, 1500);
+                                                    }).catch(() => {});
+                                                } else {
+                                                    var ta = document.createElement('textarea');
+                                                    ta.value = decodedEmail;
+                                                    ta.style.position = 'fixed';
+                                                    ta.style.opacity = '0';
+                                                    document.body.appendChild(ta);
+                                                    ta.select();
+                                                    try { document.execCommand('copy'); } catch(e) {}
+                                                    document.body.removeChild(ta);
+                                                }
                                                 return false;
                                             }).call(this);
                                         `.replace(/\s+/g, " ").trim()
