@@ -21,6 +21,13 @@ const initialCurrentTime = new Date().toLocaleTimeString("zh-CN", {
 	second: "2-digit",
 	hour12: false,
 });
+
+const initialCurrentDate = new Date().toLocaleDateString("zh-CN", {
+	year: "numeric",
+	month: "long",
+	day: "numeric",
+	weekday: "long",
+});
 ---
 
 <WidgetLayout
@@ -31,9 +38,9 @@ const initialCurrentTime = new Date().toLocaleTimeString("zh-CN", {
   style={style}
 >
   <div class="flex flex-col gap-2">
-    <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-neutral-100/60 dark:bg-neutral-800/50">
-      <div class="flex items-center gap-2.5">
-        <div class="text-(--primary) text-lg">
+    <div class="flex flex-col items-center justify-center px-3 py-4 rounded-lg bg-neutral-100/60 dark:bg-neutral-800/50">
+      <div class="flex items-center gap-2 mb-2">
+        <div class="text-(--primary) text-base">
           <Icon is:inline name="material-symbols:schedule-rounded" />
         </div>
         <span class="text-neutral-700 dark:text-neutral-300 font-medium text-sm">
@@ -42,10 +49,16 @@ const initialCurrentTime = new Date().toLocaleTimeString("zh-CN", {
       </div>
       <span
         data-current-time="true"
-        class="text-xs font-bold text-neutral-900 dark:text-neutral-100 text-right max-w-[55%] truncate"
+        class="text-3xl font-bold text-neutral-900 dark:text-neutral-100 text-center tracking-wider tabular-nums"
         title={initialCurrentTime}
       >
         {initialCurrentTime}
+      </span>
+      <span
+        data-current-date="true"
+        class="text-sm text-neutral-500 dark:text-neutral-400 mt-2 text-center"
+      >
+        {initialCurrentDate}
       </span>
     </div>
   </div>
@@ -55,18 +68,31 @@ const initialCurrentTime = new Date().toLocaleTimeString("zh-CN", {
   const currentTimeElements = document.querySelectorAll<HTMLElement>(
     "[data-current-time='true']",
   );
+  const currentDateElements = document.querySelectorAll<HTMLElement>(
+    "[data-current-date='true']",
+  );
 
   function updateCurrentTime() {
-    const currentTime = new Date().toLocaleTimeString("zh-CN", {
+    const now = new Date();
+    const currentTime = now.toLocaleTimeString("zh-CN", {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
       hour12: false,
     });
+    const currentDate = now.toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "long",
+    });
 
     currentTimeElements.forEach((element) => {
       element.textContent = currentTime;
       element.title = currentTime;
+    });
+    currentDateElements.forEach((element) => {
+      element.textContent = currentDate;
     });
   }
 

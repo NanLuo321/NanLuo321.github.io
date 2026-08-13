@@ -15,6 +15,7 @@ import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
 import { Icon } from "astro-icon/components";
 import MusicPlayer from "@/components/features/MusicPlayer.astro";
 import RainWeather from "@/components/features/RainWeather.astro";
+import RainformWeather from "@/components/features/RainformWeather.astro";
 import { announcementConfig } from "@/config/announcementConfig";
 
 import {
@@ -844,15 +845,27 @@ const siteLang = lang.replace("_", "-");
           <div class="profile-float-bio">{profileConfig.bio}</div>
           <div class="profile-float-links">
             {profileConfig.links.map(item => (
-              <a
-                href={item.url}
-                target="_blank"
-                rel="me"
-                aria-label={item.name}
-                class="profile-float-link"
-              >
-                <Icon is:inline name={item.icon} class="text-[1.4rem]" />
-              </a>
+              item.url.startsWith("mailto:") ? (
+                <a
+                  href="javascript:void(0)"
+                  rel="me"
+                  aria-label={item.name}
+                  class="profile-float-link"
+                  onclick={`(function(){var e='${item.url.replace("mailto:", "")}';if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(e).then(function(){var t=document.createElement('span');t.textContent='已复制!';t.style.cssText='position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;white-space:nowrap;pointer-events:none;opacity:1;transition:opacity 0.3s;z-index:99;';this.style.position='relative';this.appendChild(t);setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove()},300)},1500)}.bind(this)).catch(function(){})}else{var ta=document.createElement('textarea');ta.value=e;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(err){}document.body.removeChild(ta)}return false}).call(this)`}
+                >
+                  <Icon is:inline name={item.icon} class="text-[1.4rem]" />
+                </a>
+              ) : (
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="me"
+                  aria-label={item.name}
+                  class="profile-float-link"
+                >
+                  <Icon is:inline name={item.icon} class="text-[1.4rem]" />
+                </a>
+              )
             ))}
           </div>
         </div>
@@ -937,6 +950,7 @@ const siteLang = lang.replace("_", "-");
       <div class="profile-float-resize" id="music-float-resize"></div>
     </div>
     <RainWeather />
+    <RainformWeather />
   </body>
 </html>
 

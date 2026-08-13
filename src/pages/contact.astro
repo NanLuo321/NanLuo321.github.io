@@ -23,14 +23,14 @@ import MainGridLayout from "@/layouts/MainGridLayout.astro";
                 </a>
 
                 <!-- Email -->
-                <a href="mailto:NanLuo111@outlook.com"
-                    class="contact-card group flex items-center gap-4 p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/50 hover:bg-(--primary)/8 transition-all duration-300 border border-neutral-200/50 dark:border-neutral-700/50">
+                <a href="javascript:void(0)" onclick="(function(){var e='NanLuo111@outlook.com';if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(e).then(function(){var t=document.createElement('span');t.textContent='已复制!';t.style.cssText='position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:4px 12px;border-radius:6px;font-size:14px;white-space:nowrap;pointer-events:none;opacity:1;transition:opacity 0.3s;z-index:99;';this.style.position='relative';this.appendChild(t);setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove()},300)},1500)}.bind(this)).catch(function(){})}else{var ta=document.createElement('textarea');ta.value=e;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(err){}document.body.removeChild(ta)}return false}).call(this)"
+                    class="contact-card group flex items-center gap-4 p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-800/50 hover:bg-(--primary)/8 transition-all duration-300 border border-neutral-200/50 dark:border-neutral-700/50 cursor-pointer">
                     <div class="w-14 h-14 rounded-2xl bg-(--primary)/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
                         <Icon is:inline name="fa7-solid:envelope" class="text-2xl text-(--primary)" />
                     </div>
                     <div class="min-w-0">
                         <div class="text-lg font-bold text-neutral-800 dark:text-neutral-100">Email</div>
-                        <div class="text-sm text-neutral-500 dark:text-neutral-400 truncate">NanLuo111@outlook.com</div>
+                        <div class="text-sm text-neutral-500 dark:text-neutral-400 truncate">点击复制邮箱地址</div>
                     </div>
                 </a>
             </div>
