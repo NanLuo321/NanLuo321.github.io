@@ -137,6 +137,9 @@ importers:
       pako:
         specifier: ^3.0.1
         version: 3.0.1
+      prismjs:
+        specifier: ^1.30.0
+        version: 1.30.0
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4

@@ -12,12 +12,9 @@
     <meta name="author" content="afterimage" />
     <meta name="copyright" content="© 2026 Rainform / afterimage. Noncommercial source license." />
     <style>html,body{margin:0;background:#000;color:#fff;overflow:hidden}</style>
-    <style>#scene-toolbar,#selection-readout,.mobile-landscape-gate,.selection-readout{display:none!important}</style>
-    <style>#rainfall-editor{display:none!important}</style>
     <style>
-      .rainfall-dashboard{height:100vh!important;height:100dvh!important;display:flex!important;flex-direction:column!important}
-      .scene-root{flex:1 1 auto!important;width:100%!important;height:100%!important;min-height:0!important}
-      .scene-root canvas{width:100%!important;height:100%!important;display:block!important}
+      /* 隐藏降雨编辑器按钮（通过 Ctrl+Shift+Q 打开） */
+      #rainfall-editor-toggle { display: none !important; }
     </style>
     <link rel="canonical" href="https://rainform.pages.dev/" />
     <meta
@@ -43,11 +40,53 @@
       content="Rainform turns a 24-hour rainfall curve into a real-time particle landscape."
     />
     <meta name="twitter:image" content="https://rainform.pages.dev/social-preview.jpg" />
-    <link rel="icon" type="image/png" href="./favicon.png" />
-    <link rel="apple-touch-icon" href="./favicon.png" />
+    <link rel="preload" href="/weather-widget/audio/rain-loop.wav" as="fetch" type="audio/wav" crossorigin />
+    <link rel="icon" type="image/png" href="/weather-widget/favicon.png" />
+    <link rel="apple-touch-icon" href="/weather-widget/favicon.png" />
     <title>Rainform · Data into Rain</title>
-    <script type="module" crossorigin src="./assets/index-CKuozgye.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DNtWH0cd.css">
+    <script type="module" crossorigin src="/weather-widget/assets/index-BqqXD-qE.js"></script>
+    <link rel="stylesheet" crossorigin href="/weather-widget/assets/index-DQy2aniC.css">
+    <style>
+      .weather-debug {
+        padding: 12px 16px;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        background: rgba(0,0,0,0.25);
+      }
+      .weather-debug__title {
+        font-size: 11px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: rgba(194,203,219,0.5);
+        margin: 0 0 8px;
+      }
+      .weather-debug__btns {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .weather-debug__btn {
+        flex: 1;
+        min-width: 64px;
+        padding: 8px 12px;
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 6px;
+        background: rgba(255,255,255,0.06);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-align: center;
+      }
+      .weather-debug__btn:hover {
+        background: rgba(255,255,255,0.14);
+        border-color: rgba(255,255,255,0.3);
+      }
+      .weather-debug__btn--sunny:hover { border-color: #ffd93d; color: #ffd93d; }
+      .weather-debug__btn--light:hover { border-color: #6db3f0; color: #6db3f0; }
+      .weather-debug__btn--moderate:hover { border-color: #4a90d9; color: #4a90d9; }
+      .weather-debug__btn--heavy:hover { border-color: #ff6b6b; color: #ff6b6b; }
+    </style>
   </head>
   <body>
     <main class="rainfall-dashboard" aria-label="交互式降雨强度珍珠雨幕" data-i18n-aria-label="dashboardAria">
@@ -150,7 +189,7 @@
             <section class="rainfall-chart-card" aria-label="可拖拽降雨折线图" data-i18n-aria-label="chartAria">
               <div class="rainfall-chart-readout" aria-live="polite">
                 <span id="rainfall-chart-time">18:00</span>
-                <strong id="rainfall-chart-value">0.1</strong>
+                <strong id="rainfall-chart-value">0.0</strong>
                 <span>mm/h</span>
               </div>
               <svg
@@ -197,6 +236,16 @@
             </div>
           </div>
 
+          <div class="weather-debug">
+            <p class="weather-debug__title">天气调试</p>
+            <div class="weather-debug__btns">
+              <button class="weather-debug__btn weather-debug__btn--sunny" type="button" data-weather="sunny">晴天</button>
+              <button class="weather-debug__btn weather-debug__btn--light" type="button" data-weather="light">小雨</button>
+              <button class="weather-debug__btn weather-debug__btn--moderate" type="button" data-weather="moderate">中雨</button>
+              <button class="weather-debug__btn weather-debug__btn--heavy" type="button" data-weather="heavy">暴雨</button>
+            </div>
+          </div>
+
           <footer class="rainfall-editor__actions">
             <button
               id="rainfall-restore"
@@ -218,7 +267,7 @@
 
       <div id="selection-readout" class="selection-readout" aria-live="polite">
         <span class="readout-time">18:00</span>
-        <strong class="readout-value">0.1</strong>
+        <strong class="readout-value">0.0</strong>
         <span class="readout-unit" data-i18n="axisUnit">毫米/小时</span>
       </div>
 
@@ -226,77 +275,177 @@
 
     <script>
     // 接收父页面发送的降水数据，实时更新 Rainform 雨幕强度
-    // 方案：直接调用 Rainform 内部的 zo() 函数，绕过表单提交的不可靠性
-    // zo() 会设置 xt（降水数组），调用 Nu()（重算最大值/雨带），Q0()（重建3D场景粒子）
-    // 关键：rainfallEditorReady 属性设置在 #scene-root 上（re 变量）
     var lastRainfallTime = 0;
     window.addEventListener("message", function(e) {
         if (!e.data || e.data.type !== "setRainfall" || !Array.isArray(e.data.values)) return;
-        console.log("[Rainform] 收到降水数据:", e.data.values.length, "个值, 前5:", e.data.values.slice(0, 5));
-        // 防抖：5 秒内只处理一次，避免父页面重试导致重复操作
         var now = Date.now();
-        if (now - lastRainfallTime < 5000) {
-            console.log("[Rainform] 防抖跳过");
-            return;
-        }
+        if (now - lastRainfallTime < 3000) return;
         lastRainfallTime = now;
         var values = e.data.values;
 
         function tryInject(retryCount) {
-            // 等待 Rainform 编辑器初始化完成（Bv() 函数执行完毕）
-            // Bv() 在末尾设置 re.dataset.rainfallEditorReady="true" 并暴露 window.__rainformZo
-            var sceneRoot = document.getElementById("scene-root");
-            if (!sceneRoot || sceneRoot.dataset.rainfallEditorReady !== "true") {
-                if (retryCount < 60) {
-                    if (retryCount === 0 || retryCount % 10 === 0)
-                        console.log("[Rainform] 等待编辑器初始化... 重试:", retryCount);
-                    setTimeout(function() { tryInject(retryCount + 1); }, 500);
-                }
+            var root = document.querySelector("#scene-root");
+            if (!root || root.dataset.rainfallEditorReady !== "true") {
+                if (retryCount < 60) setTimeout(function() { tryInject(retryCount + 1); }, 500);
+                else console.warn("[Rainform iframe] rainfallEditorReady 超时, 注入放弃");
                 return;
             }
 
-            console.log("[Rainform] 编辑器已就绪，开始注入数据 (重试次数:", retryCount, ")");
+            console.log("[Rainform iframe] 编辑器就绪, 开始注入降水数据 (retry=" + retryCount + ")");
 
-            // 检查 zo 函数是否可用
-            if (typeof window.__rainformZo !== "function") {
-                console.error("[Rainform] window.__rainformZo 不可用!");
+            var inputGrid = document.getElementById("rainfall-input-grid");
+            var form = document.getElementById("rainfall-data-form");
+            var editor = document.getElementById("rainfall-editor");
+
+            if (!inputGrid || !form) {
+                if (retryCount < 60) setTimeout(function() { tryInject(retryCount + 1); }, 500);
                 return;
             }
 
-            // Rainform 的 zo() 函数要求数据长度严格等于 oi.length (25)
-            // 如果 values 长度不足 25，用 0 填充；超过 25 则截断
-            var paddedValues = [];
-            for (var i = 0; i < 25; i++) {
-                paddedValues.push(i < values.length ? Math.max(0, values[i] || 0) : 0);
+            var inputs = inputGrid.querySelectorAll("input");
+            if (inputs.length === 0) {
+                if (retryCount < 60) setTimeout(function() { tryInject(retryCount + 1); }, 500);
+                return;
             }
 
-            console.log("[Rainform] 准备注入 25 个值，前5:", paddedValues.slice(0, 5));
+            for (var i = 0; i < inputs.length && i < values.length; i++) {
+                var v = Math.max(0, values[i] || 0);
+                inputs[i].value = v.toFixed(1);
+            }
 
+            if (editor) editor.removeAttribute("inert");
+
+            var submitted = false;
             try {
-                // 直接调用 zo() 将降水数据应用到 3D 场景
-                // zo() 内部流程：
-                // 1. 验证数据（必须是 25 个非负有限数）
-                // 2. 设置 xt = 数据（更新全局降水数组）
-                // 3. 调用 Nu() 重算 Zt（最大值）、gn（雨带）
-                // 4. 调用 Q0() 重建粒子系统（雨链数量、瀑布、水面波纹等）
-                // 5. 调用 G0() 更新其他场景元素
-                window.__rainformZo(paddedValues);
-                console.log("[Rainform] zo() 调用成功! 3D 场景已更新");
+                var submitEvent = new Event("submit", { bubbles: true, cancelable: true });
+                submitted = form.dispatchEvent(submitEvent);
+            } catch(err) {}
 
-                // 同步更新输入框 UI（可选，保持界面一致）
-                if (typeof window.__rainformCe === "function") {
-                    window.__rainformCe(paddedValues, false);
-                    console.log("[Rainform] 输入框 UI 已同步");
+            setTimeout(function() {
+                if (!submitted) {
+                    var applyBtn = document.getElementById("rainfall-apply");
+                    if (applyBtn && !applyBtn.disabled) {
+                        try { applyBtn.click(); } catch(err2) {}
+                    }
                 }
-            } catch(err) {
-                console.error("[Rainform] zo() 调用失败:", err);
-            }
-
-            // 通知父页面
-            try { parent.postMessage({ type: "rainfallApplied", success: true }, "*"); } catch(err3) {}
+                try { parent.postMessage({ type: "rainfallApplied", success: true }, "*"); } catch(err3) {}
+            }, 200);
         }
 
         tryInject(0);
+    });
+
+    // 接收父页面的声音控制消息（晴天自动关闭声音）
+    window.addEventListener("message", function(e) {
+        if (!e.data || e.data.type !== "setSound") return;
+        function trySetSound(retryCount) {
+            var soundToggle = document.getElementById("rain-sound-toggle");
+            if (!soundToggle) {
+                if (retryCount < 20) setTimeout(function() { trySetSound(retryCount + 1); }, 500);
+                return;
+            }
+            var isPressed = soundToggle.getAttribute("aria-pressed") === "true";
+            if (e.data.enabled === false && isPressed) {
+                soundToggle.click();
+            } else if (e.data.enabled === true && !isPressed) {
+                soundToggle.click();
+            }
+        }
+        trySetSound(0);
+    });
+
+    // 晴天/雨天背景切换：晴天蓝色天空，雨天黑色背景
+    window.addEventListener("message", function(e) {
+        if (!e.data || e.data.type !== "setSolarVisible") return;
+        var root = document.documentElement.style;
+        if (e.data.visible) {
+            root.setProperty("--background-top", "#1a5a9a");
+            root.setProperty("--background-mid", "#3a8acc");
+            root.setProperty("--background-bottom", "#6ab0e0");
+        } else {
+            root.setProperty("--background-top", "#000000");
+            root.setProperty("--background-mid", "#000000");
+            root.setProperty("--background-bottom", "#000000");
+        }
+    });
+
+    // Ctrl+Shift+Q 打开/关闭降雨数据编辑器
+    document.addEventListener("keydown", function(e) {
+        if (e.ctrlKey && e.shiftKey && (e.key === "Q" || e.key === "q")) {
+            e.preventDefault();
+            var toggleBtn = document.getElementById("rainfall-editor-toggle");
+            var editor = document.getElementById("rainfall-editor");
+            if (toggleBtn) {
+                toggleBtn.click();
+            } else if (editor) {
+                var isHidden = editor.getAttribute("aria-hidden") === "true";
+                if (isHidden) {
+                    editor.removeAttribute("inert");
+                    editor.setAttribute("aria-hidden", "false");
+                } else {
+                    editor.setAttribute("inert", "");
+                    editor.setAttribute("aria-hidden", "true");
+                }
+            }
+        }
+    });
+
+    // 天气调试按钮：快速切换晴天/小雨/中雨/暴雨
+    var WEATHER_PRESETS = {
+        sunny:    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        light:    [0.2,0.3,0.5,0.3,0.1,0,0.2,0.4,0.6,0.5,0.3,0.2,0.4,0.6,0.8,0.5,0.3,0.2,0.1,0,0.1,0.2,0.3,0.2,0.1],
+        moderate: [1.5,2.0,2.5,3.0,2.5,2.0,1.5,2.0,3.0,3.5,3.0,2.5,3.0,3.5,4.0,3.5,3.0,2.5,2.0,1.5,2.0,2.5,3.0,2.5,2.0],
+        heavy:    [5.0,6.0,7.0,8.0,9.0,10.0,8.0,7.0,9.0,11.0,10.0,8.0,9.0,10.0,12.0,11.0,9.0,7.0,6.0,5.0,6.0,7.0,8.0,7.0,6.0]
+    };
+
+    document.querySelectorAll(".weather-debug__btn").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+            var mode = btn.getAttribute("data-weather");
+            var preset = WEATHER_PRESETS[mode];
+            if (!preset) return;
+
+            var inputGrid = document.getElementById("rainfall-input-grid");
+            var form = document.getElementById("rainfall-data-form");
+            if (!inputGrid || !form) {
+                console.warn("[天气调试] 编辑器未就绪");
+                return;
+            }
+
+            var inputs = inputGrid.querySelectorAll("input");
+            if (inputs.length === 0) {
+                console.warn("[天气调试] 没有找到输入框");
+                return;
+            }
+
+            for (var i = 0; i < inputs.length && i < preset.length; i++) {
+                inputs[i].value = preset[i].toFixed(1);
+            }
+
+            var editor = document.getElementById("rainfall-editor");
+            if (editor) editor.removeAttribute("inert");
+
+            try {
+                var submitEvent = new Event("submit", { bubbles: true, cancelable: true });
+                form.dispatchEvent(submitEvent);
+            } catch(err) {}
+
+            setTimeout(function() {
+                var applyBtn = document.getElementById("rainfall-apply");
+                if (applyBtn && !applyBtn.disabled) {
+                    try { applyBtn.click(); } catch(e) {}
+                }
+                try { parent.postMessage({ type: "rainfallApplied", success: true }, "*"); } catch(e) {}
+            }, 150);
+
+            // 晴天显示太阳，雨天隐藏太阳 — 发给本窗口让 main.js 的太阳引擎接收
+            var isSunny = (mode === "sunny");
+            try { window.postMessage({ type: "setSolarVisible", visible: isSunny }, "*"); } catch(e) {}
+
+            // 同时控制声音（晴天关闭雨声）— 发给本窗口
+            try { window.postMessage({ type: "setSound", enabled: !isSunny }, "*"); } catch(e) {}
+
+            console.log("[天气调试] 切换为: " + btn.textContent.trim() + " (" + mode + ")");
+        });
     });
     </script>
 

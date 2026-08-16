@@ -1,7 +1,7 @@
 ---
 // RainformWeather — Rainform 数据成雨天气场景全屏覆盖
 // iframe 加载 Rainform 雨幕粒子背景 + 实时天气数据面板
-// 数据源: uapis.cn (当前天气) + Open-Meteo (逐小时降水预报)
+// 数据源: api.jerrynis.com (当前天气) + Open-Meteo (逐小时降水预报)
 import { Icon } from "astro-icon/components";
 ---
 
@@ -13,13 +13,7 @@ import { Icon } from "astro-icon/components";
 <div id="rainform-weather-overlay" class="rw-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="实时天气">
 	<iframe id="rainform-weather-iframe" class="rw-iframe" src="about:blank" title="Rainform 数据成雨" allow="autoplay; fullscreen" loading="lazy"></iframe>
 
-	<!-- 晴天太阳图标（无雨时显示） -->
-	<div class="rw-sun-overlay" id="rw-sun-overlay" style="display:none;">
-		<svg viewBox="0 0 24 24" fill="currentColor" class="rw-sun-icon">
-			<circle cx="12" cy="12" r="5"/>
-			<path d="M12 1a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM4.2 4.2a1 1 0 0 1 1.4 0l1.5 1.5a1 1 0 1 1-1.4 1.4L4.2 5.6a1 1 0 0 1 0-1.4zm12.7 12.7a1 1 0 0 1 1.4 0l1.5 1.5a1 1 0 0 1-1.4 1.4l-1.5-1.5a1 1 0 0 1 0-1.4zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2H2a1 1 0 0 1-1-1zm18 0a1 1 0 0 1 1-1h2a1 1 0 0 1 0 2h-2a1 1 0 0 1-1-1zM4.2 19.8a1 1 0 0 1 0-1.4l1.5-1.5a1 1 0 1 1 1.4 1.4l-1.5 1.5a1 1 0 0 1-1.4 0zM16.9 7.1a1 1 0 0 1 0-1.4l1.5-1.5a1 1 0 1 1 1.4 1.4l-1.5 1.5a1 1 0 0 1-1.4 0z"/>
-		</svg>
-	</div>
+	<!-- 太阳光追由 iframe 内 solar-overlay.js 渲染（晴天显示 3D 太阳） -->
 
 	<!-- 天气数据面板 -->
 	<div class="rw-panel" id="rw-panel">
@@ -108,26 +102,6 @@ import { Icon } from "astro-icon/components";
 	height: 100vh;
 	border: none;
 	z-index: 1;
-}
-
-/* 晴天太阳图标 */
-.rw-sun-overlay {
-	position: fixed;
-	top: 80px;
-	right: 80px;
-	z-index: 2;
-	pointer-events: none;
-	animation: rw-sun-glow 4s ease-in-out infinite alternate;
-}
-.rw-sun-icon {
-	width: clamp(60px, 10vw, 100px);
-	height: clamp(60px, 10vw, 100px);
-	color: #ffb74d;
-	filter: drop-shadow(0 0 30px rgba(255, 183, 77, 0.5));
-}
-@keyframes rw-sun-glow {
-	from { opacity: 0.7; transform: translateX(-50%) scale(0.95); }
-	to { opacity: 1; transform: translateX(-50%) scale(1.05); }
 }
 
 /* 顶部工具栏 */
@@ -254,11 +228,11 @@ import { Icon } from "astro-icon/components";
 	border-color: rgba(250, 251, 255, 0.25);
 }
 
-/* 右上角关闭按钮 */
+/* 左上角关闭按钮（避免与右上角声音控制台重叠） */
 .rw-close-corner {
 	position: fixed;
 	top: 20px;
-	right: 20px;
+	left: 20px;
 	z-index: 10001;
 	display: none;
 	place-items: center;
@@ -588,251 +562,323 @@ import { Icon } from "astro-icon/components";
 		var loading = document.getElementById("rw-loading");
 		var content = document.getElementById("rw-content");
 
-		// 1. 先用 uapis.cn 获取当前天气（含城市名）
-		fetch("https://uapis.cn/api/v1/misc/weather")
-			.then(function(r) { return r.json(); })
-			.then(function(data) {
-				// 显示当前天气
-				if (loading) loading.style.display = "none";
-				if (content) content.style.display = "flex";
+		function showWeatherUI(city, temp, condition, humidity, windDir, windPower) {
+			if (loading) loading.style.display = "none";
+			if (content) content.style.display = "flex";
+			var cityEl = document.getElementById("rw-city");
+			if (cityEl && city) cityEl.textContent = city;
+			var tempEl = document.getElementById("rw-temp");
+			if (tempEl) tempEl.textContent = (temp !== undefined ? temp : "--") + "°";
+			var condEl = document.getElementById("rw-condition");
+			if (condEl && condition) condEl.textContent = condition;
+			var humEl = document.getElementById("rw-humidity");
+			if (humEl && humidity !== undefined) humEl.textContent = "湿度 " + humidity + "%";
+			var windEl = document.getElementById("rw-wind");
+			if (windEl) {
+				var windText = "风";
+				if (windDir) windText += " " + windDir;
+				if (windPower) windText += " " + windPower;
+				windEl.textContent = windText;
+			}
+		}
 
-				var cityEl = document.getElementById("rw-city");
-				if (cityEl && data.city) cityEl.textContent = data.city;
+		// 用 Open-Meteo 当前天气 + 反向地理编码获取城市名
+		function fetchWeatherFromCoords(lat, lon, fallbackCity) {
+			// 发送地理位置到 iframe 内太阳光追引擎
+			try {
+				var iframe = document.getElementById("rainform-weather-iframe");
+				if (iframe && iframe.contentWindow) {
+					iframe.contentWindow.postMessage({ type: "setSolarLocation", latitude: lat, longitude: lon, name: fallbackCity || "" }, "*");
+				}
+			} catch(e) {}
 
-				var tempStr = (data.temperature !== undefined ? data.temperature : "--") + "°";
-				var tempEl = document.getElementById("rw-temp");
-				if (tempEl) tempEl.textContent = tempStr;
+			var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+				"&hourly=precipitation,temperature_2m,weathercode&current_weather=true&timezone=Asia/Shanghai&forecast_days=2";
 
-				var condEl = document.getElementById("rw-condition");
-				if (condEl && data.weather) condEl.textContent = data.weather;
+			fetch(url)
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					var cw = data.current_weather || {};
+					var wmoInfo = getWmoInfo(cw.weathercode || 0);
+					var city = fallbackCity || "未知位置";
 
-				var humEl = document.getElementById("rw-humidity");
-				if (humEl && data.humidity !== undefined) humEl.textContent = "湿度 " + data.humidity + "%";
+					// 尝试反向地理编码获取城市名
+					fetch("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" + lat + "&longitude=" + lon + "&localityLanguage=zh")
+						.then(function(r2) { return r2.json(); })
+						.then(function(geo) {
+							if (geo.city || geo.locality || geo.principalSubdivision) {
+								city = geo.city || geo.locality || geo.principalSubdivision;
+							}
+							showWeatherUI(city, cw.temperature, wmoInfo.text, undefined, undefined, undefined);
+						})
+						.catch(function() {
+							showWeatherUI(city, cw.temperature, wmoInfo.text, undefined, undefined, undefined);
+						});
 
-				var windEl = document.getElementById("rw-wind");
-				if (windEl) {
-					var windText = "风 ";
-					if (data.wind_direction) windText += data.wind_direction;
-					if (data.wind_power) windText += " " + data.wind_power;
-					windEl.textContent = windText;
+					// 处理逐小时预报和降水注入
+					processHourlyData(data);
+				})
+				.catch(function(err) {
+					console.warn("[RainformWeather] Open-Meteo 请求失败:", err);
+					if (loading) loading.style.display = "none";
+					if (content) content.style.display = "flex";
+				});
+		}
+
+		// 处理 Open-Meteo 逐小时预报数据（公共逻辑）
+		function processHourlyData(data) {
+			if (!data.hourly || !data.hourly.time) return;
+
+			var now = new Date();
+			var times = data.hourly.time;
+			var precips = data.hourly.precipitation || [];
+			var codes = data.hourly.weathercode || [];
+
+			// 检查当前天气是否下雨
+			var currentCode = 0;
+			if (data.current_weather && data.current_weather.weathercode !== undefined) {
+				currentCode = data.current_weather.weathercode;
+			}
+			var currentlyRaining = isRainCode(currentCode);
+			console.log("[RainformWeather] 当前天气码:", currentCode, "是否下雨:", currentlyRaining);
+
+			// 提取全天降水数据（00:00-24:00，25个点）注入 Rainform
+			var todayStr = now.getFullYear() + "-" +
+				String(now.getMonth() + 1).padStart(2, "0") + "-" +
+				String(now.getDate()).padStart(2, "0");
+			var allDayPrecip = [];
+			for (var d = 0; d < times.length; d++) {
+				if (times[d].startsWith(todayStr)) {
+					allDayPrecip.push(precips[d] || 0);
+				}
+			}
+			console.log("[RainformWeather] 日期过滤: todayStr=" + todayStr + ", 匹配小时数=" + allDayPrecip.length);
+			// 补齐第 25 个点（次日 00:00 = 24:00）
+			var nextDay = new Date(now);
+			nextDay.setDate(nextDay.getDate() + 1);
+			var nextStr = nextDay.getFullYear() + "-" +
+				String(nextDay.getMonth() + 1).padStart(2, "0") + "-" +
+				String(nextDay.getDate()).padStart(2, "0");
+			for (var d2 = 0; d2 < times.length; d2++) {
+				if (times[d2].startsWith(nextStr) && times[d2].endsWith("00:00")) {
+					allDayPrecip.push(precips[d2] || 0);
+					break;
+				}
+			}
+			console.log("[RainformWeather] 补齐后 allDayPrecip 长度=" + allDayPrecip.length + ", 前5=" + allDayPrecip.slice(0, 5));
+			if (allDayPrecip.length >= 24) {
+				injectRainformData(allDayPrecip.slice(0, 25), currentlyRaining);
+			} else {
+				console.warn("[RainformWeather] allDayPrecip 长度不足 24，跳过注入");
+			}
+
+			// 找到当前小时开始的索引
+			var startIdx = 0;
+			for (var i = 0; i < times.length; i++) {
+				var t = new Date(times[i]);
+				if (t >= now) { startIdx = i; break; }
+			}
+
+			// 取未来 12 小时
+			var timeline = document.getElementById("rw-timeline");
+			if (!timeline) return;
+			timeline.innerHTML = "";
+
+			var rainHours = [];
+
+			for (var j = 0; j < 12 && (startIdx + j) < times.length; j++) {
+				var idx = startIdx + j;
+				var time = new Date(times[idx]);
+				var hh = time.getHours().toString().padStart(2, "0");
+				var mm = time.getMinutes().toString().padStart(2, "0");
+				var precip = precips[idx] || 0;
+				var code = codes[idx] || 0;
+				var wmoInfo = getWmoInfo(code);
+				var isRain = precip > 0 || isRainCode(code);
+
+				if (isRain) {
+					rainHours.push({ time: hh + ":" + mm, precip: precip, code: code, text: wmoInfo.text });
 				}
 
-				// 2. 获取经纬度，用 Open-Meteo 获取逐小时降水预报
-				getCoordinates(data.city, function(lat, lon) {
-					fetchHourlyForecast(lat, lon);
-				}, function() {
-					// 定位失败，使用默认上海坐标
-					fetchHourlyForecast(31.23, 121.47);
-				});
+				var hourDiv = document.createElement("div");
+				hourDiv.className = "rw-hour" + (isRain ? " is-rain" : "") + (j === 0 ? " is-now" : "");
 
-				return data;
-			})
-			.catch(function(err) {
-				console.warn("[RainformWeather] uapis.cn 请求失败:", err);
-				// 降级：直接用 Open-Meteo + 默认坐标
+				var timeSpan = document.createElement("span");
+				timeSpan.className = "rw-hour-time";
+				timeSpan.textContent = (j === 0 ? "现在" : hh + ":00");
+				hourDiv.appendChild(timeSpan);
+
+				var iconSpan = document.createElement("span");
+				iconSpan.className = "rw-hour-icon " + wmoInfo.icon;
+				iconSpan.innerHTML = createIconSvg(wmoInfo.name);
+				hourDiv.appendChild(iconSpan);
+
+				var precipSpan = document.createElement("span");
+				precipSpan.className = "rw-hour-precip" + (precip > 0 ? " has-rain" : "");
+				precipSpan.textContent = precip > 0 ? precip.toFixed(1) + "mm" : "—";
+				hourDiv.appendChild(precipSpan);
+
+				timeline.appendChild(hourDiv);
+			}
+
+			// 降水摘要
+			var summary = document.getElementById("rw-rain-summary");
+			if (summary) {
+				if (rainHours.length > 0) {
+					var totalRain = 0;
+					for (var k = 0; k < rainHours.length; k++) {
+						totalRain += rainHours[k].precip;
+					}
+					var firstRain = rainHours[0].time;
+					var lastRain = rainHours[rainHours.length - 1].time;
+					summary.innerHTML = "<strong>" + firstRain + " - " + lastRain + "</strong> 有雨 · 预计降水 <strong>" + totalRain.toFixed(1) + "mm</strong>";
+					summary.classList.add("is-visible");
+				} else {
+					summary.innerHTML = "未来 12 小时无降水";
+					summary.classList.add("is-visible");
+				}
+			}
+		}
+
+		// 降级方案：浏览器定位 + Open-Meteo
+		function tryBrowserGeolocation(fallbackCity) {
+			if (navigator.geolocation) {
+				navigator.geolocation.getCurrentPosition(
+					function(pos) {
+						fetchWeatherFromCoords(pos.coords.latitude, pos.coords.longitude, fallbackCity || "");
+					},
+					function() {
+						if (loading) loading.style.display = "none";
+						if (content) content.style.display = "flex";
+						fetchHourlyForecast(31.23, 121.47);
+					},
+					{ timeout: 5000 }
+				);
+			} else {
 				if (loading) loading.style.display = "none";
 				if (content) content.style.display = "flex";
 				fetchHourlyForecast(31.23, 121.47);
-			});
-	}
+			}
+		}
 
-	function getCoordinates(cityName, onSuccess, onFail) {
-		// 先尝试浏览器定位
-		if (navigator.geolocation) {
-			navigator.geolocation.getCurrentPosition(
-				function(pos) {
-					onSuccess(pos.coords.latitude, pos.coords.longitude);
-				},
-				function() {
-					// 浏览器定位失败，尝试 Open-Meteo 地名编码
-					if (cityName) {
-						fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(cityName) + "&count=1&language=zh")
-							.then(function(r) { return r.json(); })
-							.then(function(data) {
-								if (data.results && data.results.length > 0) {
-									onSuccess(data.results[0].latitude, data.results[0].longitude);
-								} else {
-									onFail();
-								}
-							})
-							.catch(function() { onFail(); });
-					} else {
-						onFail();
-					}
-				},
-				{ timeout: 5000 }
-			);
-		} else if (cityName) {
-			fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(cityName) + "&count=1&language=zh")
+		function fetchHourlyForecast(lat, lon) {
+			// 发送地理位置到 iframe 内太阳光追引擎
+			try {
+				var iframe = document.getElementById("rainform-weather-iframe");
+				if (iframe && iframe.contentWindow) {
+					iframe.contentWindow.postMessage({ type: "setSolarLocation", latitude: lat, longitude: lon }, "*");
+				}
+			} catch(e) {}
+
+			var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+				"&hourly=precipitation,temperature_2m,weathercode&current_weather=true&timezone=Asia/Shanghai&forecast_days=2";
+
+			fetch(url)
 				.then(function(r) { return r.json(); })
 				.then(function(data) {
-					if (data.results && data.results.length > 0) {
-						onSuccess(data.results[0].latitude, data.results[0].longitude);
-					} else {
-						onFail();
+					try {
+						processHourlyData(data);
+					} catch(e) {
+						console.error("[RainformWeather] processHourlyData 执行出错:", e);
 					}
 				})
-				.catch(function() { onFail(); });
-		} else {
-			onFail();
+				.catch(function(err) {
+					console.warn("[RainformWeather] Open-Meteo 请求失败:", err);
+					var summary = document.getElementById("rw-rain-summary");
+					if (summary) {
+						summary.textContent = "降水预报获取失败";
+						summary.classList.add("is-visible");
+					}
+				});
 		}
-	}
 
-	function fetchHourlyForecast(lat, lon) {
-		var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
-			"&hourly=precipitation,temperature_2m,weathercode&current_weather=true&timezone=Asia/Shanghai&forecast_days=2";
-
-		fetch(url)
+		// 1. 用 uapis.cn 获取当前天气（自动 IP 定位）
+		fetch("https://uapis.cn/api/v1/misc/weather")
 			.then(function(r) { return r.json(); })
 			.then(function(data) {
-				if (!data.hourly || !data.hourly.time) return;
+				var city = data.city || data.province || "";
+				var temp = data.temperature;
+				var condition = data.weather || "";
+				var humidity = data.humidity;
+				var windDir = data.wind_direction || "";
+				var windPower = data.wind_power || "";
 
-				var now = new Date();
-				var times = data.hourly.time;
-				var precips = data.hourly.precipitation || [];
-				var temps = data.hourly.temperature_2m || [];
-				var codes = data.hourly.weathercode || [];
+				showWeatherUI(city, temp, condition, humidity, windDir, windPower);
 
-				// 提取全天降水数据（00:00-24:00，25个点）注入 Rainform
-				// 注意：Open-Meteo API 使用 timezone=Asia/Shanghai，不能用 toISOString()（UTC 时间）
-				// 必须用本地时间（浏览器时区）构造日期字符串，确保与 API 返回的时间匹配
-				var todayStr = now.getFullYear() + "-" +
-					String(now.getMonth() + 1).padStart(2, "0") + "-" +
-					String(now.getDate()).padStart(2, "0");
-				var allDayPrecip = [];
-				for (var d = 0; d < times.length; d++) {
-					if (times[d].startsWith(todayStr)) {
-						allDayPrecip.push(precips[d] || 0);
-					}
-				}
-				console.log("[RainformWeather] 日期过滤: todayStr=" + todayStr + ", 匹配小时数=" + allDayPrecip.length);
-				// 补齐第 25 个点（次日 00:00 = 24:00）
-				var nextDay = new Date(now);
-				nextDay.setDate(nextDay.getDate() + 1);
-				var nextStr = nextDay.getFullYear() + "-" +
-					String(nextDay.getMonth() + 1).padStart(2, "0") + "-" +
-					String(nextDay.getDate()).padStart(2, "0");
-				for (var d2 = 0; d2 < times.length; d2++) {
-					if (times[d2].startsWith(nextStr) && times[d2].endsWith("00:00")) {
-						allDayPrecip.push(precips[d2] || 0);
-						break;
-					}
-				}
-				console.log("[RainformWeather] 补齐后 allDayPrecip 长度=" + allDayPrecip.length + ", 前5=" + allDayPrecip.slice(0, 5));
-				if (allDayPrecip.length >= 24) {
-					injectRainformData(allDayPrecip.slice(0, 25));
+				// 2. 去掉行政区划后缀后用城市名地理编码（"齐齐哈尔市"→"齐齐哈尔"）
+				var geoName = city.replace(/(市|省|区|县|自治州|自治县|地区)$/, "");
+				if (geoName) {
+					fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(geoName) + "&count=1&language=zh")
+						.then(function(r2) { return r2.json(); })
+						.then(function(geo) {
+							if (geo.results && geo.results.length > 0) {
+								fetchHourlyForecast(geo.results[0].latitude, geo.results[0].longitude);
+							} else {
+								tryBrowserGeolocation(city);
+							}
+						})
+						.catch(function() {
+							tryBrowserGeolocation(city);
+						});
 				} else {
-					console.warn("[RainformWeather] allDayPrecip 长度不足 24，跳过注入");
-				}
-
-				// 找到当前小时开始的索引
-				var startIdx = 0;
-				for (var i = 0; i < times.length; i++) {
-					var t = new Date(times[i]);
-					if (t >= now) { startIdx = i; break; }
-				}
-
-				// 取未来 12 小时
-				var timeline = document.getElementById("rw-timeline");
-				if (!timeline) return;
-				timeline.innerHTML = "";
-
-				var rainHours = [];
-
-				for (var j = 0; j < 12 && (startIdx + j) < times.length; j++) {
-					var idx = startIdx + j;
-					var time = new Date(times[idx]);
-					var hh = time.getHours().toString().padStart(2, "0");
-					var mm = time.getMinutes().toString().padStart(2, "0");
-					var precip = precips[idx] || 0;
-					var code = codes[idx] || 0;
-					var wmoInfo = getWmoInfo(code);
-					var isRain = precip > 0 || isRainCode(code);
-
-					if (isRain) {
-						rainHours.push({ time: hh + ":" + mm, precip: precip, code: code, text: wmoInfo.text });
-					}
-
-					var hourDiv = document.createElement("div");
-					hourDiv.className = "rw-hour" + (isRain ? " is-rain" : "") + (j === 0 ? " is-now" : "");
-
-					var timeSpan = document.createElement("span");
-					timeSpan.className = "rw-hour-time";
-					timeSpan.textContent = (j === 0 ? "现在" : hh + ":00");
-					hourDiv.appendChild(timeSpan);
-
-					var iconSpan = document.createElement("span");
-					iconSpan.className = "rw-hour-icon " + wmoInfo.icon;
-					iconSpan.innerHTML = createIconSvg(wmoInfo.name);
-					hourDiv.appendChild(iconSpan);
-
-					var precipSpan = document.createElement("span");
-					precipSpan.className = "rw-hour-precip" + (precip > 0 ? " has-rain" : "");
-					precipSpan.textContent = precip > 0 ? precip.toFixed(1) + "mm" : "—";
-					hourDiv.appendChild(precipSpan);
-
-					timeline.appendChild(hourDiv);
-				}
-
-				// 降水摘要
-				var summary = document.getElementById("rw-rain-summary");
-				if (summary) {
-					if (rainHours.length > 0) {
-						var totalRain = 0;
-						for (var k = 0; k < rainHours.length; k++) {
-							totalRain += rainHours[k].precip;
-						}
-						var firstRain = rainHours[0].time;
-						var lastRain = rainHours[rainHours.length - 1].time;
-						summary.innerHTML = "<strong>" + firstRain + " - " + lastRain + "</strong> 有雨 · 预计降水 <strong>" + totalRain.toFixed(1) + "mm</strong>";
-						summary.classList.add("is-visible");
-					} else {
-						summary.innerHTML = "未来 12 小时无降水";
-						summary.classList.add("is-visible");
-					}
+					tryBrowserGeolocation("");
 				}
 			})
 			.catch(function(err) {
-				console.warn("[RainformWeather] Open-Meteo 请求失败:", err);
-				var summary = document.getElementById("rw-rain-summary");
-				if (summary) {
-					summary.textContent = "降水预报获取失败";
-					summary.classList.add("is-visible");
-				}
+				console.warn("[RainformWeather] uapis.cn API 请求失败:", err);
+				tryBrowserGeolocation("");
 			});
 	}
 
 	// 将全天降水数据注入 Rainform 雨幕强度 UI
-	function injectRainformData(allDayPrecip) {
+	function injectRainformData(allDayPrecip, currentlyRaining) {
 		var iframe = document.getElementById("rainform-weather-iframe");
 		if (!iframe || !iframe.contentWindow) {
 			console.warn("[RainformWeather] iframe 不存在，无法注入数据");
 			return;
 		}
 
-		console.log("[RainformWeather] injectRainformData 被调用，数据长度:", allDayPrecip.length, "前5:", allDayPrecip.slice(0, 5));
+		console.log("[RainformWeather] injectRainformData 被调用，数据长度:", allDayPrecip.length, "前5:", allDayPrecip.slice(0, 5), "当前下雨:", currentlyRaining);
 
-		// 判断是否有雨
-		var hasRain = false;
-		for (var i = 0; i < allDayPrecip.length; i++) {
-			if (allDayPrecip[i] > 0) { hasRain = true; break; }
+		// 判断是否有雨（全天降水数据或当前天气码）
+		var hasRain = currentlyRaining || false;
+		if (!hasRain) {
+			for (var i = 0; i < allDayPrecip.length; i++) {
+				if (allDayPrecip[i] > 0) { hasRain = true; break; }
+			}
 		}
 
-		// 显示/隐藏太阳图标
-		var sunOverlay = document.getElementById("rw-sun-overlay");
-		if (sunOverlay) sunOverlay.style.display = hasRain ? "none" : "block";
+		// 增益：将 API 降水量映射到 Rainform 视觉强度
+		// 使用 sqrt 曲线放大小雨：0.1mm→1.1mm, 0.5mm→2.5mm, 1mm→3.5mm, 5mm→7.8mm, 10mm→10mm(上限)
+		var boostedPrecip = allDayPrecip.map(function(v) {
+			return Math.min(10, Math.sqrt(Math.max(0, v)) * 3.5);
+		});
+		console.log("[RainformWeather] 增益后前5:", boostedPrecip.slice(0, 5));
 
-		// 通过 postMessage 发送降水数据到 iframe 内部脚本
-		// 带重试机制：iframe 可能尚未加载完成，首次发送可能丢失
+		// 通过 postMessage 控制 iframe 内太阳光追的显示/隐藏
+		try {
+			iframe.contentWindow.postMessage({ type: "setSolarVisible", visible: !hasRain }, "*");
+		} catch(e) {}
+		console.log("[RainformWeather] 太阳光追:", hasRain ? "隐藏（雨天）" : "显示（晴天）");
+
+		// 晴天自动关闭声音
+		if (!hasRain) {
+			console.log("[RainformWeather] 晴天，自动关闭声音");
+			try {
+				iframe.contentWindow.postMessage({ type: "setSound", enabled: false }, "*");
+			} catch(e) {}
+		}
+
+		// 通过 postMessage 发送增益后的降水数据到 iframe 内部脚本
 		var sendCount = 0;
 		function sendToIframe() {
 			if (!iframe || !iframe.contentWindow) return;
 			try {
 				iframe.contentWindow.postMessage({
 					type: "setRainfall",
-					values: allDayPrecip
+					values: boostedPrecip
 				}, "*");
-				console.log("[RainformWeather] postMessage 已发送, 第", sendCount + 1, "次");
+				console.log("[RainformWeather] postMessage 已发送 (增益数据), 第", sendCount + 1, "次");
 			} catch(e) {
 				console.warn("[RainformWeather] postMessage 发送失败:", e);
 			}
