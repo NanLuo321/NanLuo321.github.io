@@ -794,7 +794,12 @@ const siteLang = lang.replace("_", "-");
               <img src="/assets/images/easter-egg.webp" alt="彩蛋" class="w-full h-full object-contain easter-egg-img" />
             </div>
             <!-- 文字 -->
-            <p class="text-2xl font-black text-center tracking-wider easter-egg-title" style="font-family: var(--font-special); background: linear-gradient(135deg, var(--primary) 0%, #ff6b6b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+            <p
+              id="easter-egg-title-clickable"
+              class="text-2xl font-black text-center tracking-wider easter-egg-title cursor-pointer select-none"
+              style="font-family: var(--font-special); background: linear-gradient(135deg, var(--primary) 0%, #ff6b6b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"
+              title="点我试试？"
+            >
               带Π不老铁
             </p>
             <p class="text-sm text-[var(--text-secondary)] mt-2 text-center opacity-60 easter-egg-hint">
@@ -806,6 +811,27 @@ const siteLang = lang.replace("_", "-");
     </div>
     <!-- 彩蛋撒花容器 -->
     <div id="easter-egg-confetti" class="fixed inset-0 z-[9998] pointer-events-none overflow-hidden"></div>
+
+    <!-- 彩蛋假加载覆盖层 -->
+    <div id="easter-egg-loader" class="easter-egg-loader">
+      <div class="eel-loading-text">INITIALIZING SYSTEM...</div>
+      <div class="eel-progress-number" id="eelProgressNumber">0</div>
+      <div class="eel-progress-bar-container">
+        <div class="eel-progress-bar" id="eelProgressBar"></div>
+      </div>
+      <div class="eel-error-text" id="eelErrorText">加载错误</div>
+      <div class="eel-loading-line" id="eelLoadingLine">正在建立连接...</div>
+    </div>
+
+    <!-- 第一次点击彩蛋的问号弹窗 -->
+    <div id="easter-egg-question" class="easter-egg-question">
+      <div class="eeq-content">
+        <span class="eeq-q">?</span>
+        <span class="eeq-q">?</span>
+        <span class="eeq-q">?</span>
+        <span class="eeq-q">?</span>
+      </div>
+    </div>
 
     <!-- 个人介绍悬浮窗触发按钮 -->
     <button
@@ -1760,6 +1786,133 @@ const siteLang = lang.replace("_", "-");
     .easter-egg-sheet-open .easter-egg-hint {
       transform: translateY(0);
       opacity: 0.6;
+    }
+
+    /* 彩蛋假加载覆盖层 */
+    .easter-egg-loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      font-family: "Courier New", monospace;
+    }
+    .easter-egg-loader.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .eel-loading-text {
+      color: #0f0;
+      font-size: 1rem;
+      letter-spacing: 0.1em;
+      margin-bottom: 1.5rem;
+    }
+    .eel-progress-number {
+      color: #0f0;
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+      text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+      transition: color 0.3s, text-shadow 0.3s;
+    }
+    .eel-progress-number.error {
+      color: #ff0040;
+      text-shadow: 0 0 15px rgba(255, 0, 64, 0.7);
+      animation: eel-error-pulse 0.5s ease-in-out infinite alternate;
+    }
+    @keyframes eel-error-pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.1); }
+    }
+    .eel-progress-bar-container {
+      width: 300px;
+      height: 4px;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .eel-progress-bar {
+      height: 100%;
+      background: #0f0;
+      width: 0%;
+      transition: width 0.05s linear;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+    .eel-progress-bar.error {
+      background: #ff0040;
+      box-shadow: 0 0 15px rgba(255, 0, 64, 0.6);
+    }
+    .eel-error-text {
+      color: #ff0040;
+      font-size: 1.2rem;
+      font-weight: bold;
+      letter-spacing: 0.3em;
+      margin-top: 1rem;
+      opacity: 0;
+      text-shadow: 0 0 10px rgba(255, 0, 64, 0.7);
+    }
+    .eel-error-text.show {
+      opacity: 1;
+      animation: eel-glitch-text 0.3s ease-in-out infinite alternate;
+    }
+    @keyframes eel-glitch-text {
+      0% { transform: translate(0); }
+      25% { transform: translate(-2px, 1px); }
+      50% { transform: translate(2px, -1px); }
+      75% { transform: translate(-1px, -2px); }
+      100% { transform: translate(1px, 2px); }
+    }
+    .eel-loading-line {
+      color: #333;
+      font-size: 0.75rem;
+      margin-top: 1rem;
+      height: 1rem;
+    }
+
+    /* 第一次点击的问号弹窗 */
+    .easter-egg-question {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.5);
+      z-index: 10001;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .easter-egg-question.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .eeq-content {
+      display: flex;
+      gap: 0.5rem;
+      font-size: 3rem;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 20px rgba(255, 0, 110, 0.8), 0 0 40px rgba(0, 245, 255, 0.5);
+      font-family: "Courier New", monospace;
+    }
+    .eeq-q {
+      animation: eeq-bounce 0.6s ease-in-out infinite;
+    }
+    .eeq-q:nth-child(1) { animation-delay: 0s; color: #ff006e; }
+    .eeq-q:nth-child(2) { animation-delay: 0.1s; color: #00f5ff; }
+    .eeq-q:nth-child(3) { animation-delay: 0.2s; color: #ff006e; }
+    .eeq-q:nth-child(4) { animation-delay: 0.3s; color: #00f5ff; }
+    @keyframes eeq-bounce {
+      0%, 100% { transform: translateY(0) rotate(-5deg); }
+      50% { transform: translateY(-15px) rotate(5deg); }
     }
 
     /* 撒花动画 */
@@ -3047,6 +3200,121 @@ function disableAnimation() {
         e.stopPropagation();
         openEasterEgg();
       };
+    }
+    // 绑定神秘页面跳转按钮（点击标题文字跳转 - 需要点2次）
+    const titleClickable = document.getElementById("easter-egg-title-clickable");
+    if (titleClickable) {
+      let clickCount = 0;
+      const requiredClicks = 2;
+      titleClickable.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        clickCount++;
+        // 点击反馈：文字轻微抖动
+        titleClickable.style.transition = "transform 0.1s";
+        titleClickable.style.transform = `scale(${1 + clickCount * 0.03})`;
+        setTimeout(() => {
+          titleClickable.style.transform = "scale(1)";
+        }, 100);
+
+        if (clickCount === 1) {
+          // 第一次点击：显示问号弹窗
+          const questionPopup = document.getElementById("easter-egg-question");
+          if (questionPopup) {
+            questionPopup.classList.add("show");
+            // 1秒后消失
+            setTimeout(() => {
+              questionPopup.classList.remove("show");
+            }, 1200);
+          }
+          titleClickable.setAttribute("title", "再点一次？");
+        } else if (clickCount >= requiredClicks) {
+          // 第二次点击：播放假加载动画
+          startEasterEggLoader();
+        }
+      };
+    }
+
+    // 彩蛋假加载动画
+    function startEasterEggLoader() {
+      const loader = document.getElementById("easter-egg-loader");
+      const progressNumber = document.getElementById("eelProgressNumber");
+      const progressBar = document.getElementById("eelProgressBar");
+      const errorText = document.getElementById("eelErrorText");
+      const loadingLine = document.getElementById("eelLoadingLine");
+      if (!loader || !progressNumber || !progressBar) return;
+
+      // 重置状态
+      progressNumber.textContent = "0";
+      progressNumber.classList.remove("error");
+      progressBar.style.width = "0%";
+      progressBar.classList.remove("error");
+      errorText?.classList.remove("show");
+      if (loadingLine) loadingLine.textContent = "正在建立连接...";
+
+      // 显示加载层
+      loader.classList.add("show");
+
+      let progress = 0;
+      const loadingMessages = [
+        "正在建立连接...",
+        "验证用户身份...",
+        "加载核心模块...",
+        "解析数据文件...",
+        "初始化渲染引擎...",
+        "同步配置信息...",
+        "检查系统完整性...",
+        "准备进入...",
+        "...",
+      ];
+
+      function updateLoadingLine(p: number) {
+        if (!loadingLine) return;
+        const index = Math.min(Math.floor(p / 5), loadingMessages.length - 1);
+        loadingLine.textContent = loadingMessages[index];
+      }
+
+      function fakeProgress() {
+        if (progress < 35) {
+          const increment = Math.random() < 0.7 ? 1 : 2;
+          progress = Math.min(progress + increment, 35);
+          progressNumber.textContent = String(progress);
+          progressBar.style.width = progress + "%";
+          updateLoadingLine(progress);
+          const delay = 50 + Math.random() * 100;
+          setTimeout(fakeProgress, delay);
+        } else if (progress === 35) {
+          // 到35后卡一下再跳到36报错
+          setTimeout(function() {
+            progress = 36;
+            fakeProgress();
+          }, 400);
+        } else if (progress === 36) {
+          // 到36，显示错误
+          progressNumber.textContent = "36";
+          progressBar.style.width = "36%";
+          progressNumber.classList.add("error");
+          progressBar.classList.add("error");
+          errorText?.classList.add("show");
+          if (loadingLine) loadingLine.textContent = "ERROR: CONNECTION LOST";
+
+          // 错误停留一段时间后闪烁并跳转
+          setTimeout(function() {
+            let flashCount = 0;
+            const flashInterval = setInterval(function() {
+              loader.style.opacity = flashCount % 2 === 0 ? "0.3" : "1";
+              flashCount++;
+              if (flashCount >= 6) {
+                clearInterval(flashInterval);
+                // 跳转到彩蛋页
+                window.location.href = "/pi/";
+              }
+            }, 150);
+          }, 1500);
+        }
+      }
+
+      setTimeout(fakeProgress, 500);
     }
   }
 

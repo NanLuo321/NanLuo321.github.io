@@ -57,6 +57,10 @@ if (process.env.NODE_ENV === "development") {
 	setMaxListeners(20);
 }
 
+
+
+
+
 const adapter = process.env.CF_WORKERS
 	? cloudflare({
 			prerenderEnvironment: "node",

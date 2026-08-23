@@ -848,10 +848,9 @@ import { Icon } from "astro-icon/components";
 			}
 		}
 
-		// 增益：将 API 降水量映射到 Rainform 视觉强度
-		// 使用 sqrt 曲线放大小雨：0.1mm→1.1mm, 0.5mm→2.5mm, 1mm→3.5mm, 5mm→7.8mm, 10mm→10mm(上限)
+		// 直接使用原始降水数据，保证数值准确
 		var boostedPrecip = allDayPrecip.map(function(v) {
-			return Math.min(10, Math.sqrt(Math.max(0, v)) * 3.5);
+			return Math.min(10, Math.max(0, v || 0));
 		});
 		console.log("[RainformWeather] 增益后前5:", boostedPrecip.slice(0, 5));
 

@@ -1,0 +1,819 @@
+---
+// 完全独立的彩蛋页面，不使用任何布局
+---
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>????</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    .mystery-page {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .mystery-page::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background:
+        radial-gradient(ellipse at center, rgba(127, 0, 255, 0.08) 0%, transparent 70%),
+        radial-gradient(ellipse at 20% 80%, rgba(0, 200, 255, 0.06) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* 悬浮窗口式监控 */
+    .monitor-window {
+      position: fixed;
+      width: 360px;
+      height: 280px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      z-index: 200;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.03);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .monitor-titlebar {
+      height: 32px;
+      background: linear-gradient(180deg, #2a2a2a 0%, #1f1f1f 100%);
+      border-bottom: 1px solid #333;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+      flex-shrink: 0;
+      cursor: move;
+      user-select: none;
+    }
+
+    .monitor-titlebar:active {
+      cursor: grabbing;
+    }
+
+    .monitor-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .monitor-dot-btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #555;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .monitor-dot-btn.close { background: #ff5f57; }
+    .monitor-dot-btn.close:hover { filter: brightness(1.3); }
+    .monitor-dot-btn.min { background: #febc2e; }
+    .monitor-dot-btn.min:hover { filter: brightness(1.3); }
+    .monitor-dot-btn.max { background: #28c840; }
+    .monitor-dot-btn.max:hover { filter: brightness(1.3); }
+
+    .monitor-title-text {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      font-family: "Courier New", monospace;
+      letter-spacing: 1px;
+    }
+
+    .monitor-record-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ff0040;
+      box-shadow: 0 0 6px #ff0040;
+      animation: dot-blink 1.5s infinite;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      z-index: 20;
+    }
+
+    .monitor-record-dot:hover {
+      box-shadow: 0 0 12px #ff0040, 0 0 20px #ff0040;
+      transform: scale(1.3);
+    }
+
+    @keyframes dot-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .monitor-body {
+      flex: 1;
+      position: relative;
+      background: #0a0a0a;
+      overflow: hidden;
+    }
+
+    .monitor-body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.2),
+        rgba(0, 0, 0, 0.2) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* 左上角窗口 */
+    .monitor-1 {
+      top: 40px;
+      left: 40px;
+    }
+
+    .no-signal-content {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #555;
+      font-family: "Courier New", monospace;
+    }
+
+    .no-signal-icon {
+      font-size: 3rem;
+      margin-bottom: 0.8rem;
+      opacity: 0.5;
+    }
+
+    .no-signal-text {
+      font-size: 1rem;
+      letter-spacing: 0.3em;
+      color: #444;
+    }
+
+    .no-signal-line {
+      width: 50%;
+      height: 1px;
+      background: #333;
+      margin: 0.8rem 0;
+    }
+
+    /* 右上角窗口 */
+    .monitor-2 {
+      top: 40px;
+      right: 40px;
+    }
+
+    .snow-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* WHO ARE YOU 漂浮文字 */
+    .floating-text-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 999;
+      pointer-events: none;
+      overflow: hidden;
+      display: none;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .floating-text-layer.show {
+      display: block;
+    }
+
+    .float-text {
+      position: absolute;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      color: #ff0040;
+      text-shadow: 0 0 10px rgba(255, 0, 64, 0.8), 0 0 20px rgba(255, 0, 64, 0.4);
+      white-space: nowrap;
+      user-select: none;
+      opacity: 0;
+      transform: scale(3);
+      transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s ease;
+    }
+
+    .float-text.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .mystery-container {
+      text-align: center;
+      max-width: 500px;
+      padding: 2rem;
+      position: relative;
+      z-index: 10;
+    }
+
+    .mystery-glitch {
+      font-size: 2.8rem;
+      font-weight: 900;
+      letter-spacing: 0.3em;
+      color: #fff;
+      position: relative;
+      animation: glitch-skew 4s infinite linear alternate-reverse;
+      margin: 0 0 1rem;
+    }
+
+    .mystery-glitch::before,
+    .mystery-glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .mystery-glitch::before {
+      color: #ff006e;
+      animation: glitch-anim 3s infinite linear alternate-reverse;
+      clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
+      transform: translate(-2px, -2px);
+    }
+
+    .mystery-glitch::after {
+      color: #00f5ff;
+      animation: glitch-anim2 2.5s infinite linear alternate-reverse;
+      clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+      transform: translate(2px, 2px);
+    }
+
+    @keyframes glitch-anim {
+      0% { clip-path: polygon(0 2%, 100% 2%, 100% 5%, 0 5%); }
+      10% { clip-path: polygon(0 15%, 100% 15%, 100% 15%, 0 15%); }
+      20% { clip-path: polygon(0 10%, 100% 10%, 100% 20%, 0 20%); }
+      30% { clip-path: polygon(0 1%, 100% 1%, 100% 2%, 0 2%); }
+      40% { clip-path: polygon(0 33%, 100% 33%, 100% 33%, 0 33%); }
+      50% { clip-path: polygon(0 44%, 100% 44%, 100% 44%, 0 44%); }
+      60% { clip-path: polygon(0 50%, 100% 50%, 100% 20%, 0 20%); }
+      70% { clip-path: polygon(0 70%, 100% 70%, 100% 70%, 0 70%); }
+      80% { clip-path: polygon(0 80%, 100% 80%, 100% 80%, 0 80%); }
+      90% { clip-path: polygon(0 50%, 100% 50%, 100% 55%, 0 55%); }
+      100% { clip-path: polygon(0 70%, 100% 70%, 100% 80%, 0 80%); }
+    }
+
+    @keyframes glitch-anim2 {
+      0% { clip-path: polygon(0 25%, 100% 25%, 100% 30%, 0 30%); }
+      15% { clip-path: polygon(0 3%, 100% 3%, 100% 3%, 0 3%); }
+      25% { clip-path: polygon(0 20%, 100% 20%, 100% 20%, 0 20%); }
+      35% { clip-path: polygon(0 40%, 100% 40%, 100% 40%, 0 40%); }
+      45% { clip-path: polygon(0 52%, 100% 52%, 100% 54%, 0 54%); }
+      55% { clip-path: polygon(0 60%, 100% 60%, 100% 60%, 0 60%); }
+      65% { clip-path: polygon(0 75%, 100% 75%, 100% 75%, 0 75%); }
+      75% { clip-path: polygon(0 85%, 100% 85%, 100% 85%, 0 85%); }
+      85% { clip-path: polygon(0 65%, 100% 65%, 100% 67%, 0 67%); }
+      100% { clip-path: polygon(0 35%, 100% 35%, 100% 40%, 0 40%); }
+    }
+
+    @keyframes glitch-skew {
+      0% { transform: skew(0deg); }
+      10% { transform: skew(0.5deg); }
+      20% { transform: skew(-0.5deg); }
+      30% { transform: skew(0.3deg); }
+      40% { transform: skew(-0.3deg); }
+      50% { transform: skew(0deg); }
+      100% { transform: skew(0deg); }
+    }
+
+    .mystery-sub {
+      color: #666;
+      font-size: 0.9rem;
+      letter-spacing: 0.2em;
+      margin-bottom: 2rem;
+      animation: fade-in-out 3s ease-in-out infinite;
+    }
+
+    @keyframes fade-in-out {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    .mystery-divider {
+      width: 60%;
+      height: 1px;
+      margin: 1.5rem auto;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    }
+
+    .mystery-text {
+      color: #aaa;
+      font-size: 0.95rem;
+      line-height: 2.2;
+      margin: 2rem 0;
+    }
+
+    .mystery-text p {
+      margin: 0.5rem 0;
+      opacity: 0;
+      animation: text-appear 0.8s ease forwards;
+    }
+
+    .mystery-text p:nth-child(1) { animation-delay: 0.3s; }
+    .mystery-text p:nth-child(2) { animation-delay: 0.8s; }
+    .mystery-text p:nth-child(3) { animation-delay: 1.3s; }
+    .mystery-text p:nth-child(4) { animation-delay: 1.8s; }
+
+    @keyframes text-appear {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .mystery-flicker {
+      color: #ff006e;
+      animation: flicker 2s infinite;
+    }
+
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+      75% { opacity: 0.8; }
+    }
+
+    .mystery-questions {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin: 2rem 0;
+      font-size: 1.5rem;
+      color: #333;
+    }
+
+    .mystery-questions span {
+      animation: question-bounce 2s ease-in-out infinite;
+    }
+
+    .mystery-questions span:nth-child(1) { animation-delay: 0s; color: #ff006e; }
+    .mystery-questions span:nth-child(2) { animation-delay: 0.3s; color: #00f5ff; }
+    .mystery-questions span:nth-child(3) { animation-delay: 0.6s; color: #ff006e; }
+    .mystery-questions span:nth-child(4) { animation-delay: 0.9s; color: #00f5ff; }
+
+    @keyframes question-bounce {
+      0%, 100% { transform: translateY(0); opacity: 0.3; }
+      50% { transform: translateY(-10px); opacity: 1; }
+    }
+
+    /* 回去吧按钮 */
+    .mystery-back {
+      position: fixed;
+      display: inline-block;
+      padding: 0.8rem 2rem;
+      color: #666;
+      text-decoration: none;
+      border: 1px solid #333;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      letter-spacing: 0.1em;
+      transition: all 0.3s ease;
+      opacity: 0;
+      animation: btn-appear 0.8s ease forwards;
+      animation-delay: 2.5s;
+      cursor: pointer;
+      user-select: none;
+      z-index: 50;
+      left: 50%;
+      bottom: 15%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    @keyframes btn-appear {
+      from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    .mystery-back:hover {
+      color: #fff;
+      border-color: #ff006e;
+      box-shadow: 0 0 20px rgba(255, 0, 110, 0.3);
+    }
+
+    @media (max-width: 768px) {
+      .monitor-window {
+        width: 260px;
+        height: 200px;
+      }
+      .monitor-1 { top: 20px; left: 20px; }
+      .monitor-2 { top: 20px; right: 20px; }
+
+      .mystery-glitch {
+        font-size: 1.8rem;
+        letter-spacing: 0.2em;
+      }
+
+      .mystery-container {
+        padding: 1rem;
+      }
+
+      .mystery-text {
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 监控窗口1：无信号（左上角） -->
+  <div class="monitor-window monitor-1" id="monitor1">
+    <div class="monitor-titlebar" data-drag-handle="monitor1">
+      <div class="monitor-dots">
+        <div class="monitor-dot-btn close" onclick="showWhoText(event, true)"></div>
+        <div class="monitor-dot-btn min"></div>
+        <div class="monitor-dot-btn max"></div>
+      </div>
+      <div class="monitor-title-text">CAM-01 — SURVEILLANCE</div>
+      <div class="monitor-record-dot" id="monitorDot1" title="点我？" onclick="showWhoText(event, false)"></div>
+    </div>
+    <div class="monitor-body">
+      <div class="no-signal-content">
+        <div class="no-signal-icon">📺</div>
+        <div class="no-signal-line"></div>
+        <div class="no-signal-text">NO SIGNAL</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 监控窗口2：雪花（右上角） -->
+  <div class="monitor-window monitor-2" id="monitor2">
+    <div class="monitor-titlebar" data-drag-handle="monitor2">
+      <div class="monitor-dots">
+        <div class="monitor-dot-btn close" onclick="showWhoText(event, true)"></div>
+        <div class="monitor-dot-btn min"></div>
+        <div class="monitor-dot-btn max"></div>
+      </div>
+      <div class="monitor-title-text">CAM-02 — SURVEILLANCE</div>
+      <div class="monitor-record-dot" id="monitorDot2" title="点我？" onclick="showWhoText(event, false)"></div>
+    </div>
+    <div class="monitor-body">
+      <canvas class="snow-canvas" id="snowCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- WHO ARE YOU 漂浮文字层 -->
+  <div class="floating-text-layer" id="floatingTextLayer"></div>
+
+  <div class="mystery-page">
+    <div class="mystery-container">
+      <h1 class="mystery-glitch" data-text="你为什么在这里">你为什么在这里</h1>
+      <p class="mystery-sub">...你是怎么找到这里的...</p>
+
+      <div class="mystery-divider"></div>
+
+      <div class="mystery-text">
+        <p>这个地方本不该被发现。</p>
+        <p>但既然你来了...</p>
+        <p>也许你只是好奇？</p>
+        <p class="mystery-flicker">还是说... 你在寻找什么？</p>
+      </div>
+
+      <div class="mystery-questions">
+        <span>?</span>
+        <span>?</span>
+        <span>?</span>
+        <span>?</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 回去吧按钮（全屏移动） -->
+  <a href="/" class="mystery-back" id="mysteryBackBtn">← 回去吧</a>
+
+  <script>
+    // 雪花效果
+    (function() {
+      const canvas = document.getElementById('snowCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      function resizeCanvas() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      function drawNoise() {
+        const w = canvas.width;
+        const h = canvas.height;
+        const imageData = ctx.createImageData(w, h);
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const noise = Math.random() * 255;
+          data[i] = noise;
+          data[i + 1] = noise;
+          data[i + 2] = noise;
+          data[i + 3] = 255;
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        requestAnimationFrame(drawNoise);
+      }
+      drawNoise();
+    })();
+
+    // 监控窗口拖拽
+    (function() {
+      const handles = document.querySelectorAll('[data-drag-handle]');
+      let dragTarget = null;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      handles.forEach(function(handle) {
+        handle.addEventListener('mousedown', function(e) {
+          // 如果点到了录制灯，不触发拖拽
+          if (e.target.classList.contains('monitor-record-dot')) return;
+          if (e.target.closest('.monitor-dots')) return;
+
+          const winId = handle.getAttribute('data-drag-handle');
+          dragTarget = document.getElementById(winId);
+          if (!dragTarget) return;
+
+          const rect = dragTarget.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+
+          // 把当前窗口置顶
+          dragTarget.style.zIndex = 300;
+          const other = dragTarget.id === 'monitor1' ? document.getElementById('monitor2') : document.getElementById('monitor1');
+          if (other) other.style.zIndex = 200;
+
+          e.preventDefault();
+        });
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!dragTarget) return;
+
+        let newX = e.clientX - offsetX;
+        let newY = e.clientY - offsetY;
+
+        // 边界限制
+        const winW = dragTarget.offsetWidth;
+        const winH = dragTarget.offsetHeight;
+        newX = Math.max(0, Math.min(window.innerWidth - winW, newX));
+        newY = Math.max(0, Math.min(window.innerHeight - winH, newY));
+
+        dragTarget.style.left = newX + 'px';
+        dragTarget.style.top = newY + 'px';
+        dragTarget.style.right = 'auto';
+        dragTarget.style.bottom = 'auto';
+      });
+
+      document.addEventListener('mouseup', function() {
+        dragTarget = null;
+      });
+
+      // 触摸支持
+      handles.forEach(function(handle) {
+        handle.addEventListener('touchstart', function(e) {
+          if (e.target.classList.contains('monitor-record-dot')) return;
+          if (e.target.closest('.monitor-dots')) return;
+
+          const winId = handle.getAttribute('data-drag-handle');
+          dragTarget = document.getElementById(winId);
+          if (!dragTarget) return;
+
+          const touch = e.touches[0];
+          const rect = dragTarget.getBoundingClientRect();
+          offsetX = touch.clientX - rect.left;
+          offsetY = touch.clientY - rect.top;
+
+          dragTarget.style.zIndex = 300;
+          const other = dragTarget.id === 'monitor1' ? document.getElementById('monitor2') : document.getElementById('monitor1');
+          if (other) other.style.zIndex = 200;
+        });
+      });
+
+      document.addEventListener('touchmove', function(e) {
+        if (!dragTarget) return;
+        const touch = e.touches[0];
+        let newX = touch.clientX - offsetX;
+        let newY = touch.clientY - offsetY;
+
+        const winW = dragTarget.offsetWidth;
+        const winH = dragTarget.offsetHeight;
+        newX = Math.max(0, Math.min(window.innerWidth - winW, newX));
+        newY = Math.max(0, Math.min(window.innerHeight - winH, newY));
+
+        dragTarget.style.left = newX + 'px';
+        dragTarget.style.top = newY + 'px';
+        dragTarget.style.right = 'auto';
+        dragTarget.style.bottom = 'auto';
+      });
+
+      document.addEventListener('touchend', function() {
+        dragTarget = null;
+      });
+    })();
+
+    // 回去吧按钮躲避逻辑
+    (function() {
+      const backBtn = document.getElementById('mysteryBackBtn');
+      if (!backBtn) return;
+
+      let dodgeCount = 0;
+      const maxDodges = 9;
+      let currentX = 0;
+      let currentY = 0;
+      let initialized = false;
+
+      function getInitialPos() {
+        const rect = backBtn.getBoundingClientRect();
+        currentX = rect.left;
+        currentY = rect.top;
+      }
+
+      function dodge() {
+        if (dodgeCount >= maxDodges) return;
+
+        if (!initialized) {
+          getInitialPos();
+          initialized = true;
+        }
+
+        dodgeCount++;
+
+        const btnRect = backBtn.getBoundingClientRect();
+        const btnWidth = btnRect.width;
+        const btnHeight = btnRect.height;
+        const maxX = window.innerWidth - btnWidth - 20;
+        const maxY = window.innerHeight - btnHeight - 20;
+        const minX = 20;
+        const minY = 20;
+
+        let newX = Math.random() * (maxX - minX) + minX;
+        let newY = Math.random() * (maxY - minY) + minY;
+
+        const minDist = 150;
+        const dist = Math.sqrt((newX - currentX) ** 2 + (newY - currentY) ** 2);
+        if (dist < minDist) {
+          newX = currentX + (Math.random() > 0.5 ? 1 : -1) * (minDist + Math.random() * 100);
+          newY = currentY + (Math.random() > 0.5 ? 1 : -1) * (minDist + Math.random() * 100);
+          newX = Math.max(minX, Math.min(maxX, newX));
+          newY = Math.max(minY, Math.min(maxY, newY));
+        }
+
+        currentX = newX;
+        currentY = newY;
+
+        backBtn.style.transition = 'left 0.2s ease-out, top 0.2s ease-out, color 0.3s, border-color 0.3s, box-shadow 0.3s';
+        backBtn.style.left = currentX + 'px';
+        backBtn.style.top = currentY + 'px';
+        backBtn.style.transform = 'none';
+        backBtn.style.bottom = 'auto';
+
+        if (dodgeCount === maxDodges) {
+          setTimeout(function() {
+            backBtn.textContent = '← 行吧 点吧';
+            backBtn.style.color = '#ff006e';
+            backBtn.style.borderColor = '#ff006e';
+            backBtn.style.transition = 'all 0.3s ease';
+          }, 200);
+        }
+      }
+
+      backBtn.addEventListener('mouseover', dodge);
+
+      backBtn.addEventListener('click', function(e) {
+        if (dodgeCount < maxDodges) {
+          e.preventDefault();
+          dodge();
+        }
+      });
+    })();
+
+    // 点击录制灯 - 满屏弹出 WHO ARE YOU
+    // 点击关闭按钮 - 显示"你为什么关闭？"
+    var whoTexts = ['WHO ARE YOU?', '你是谁？', 'IDENTIFY YOURSELF', 'UNKNOWN ENTITY', '???', 'WHO IS THERE?', 'SHOW YOURSELF', 'WHO?'];
+    var whoColors = ['#ff0040', '#ff006e', '#ff3366', '#cc0033', '#ff4444', '#ff1a4d'];
+    var whoActive = false;
+    var whoAutoHideTimer = null;
+
+    window.showWhoText = function(e, isClose) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (whoActive) return;
+      whoActive = true;
+
+      var layer = document.getElementById('floatingTextLayer');
+      if (!layer) return;
+
+      layer.innerHTML = '';
+      layer.style.display = 'block';
+      layer.style.opacity = '1';
+      layer.style.background = 'rgba(0,0,0,0.6)';
+      layer.style.zIndex = '99999';
+
+      var contentText = isClose ? '你为什么关闭？' : null;
+      var contentColor = isClose ? '#ff0040' : null;
+
+      // 生成80个文字，一个一个弹出来
+      for (var i = 0; i < 80; i++) {
+        (function(idx) {
+          setTimeout(function() {
+            if (!whoActive) return;
+
+            var text = document.createElement('div');
+            text.style.position = 'absolute';
+            text.style.fontFamily = '"Courier New", monospace';
+            text.style.fontWeight = 'bold';
+            text.style.color = contentColor || whoColors[Math.floor(Math.random() * whoColors.length)];
+            text.style.textShadow = '0 0 8px rgba(255,0,64,0.8)';
+            text.style.whiteSpace = 'nowrap';
+            text.style.pointerEvents = 'none';
+            text.style.fontStyle = 'italic';
+            text.textContent = contentText || whoTexts[Math.floor(Math.random() * whoTexts.length)];
+
+            var fontSize = 18 + Math.random() * 22;
+            text.style.fontSize = fontSize + 'px';
+            text.style.top = (Math.random() * 90 + 5) + '%';
+            text.style.left = (Math.random() * 90 + 5) + '%';
+
+            // 随机旋转角度
+            var rotate = (Math.random() * 60 - 30);
+
+            // 从大缩小出现
+            text.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            text.style.transformOrigin = 'center';
+            text.style.transform = 'scale(3) rotate(' + rotate + 'deg)';
+            text.style.opacity = '0';
+
+            layer.appendChild(text);
+
+            // 触发动画
+            requestAnimationFrame(function() {
+              text.style.transform = 'scale(1) rotate(' + rotate + 'deg)';
+              text.style.opacity = '1';
+            });
+          }, idx * 40);
+        })(i);
+      }
+
+      // 5秒后自动消失
+      if (whoAutoHideTimer) clearTimeout(whoAutoHideTimer);
+      whoAutoHideTimer = setTimeout(function() {
+        whoActive = false;
+        layer.style.transition = 'opacity 0.5s ease';
+        layer.style.opacity = '0';
+        setTimeout(function() {
+          layer.style.display = 'none';
+          layer.style.opacity = '';
+          layer.style.transition = '';
+          layer.innerHTML = '';
+        }, 500);
+      }, 5000);
+    };
+  </script>
+</body>
+</html>
