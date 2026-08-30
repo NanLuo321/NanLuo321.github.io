@@ -1,0 +1,403 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    width: 100%;
+    height: 100vh;
+    background: #1b1b1b;
+    color: #eee;
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    overflow: hidden;
+    user-select: none;
+}
+
+/* 主页 */
+.home {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.cam-title {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.cam-title .logo {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 16px;
+    background: #09f;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    color: #fff;
+    box-shadow: 0 6px 20px #09f55;
+}
+
+.cam-title h1 {
+    font-weight: 300;
+    font-size: 26px;
+}
+
+.modes {
+    display: flex;
+    gap: 24px;
+}
+
+.mode-card {
+    width: 220px;
+    padding: 28px 20px;
+    background: #262626;
+    border: 1px solid #333;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+}
+
+.mode-card:hover {
+    border-color: #09f;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px #0008;
+}
+
+.mode-card .m-icon {
+    font-size: 42px;
+    color: #09f;
+    margin-bottom: 14px;
+}
+
+.mode-card .m-title {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.mode-card .m-txt {
+    font-size: 12px;
+    color: #999;
+    line-height: 1.6;
+}
+
+/* 视图页 */
+.view {
+    height: 100%;
+    display: none;
+    flex-direction: column;
+}
+
+.view-top {
+    height: 46px;
+    background: #262626;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px;
+    flex-shrink: 0;
+    font-size: 15px;
+    font-weight: 500;
+    border-bottom: 1px solid #000;
+}
+
+.view-top .back {
+    background: none;
+    border: none;
+    color: #ccc;
+    font-size: 20px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.view-top .back:hover {
+    background: #3a3a3a;
+    color: #fff;
+}
+
+.view-top .capture,
+.view-top .close-cam {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #ddd;
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.view-top .capture:hover {
+    color: #09f;
+}
+
+.view-top .close-cam:hover {
+    color: #f66;
+    background: #3a3a3a;
+}
+
+.view-body {
+    flex: 1;
+    position: relative;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+}
+
+.view-body video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.view-body video[hidden] {
+    display: none;
+}
+
+/* 摄像头关闭状态 */
+.cam-off {
+    text-align: center;
+    color: #777;
+}
+
+.cam-off .co-icon {
+    font-size: 56px;
+    margin-bottom: 12px;
+    color: #555;
+}
+
+.cam-off p {
+    font-size: 14px;
+    margin-bottom: 18px;
+}
+
+.cam-off button {
+    background: #09f;
+    border: none;
+    color: #fff;
+    padding: 10px 26px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.cam-off button:hover {
+    background: #2aa8ff;
+}
+
+.view-foot {
+    height: 84px;
+    background: #262626;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.view-foot img {
+    height: 62px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.view-foot img:hover {
+    border-color: #09f;
+}
+
+/* RTMP 面板 */
+.rtmp-panel {
+    text-align: center;
+    max-width: 460px;
+    width: 90%;
+}
+
+.rtmp-panel .rp-icon {
+    font-size: 52px;
+    color: #09f;
+    margin-bottom: 12px;
+}
+
+.rtmp-panel p {
+    font-size: 14px;
+    color: #aaa;
+    margin-bottom: 16px;
+}
+
+.rtmp-panel input {
+    width: 100%;
+    background: #1c1c1c;
+    border: 1px solid #444;
+    color: #eee;
+    padding: 11px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+    margin-bottom: 12px;
+}
+
+.rtmp-panel input:focus {
+    border-color: #09f;
+}
+
+.rtmp-panel button {
+    background: #09f;
+    border: none;
+    color: #fff;
+    padding: 10px 30px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.rtmp-panel button:hover {
+    background: #2aa8ff;
+}
+
+.rtmp-panel .rp-tip {
+    margin-top: 14px;
+    font-size: 11px;
+    color: #777;
+    line-height: 1.6;
+}
+
+/* 隐私声明 */
+.privacy-mask {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background: #000a;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.privacy-mask.hidden {
+    display: none;
+}
+
+.privacy-box {
+    width: 400px;
+    background: #262626;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 10px 40px #0008;
+}
+
+.privacy-box .p-icon {
+    font-size: 44px;
+    color: #09f;
+    margin-bottom: 14px;
+}
+
+.privacy-box h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.privacy-box p {
+    font-size: 13px;
+    color: #bbb;
+    line-height: 2;
+    margin-bottom: 22px;
+    text-align: left;
+    padding-left: 6px;
+}
+
+.privacy-box .p-btns {
+    display: flex;
+    gap: 12px;
+}
+
+.privacy-box .p-btns button {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.privacy-box .p-btns .agree {
+    background: #09f;
+    color: #fff;
+}
+
+.privacy-box .p-btns .refuse {
+    background: #3a3a3a;
+    color: #bbb;
+}
+
+/* 拍照预览 */
+.shot-mask {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background: #000b;
+    z-index: 998;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.shot-box {
+    background: #262626;
+    border-radius: 10px;
+    padding: 16px;
+    max-width: 80%;
+    text-align: center;
+}
+
+.shot-box img {
+    max-width: 100%;
+    max-height: 55vh;
+    border-radius: 6px;
+    margin-bottom: 14px;
+}
+
+.shot-btns {
+    display: flex;
+    gap: 12px;
+}
+
+.shot-btns button {
+    flex: 1;
+    padding: 9px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.shot-btns .agree {
+    background: #09f;
+    color: #fff;
+}
+
+.shot-btns .refuse {
+    background: #3a3a3a;
+    color: #bbb;
+}

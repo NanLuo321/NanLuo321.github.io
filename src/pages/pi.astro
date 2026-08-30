@@ -184,12 +184,52 @@
       font-size: 3rem;
       margin-bottom: 0.8rem;
       opacity: 0.5;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .no-signal-icon:hover {
+      opacity: 1;
+      transform: scale(1.1);
+      filter: drop-shadow(0 0 8px rgba(0, 245, 255, 0.5));
     }
 
     .no-signal-text {
       font-size: 1rem;
       letter-spacing: 0.3em;
       color: #444;
+    }
+
+    /* 摄像头实时画面 */
+    .cam-feed {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 5;
+    }
+
+    .cam-feed video {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+      min-height: 0;
+    }
+
+    .cam-note {
+      padding: 6px 8px;
+      font-size: 10px;
+      color: #888;
+      font-family: "Courier New", monospace;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.75);
+      border-top: 1px solid #333;
+      flex-shrink: 0;
+      letter-spacing: 0.3px;
+      line-height: 1.5;
     }
 
     .no-signal-line {
@@ -390,17 +430,8 @@
     }
 
     .mystery-questions span {
-      animation: question-bounce 2s ease-in-out infinite;
-    }
-
-    .mystery-questions span:nth-child(1) { animation-delay: 0s; color: #ff006e; }
-    .mystery-questions span:nth-child(2) { animation-delay: 0.3s; color: #00f5ff; }
-    .mystery-questions span:nth-child(3) { animation-delay: 0.6s; color: #ff006e; }
-    .mystery-questions span:nth-child(4) { animation-delay: 0.9s; color: #00f5ff; }
-
-    @keyframes question-bounce {
-      0%, 100% { transform: translateY(0); opacity: 0.3; }
-      50% { transform: translateY(-10px); opacity: 1; }
+      color: #ff0040;
+      text-shadow: 0 0 12px rgba(255, 0, 64, 0.7);
     }
 
     /* 回去吧按钮 */
@@ -438,6 +469,178 @@
       box-shadow: 0 0 20px rgba(255, 0, 110, 0.3);
     }
 
+    /* ===== 进入警告框 ===== */
+    .enter-warning {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.93);
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Courier New", monospace;
+    }
+
+    .warning-box {
+      text-align: center;
+      padding: 2.5rem 3rem;
+      border: 1px solid rgba(255,0,64,0.5);
+      border-radius: 8px;
+      background: linear-gradient(180deg, #1a0000 0%, #000 100%);
+      box-shadow: 0 0 50px rgba(255,0,64,0.25), inset 0 0 30px rgba(0,0,0,0.6);
+      max-width: 440px;
+      animation: warning-in 0.6s ease;
+    }
+
+    @keyframes warning-in {
+      from { opacity: 0; transform: scale(0.92); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .warning-icon {
+      font-size: 3rem;
+      color: #ff0040;
+      margin-bottom: 1rem;
+      text-shadow: 0 0 18px rgba(255,0,64,0.8);
+      animation: warning-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes warning-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .warning-title {
+      color: #ff0040;
+      font-size: 1.4rem;
+      font-weight: bold;
+      letter-spacing: 0.15em;
+      margin-bottom: 1rem;
+    }
+
+    .warning-text {
+      color: #888;
+      font-size: 0.9rem;
+      line-height: 1.9;
+      margin-bottom: 2rem;
+    }
+
+    .warning-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .warning-btn {
+      padding: 0.7rem 2.4rem;
+      border: 1px solid #444;
+      background: transparent;
+      color: #ccc;
+      font-size: 0.95rem;
+      cursor: pointer;
+      text-decoration: none;
+      border-radius: 4px;
+      font-family: "Courier New", monospace;
+      letter-spacing: 0.15em;
+      transition: all 0.25s ease;
+    }
+
+    .warning-yes {
+      border-color: #ff0040;
+      color: #ff0040;
+    }
+
+    .warning-yes:hover {
+      background: #ff0040;
+      color: #000;
+      box-shadow: 0 0 22px rgba(255,0,64,0.55);
+    }
+
+    .warning-home:hover {
+      border-color: #aaa;
+      color: #fff;
+    }
+
+    /* ===== 恐怖氛围增强 ===== */
+
+    /* 跟随鼠标的注视眼睛 */
+    .watch-eyes {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .eye {
+      position: absolute;
+      width: 88px;
+      height: 42px;
+      background: radial-gradient(ellipse at center, #200000 0%, #000 85%);
+      border-radius: 50%;
+      border: 1px solid rgba(255,0,0,0.12);
+      overflow: hidden;
+      box-shadow: 0 0 35px rgba(255,0,0,0.28), inset 0 0 22px #000;
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+
+    .eye.show { opacity: 0.92; }
+
+    .pupil {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 14px; height: 14px;
+      background: radial-gradient(circle at 35% 35%, #ff5a5a 0%, #cc0000 45%, #400000 100%);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 14px #ff0000;
+      will-change: transform;
+    }
+
+    /* 屏幕边缘心跳脉动 */
+    .heartbeat-vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      box-shadow: inset 0 0 120px 40px rgba(120,0,0,0);
+      transition: box-shadow 0.18s ease;
+    }
+
+    .heartbeat-vignette.beat {
+      box-shadow: inset 0 0 200px 70px rgba(150,0,0,0.6);
+    }
+
+    /* 血色闪光 */
+    .blood-flash {
+      position: fixed;
+      inset: 0;
+      background: rgba(120,0,0,0);
+      pointer-events: none;
+      z-index: 600;
+      transition: background 0.07s ease;
+    }
+
+    .blood-flash.flash {
+      background: rgba(255,0,0,0.78);
+    }
+
+    /* 鬼影闪现 */
+    .ghost-figure {
+      position: fixed;
+      pointer-events: none;
+      z-index: 150;
+      opacity: 0;
+      width: 170px;
+      height: 340px;
+      filter: blur(3px) brightness(0.25) contrast(1.4);
+      transition: opacity 0.1s ease;
+      will-change: opacity, transform;
+    }
+
+    .ghost-figure.show { opacity: 0.85; }
+
     @media (max-width: 768px) {
       .monitor-window {
         width: 260px;
@@ -462,6 +665,19 @@
   </style>
 </head>
 <body>
+  <!-- 进入警告 -->
+  <div class="enter-warning" id="enterWarning">
+    <div class="warning-box">
+      <div class="warning-icon">⚠</div>
+      <div class="warning-title">本页面带有恐怖元素</div>
+      <div class="warning-text">包含闪烁画面、注视效果与低频声响，可能引起不适。<br>是否继续？</div>
+      <div class="warning-buttons">
+        <button class="warning-btn warning-yes" id="warningYes">是</button>
+        <a href="/" class="warning-btn warning-home">主页</a>
+      </div>
+    </div>
+  </div>
+
   <!-- 监控窗口1：无信号（左上角） -->
   <div class="monitor-window monitor-1" id="monitor1">
     <div class="monitor-titlebar" data-drag-handle="monitor1">
@@ -474,10 +690,23 @@
       <div class="monitor-record-dot" id="monitorDot1" title="点我？" onclick="showWhoText(event, false)"></div>
     </div>
     <div class="monitor-body">
-      <div class="no-signal-content">
-        <div class="no-signal-icon">📺</div>
+      <div class="no-signal-content" id="noSignalContent1">
+        <svg class="no-signal-icon" id="tvIcon1" title="点我开启摄像头" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" style="width:3rem;height:3rem;">
+          <rect x="28" y="40" width="8" height="14" fill="currentColor"/>
+          <rect x="20" y="52" width="24" height="4" rx="2" fill="currentColor"/>
+          <rect x="10" y="18" width="38" height="20" rx="3" fill="currentColor"/>
+          <rect x="46" y="24" width="8" height="8" rx="2" fill="currentColor"/>
+          <circle cx="38" cy="28" r="7" fill="#000"/>
+          <circle cx="38" cy="28" r="4.5" fill="currentColor"/>
+          <circle cx="36" cy="26" r="1.5" fill="#000" opacity="0.5"/>
+          <circle cx="16" cy="24" r="1.5" fill="#ff0040"/>
+        </svg>
         <div class="no-signal-line"></div>
         <div class="no-signal-text">NO SIGNAL</div>
+      </div>
+      <div class="cam-feed" id="camFeed1" style="display: none;">
+        <video id="camVideo1" autoplay playsinline muted></video>
+        <div class="cam-note">此视频不会上传到任何网站包括设备 刷新网页后什么都没发生。</div>
       </div>
     </div>
   </div>
@@ -501,18 +730,27 @@
   <!-- WHO ARE YOU 漂浮文字层 -->
   <div class="floating-text-layer" id="floatingTextLayer"></div>
 
+  <!-- 恐怖氛围层 -->
+  <div class="heartbeat-vignette" id="heartbeatVignette"></div>
+  <div class="blood-flash" id="bloodFlash"></div>
+  <div class="watch-eyes" id="watchEyes"></div>
+  <svg class="ghost-figure" id="ghostFigure" viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <ellipse cx="50" cy="26" rx="17" ry="21" fill="#0a0a0a"/>
+    <path d="M33,46 Q29,82 31,124 Q33,165 41,200 L59,200 Q67,165 69,124 Q71,82 67,46 Z" fill="#0a0a0a"/>
+  </svg>
+
   <div class="mystery-page">
     <div class="mystery-container">
-      <h1 class="mystery-glitch" data-text="你为什么在这里">你为什么在这里</h1>
-      <p class="mystery-sub">...你是怎么找到这里的...</p>
+      <h1 class="mystery-glitch" data-text="你不该来这里的">你不该来这里的</h1>
+      <p class="mystery-sub">...它已经看见你了...</p>
 
       <div class="mystery-divider"></div>
 
       <div class="mystery-text">
-        <p>这个地方本不该被发现。</p>
-        <p>但既然你来了...</p>
-        <p>也许你只是好奇？</p>
-        <p class="mystery-flicker">还是说... 你在寻找什么？</p>
+        <p>这里埋着不该被看见的东西。</p>
+        <p>你每多看一秒，它就离你更近一点。</p>
+        <p>别回头。</p>
+        <p class="mystery-flicker">它就在屏幕后面...看着你。</p>
       </div>
 
       <div class="mystery-questions">
@@ -559,6 +797,41 @@
         requestAnimationFrame(drawNoise);
       }
       drawNoise();
+    })();
+
+    // 电视图标点击 - 调取设备摄像头（本地，不上传）
+    (function() {
+      var tvIcon = document.getElementById('tvIcon1');
+      if (!tvIcon) return;
+
+      var camStream = null;
+      var camActive = false;
+
+      function startCamera() {
+        if (camActive) return;
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          alert('当前浏览器不支持摄像头调用');
+          return;
+        }
+
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+          .then(function(stream) {
+            camStream = stream;
+            camActive = true;
+            var noSignal = document.getElementById('noSignalContent1');
+            var camFeed = document.getElementById('camFeed1');
+            var video = document.getElementById('camVideo1');
+            if (noSignal) noSignal.style.display = 'none';
+            if (camFeed) camFeed.style.display = 'flex';
+            if (video) video.srcObject = stream;
+          })
+          .catch(function(err) {
+            alert('无法访问摄像头：' + (err.message || '权限被拒绝'));
+          });
+      }
+
+      tvIcon.addEventListener('click', startCamera);
     })();
 
     // 监控窗口拖拽
@@ -714,7 +987,7 @@
 
         if (dodgeCount === maxDodges) {
           setTimeout(function() {
-            backBtn.textContent = '← 行吧 点吧';
+            backBtn.textContent = '你不应该在这里';
             backBtn.style.color = '#ff006e';
             backBtn.style.borderColor = '#ff006e';
             backBtn.style.transition = 'all 0.3s ease';
@@ -758,8 +1031,8 @@
       var contentText = isClose ? '你为什么关闭？' : null;
       var contentColor = isClose ? '#ff0040' : null;
 
-      // 生成80个文字，一个一个弹出来
-      for (var i = 0; i < 80; i++) {
+      // 一个一个弹出，无缩放动画
+      for (var i = 0; i < 260; i++) {
         (function(idx) {
           setTimeout(function() {
             if (!whoActive) return;
@@ -769,51 +1042,174 @@
             text.style.fontFamily = '"Courier New", monospace';
             text.style.fontWeight = 'bold';
             text.style.color = contentColor || whoColors[Math.floor(Math.random() * whoColors.length)];
-            text.style.textShadow = '0 0 8px rgba(255,0,64,0.8)';
+            text.style.textShadow = '0 0 6px rgba(255,0,64,0.8)';
             text.style.whiteSpace = 'nowrap';
             text.style.pointerEvents = 'none';
             text.style.fontStyle = 'italic';
             text.textContent = contentText || whoTexts[Math.floor(Math.random() * whoTexts.length)];
 
-            var fontSize = 18 + Math.random() * 22;
+            var fontSize = 7 + Math.random() * 11;
             text.style.fontSize = fontSize + 'px';
-            text.style.top = (Math.random() * 90 + 5) + '%';
-            text.style.left = (Math.random() * 90 + 5) + '%';
+            text.style.top = (Math.random() * 96 + 2) + '%';
+            text.style.left = (Math.random() * 96 + 2) + '%';
 
-            // 随机旋转角度
             var rotate = (Math.random() * 60 - 30);
-
-            // 从大缩小出现
-            text.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
             text.style.transformOrigin = 'center';
-            text.style.transform = 'scale(3) rotate(' + rotate + 'deg)';
-            text.style.opacity = '0';
+            text.style.transform = 'scale(1) rotate(' + rotate + 'deg)';
+            text.style.opacity = '1';
 
             layer.appendChild(text);
-
-            // 触发动画
-            requestAnimationFrame(function() {
-              text.style.transform = 'scale(1) rotate(' + rotate + 'deg)';
-              text.style.opacity = '1';
-            });
-          }, idx * 40);
+          }, idx * 14);
         })(i);
       }
 
-      // 5秒后自动消失
+      // 5秒后直接消失，无关闭动画
       if (whoAutoHideTimer) clearTimeout(whoAutoHideTimer);
       whoAutoHideTimer = setTimeout(function() {
         whoActive = false;
-        layer.style.transition = 'opacity 0.5s ease';
-        layer.style.opacity = '0';
-        setTimeout(function() {
-          layer.style.display = 'none';
-          layer.style.opacity = '';
-          layer.style.transition = '';
-          layer.innerHTML = '';
-        }, 500);
+        layer.style.display = 'none';
+        layer.style.opacity = '';
+        layer.style.transition = '';
+        layer.style.background = '';
+        layer.innerHTML = '';
       }, 5000);
     };
+
+    // ===== 恐怖氛围（确认进入后启动） =====
+    window.startHorror = function() {
+      // 跟随鼠标的注视眼睛
+      var eyesLayer = document.getElementById('watchEyes');
+      if (eyesLayer) {
+        var eyePositions = [
+          { x: 6, y: 14 },
+          { x: 84, y: 9 },
+          { x: 18, y: 80 },
+          { x: 74, y: 84 },
+          { x: 48, y: 90 }
+        ];
+        var eyes = [];
+        eyePositions.forEach(function(pos, i) {
+          var eye = document.createElement('div');
+          eye.className = 'eye';
+          eye.style.left = pos.x + '%';
+          eye.style.top = pos.y + '%';
+          var pupil = document.createElement('div');
+          pupil.className = 'pupil';
+          eye.appendChild(pupil);
+          eyesLayer.appendChild(eye);
+          eyes.push({ el: eye, pupil: pupil });
+          setTimeout(function() { eye.classList.add('show'); }, 2200 + i * 900);
+        });
+
+        document.addEventListener('mousemove', function(e) {
+          var mx = e.clientX, my = e.clientY;
+          eyes.forEach(function(item) {
+            var rect = item.el.getBoundingClientRect();
+            var cx = rect.left + rect.width / 2;
+            var cy = rect.top + rect.height / 2;
+            var dx = mx - cx, dy = my - cy;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            var nx = dist > 0 ? dx / dist : 0;
+            var ny = dist > 0 ? dy / dist : 0;
+            var move = Math.min(13, dist / 28);
+            item.pupil.style.transform = 'translate(-50%, -50%) translate(' + (nx * move) + 'px,' + (ny * move) + 'px)';
+          });
+        });
+      }
+
+      // 心跳脉动
+      var vig = document.getElementById('heartbeatVignette');
+      if (vig) {
+        function beat() {
+          vig.classList.add('beat');
+          setTimeout(function() { vig.classList.remove('beat'); }, 170);
+          setTimeout(function() {
+            vig.classList.add('beat');
+            setTimeout(function() { vig.classList.remove('beat'); }, 170);
+          }, 300);
+        }
+        setTimeout(beat, 1600);
+        setInterval(beat, 2300);
+      }
+
+      // 随机血色闪光
+      var flash = document.getElementById('bloodFlash');
+      if (flash) {
+        function randomFlash() {
+          flash.classList.add('flash');
+          setTimeout(function() { flash.classList.remove('flash'); }, 65);
+          setTimeout(randomFlash, 4500 + Math.random() * 9000);
+        }
+        setTimeout(randomFlash, 7000);
+      }
+
+      // 鬼影闪现
+      var ghost = document.getElementById('ghostFigure');
+      if (ghost) {
+        function appear() {
+          var x = 8 + Math.random() * 72;
+          var y = 8 + Math.random() * 45;
+          var scale = 0.55 + Math.random() * 0.85;
+          ghost.style.left = x + '%';
+          ghost.style.top = y + '%';
+          ghost.style.transform = 'scale(' + scale + ')';
+          ghost.classList.add('show');
+          setTimeout(function() { ghost.classList.remove('show'); }, 130 + Math.random() * 180);
+          setTimeout(appear, 5500 + Math.random() * 11000);
+        }
+        setTimeout(appear, 9000);
+      }
+
+      // 低频嗡鸣 + 心跳低音（用户已确认进入，直接启动）
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) {
+          var ctx = new AC();
+          var osc1 = ctx.createOscillator();
+          var osc2 = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc1.type = 'sine';
+          osc1.frequency.value = 41;
+          osc2.type = 'sawtooth';
+          osc2.frequency.value = 42.7;
+          gain.gain.value = 0.035;
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+          osc1.start();
+          osc2.start();
+
+          setInterval(function() {
+            var o = ctx.createOscillator();
+            var g = ctx.createGain();
+            o.type = 'sine';
+            o.frequency.value = 58;
+            var t = ctx.currentTime;
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.09, t + 0.03);
+            g.gain.linearRampToValueAtTime(0, t + 0.35);
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start();
+            o.stop(t + 0.4);
+          }, 2300);
+        }
+      } catch (e) {}
+    };
+
+    // 进入警告框：点击"是"后才启动恐怖效果与声音
+    var warning = document.getElementById('enterWarning');
+    var yesBtn = document.getElementById('warningYes');
+    if (warning && yesBtn) {
+      yesBtn.addEventListener('click', function() {
+        warning.style.transition = 'opacity 0.4s ease';
+        warning.style.opacity = '0';
+        setTimeout(function() {
+          warning.style.display = 'none';
+        }, 400);
+        if (window.startHorror) window.startHorror();
+      });
+    }
   </script>
 </body>
 </html>

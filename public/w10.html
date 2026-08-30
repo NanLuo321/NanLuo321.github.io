@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows 10</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    color: #fff;
+    background: #0078d7;
+  }
+
+  /* ===== 桌面壁纸（Win10 蓝色光效） ===== */
+  .desktop {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(100, 180, 255, 0.35) 0%, transparent 55%),
+      radial-gradient(ellipse at 70% 65%, rgba(0, 120, 215, 0.5) 0%, transparent 60%),
+      linear-gradient(135deg, #0078d7 0%, #005a9e 40%, #003e77 75%, #002447 100%);
+    background-size: cover;
+  }
+  .desktop::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 25% 35%, rgba(150, 220, 255, 0.2) 0%, transparent 40%),
+      radial-gradient(circle at 75% 70%, rgba(30, 90, 160, 0.3) 0%, transparent 45%);
+    pointer-events: none;
+  }
+
+  /* ===== 桌面图标 ===== */
+  .desktop-icons {
+    position: absolute;
+    top: 12px; left: 12px;
+    display: grid;
+    grid-template-columns: 80px;
+    gap: 4px;
+  }
+  .d-icon {
+    width: 80px;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: center;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    font-size: 12px;
+    line-height: 1.3;
+    word-break: break-all;
+  }
+  .d-icon:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.3);
+  }
+  .d-icon.selected {
+    background: rgba(0, 120, 215, 0.4);
+    border-color: rgba(255,255,255,0.5);
+  }
+  .d-icon svg {
+    width: 44px; height: 44px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  }
+
+  /* ===== 任务栏 ===== */
+  .taskbar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 40px;
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    z-index: 1000;
+  }
+
+  .start-btn {
+    width: 48px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .start-btn:hover, .start-btn.active { background: rgba(255,255,255,0.08); }
+  .start-btn svg { width: 20px; height: 20px; }
+
+  .search-box {
+    width: 280px; height: 30px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 2px;
+    display: flex; align-items: center;
+    padding: 0 10px;
+    margin-left: 4px;
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+  }
+  .search-box svg { width: 14px; height: 14px; margin-right: 8px; opacity: 0.7; }
+
+  .task-view {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-left: 4px;
+  }
+  .task-view:hover { background: rgba(255,255,255,0.08); }
+  .task-view svg { width: 18px; height: 18px; opacity: 0.85; }
+
+  .pinned-apps {
+    display: flex; align-items: center;
+    margin-left: 8px;
+    height: 100%;
+  }
+  .pinned-app {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    position: relative;
+  }
+  .pinned-app:hover { background: rgba(255,255,255,0.08); }
+  .pinned-app.active::after {
+    content: "";
+    position: absolute;
+    bottom: 2px; left: 50%;
+    transform: translateX(-50%);
+    width: 16px; height: 3px;
+    background: #0078d7;
+    border-radius: 2px;
+  }
+  .pinned-app svg { width: 20px; height: 20px; }
+
+  .taskbar-spacer { flex: 1; }
+
+  .tray {
+    display: flex; align-items: center;
+    height: 100%;
+    padding-right: 4px;
+  }
+  .tray-icon {
+    width: 28px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .tray-icon:hover { background: rgba(255,255,255,0.08); }
+  .tray-icon svg { width: 14px; height: 14px; opacity: 0.85; }
+
+  .clock {
+    padding: 0 12px;
+    height: 100%;
+    display: flex; flex-direction: column;
+    align-items: flex-end; justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1.35;
+    color: #fff;
+  }
+  .clock:hover { background: rgba(255,255,255,0.08); }
+
+  .show-desktop {
+    width: 4px; height: 100%;
+    border-left: 1px solid rgba(255,255,255,0.15);
+    cursor: pointer;
+  }
+  .show-desktop:hover { background: rgba(255,255,255,0.1); }
+
+  /* ===== 开始菜单 ===== */
+  .start-menu {
+    position: fixed;
+    bottom: 40px; left: 0;
+    width: 600px; height: 560px;
+    background: rgba(25, 25, 25, 0.95);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-bottom: none;
+    display: none;
+    flex-direction: column;
+    z-index: 999;
+    animation: startIn 0.2s ease-out;
+  }
+  .start-menu.show { display: flex; }
+  @keyframes startIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .start-top {
+    flex: 1;
+    display: flex;
+    padding: 12px 0 0 0;
+  }
+  .start-apps {
+    width: 240px;
+    padding: 0 8px;
+    overflow-y: auto;
+  }
+  .start-app-list-title {
+    font-size: 13px;
+    color: #fff;
+    padding: 8px 12px 4px;
+    font-weight: 600;
+  }
+  .start-app-item {
+    display: flex; align-items: center;
+    padding: 6px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #fff;
+    gap: 10px;
+  }
+  .start-app-item:hover { background: rgba(255,255,255,0.08); }
+  .start-app-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  .start-tiles {
+    flex: 1;
+    padding: 0 16px 12px 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 80px;
+    gap: 4px;
+    align-content: start;
+  }
+  .tile {
+    background: #0078d7;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    border: 1px solid transparent;
+    color: #fff;
+    font-size: 11px;
+    gap: 6px;
+    transition: transform 0.1s;
+  }
+  .tile:hover { border-color: rgba(255,255,255,0.3); }
+  .tile:active { transform: scale(0.97); }
+  .tile svg { width: 28px; height: 28px; }
+  .tile.green { background: #107c10; }
+  .tile.purple { background: #5c2d91; }
+  .tile.orange { background: #d83b01; }
+  .tile.pink { background: #e3008c; }
+  .tile.cyan { background: #00b294; }
+  .tile.gray { background: #5c5c5c; }
+
+  .start-bottom {
+    height: 48px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .start-user {
+    display: flex; align-items: center;
+    gap: 10px;
+    flex: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 2px;
+  }
+  .start-user:hover { background: rgba(255,255,255,0.08); }
+  .start-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #0078d7;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+  }
+  .start-user-name { font-size: 13px; }
+  .start-power {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .start-power:hover { background: rgba(255,255,255,0.08); }
+  .start-power svg { width: 16px; height: 16px; }
+
+  /* ===== 窗口 ===== */
+  .window {
+    position: absolute;
+    min-width: 400px;
+    min-height: 280px;
+    background: #f3f3f3;
+    border: 1px solid #d0d0d0;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    color: #1f1f1f;
+    z-index: 100;
+    border-radius: 0;
+  }
+  .window.maximized {
+    top: 0 !important; left: 0 !important;
+    width: 100% !important;
+    height: calc(100% - 40px) !important;
+    border: none;
+  }
+  .window.minimized { display: none; }
+
+  .win-titlebar {
+    height: 32px;
+    flex-shrink: 0;
+    background: #ffffff;
+    border-bottom: 1px solid #e1e1e1;
+    display: flex;
+    align-items: stretch;
+    cursor: default;
+  }
+  .window:not(.maximized) .win-titlebar { cursor: move; }
+
+  .win-title-icon {
+    display: flex; align-items: center;
+    padding-left: 12px;
+    color: #0078d7;
+  }
+  .win-title-icon svg { width: 16px; height: 16px; }
+  .win-title-text {
+    flex: 1;
+    display: flex; align-items: center;
+    padding-left: 8px;
+    font-size: 12px;
+    color: #1f1f1f;
+  }
+  .win-controls { display: flex; height: 100%; }
+  .win-btn {
+    width: 46px; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: #1f1f1f;
+    transition: background 0.12s;
+    border: none; background: transparent;
+  }
+  .win-btn:hover { background: #e5e5e5; }
+  .win-btn.close:hover { background: #e81123; color: #fff; }
+  .win-btn svg { width: 10px; height: 10px; }
+
+  .win-toolbar {
+    height: 38px;
+    flex-shrink: 0;
+    background: #f9f9f9;
+    border-bottom: 1px solid #e1e1e1;
+    display: flex; align-items: center;
+    padding: 0 10px;
+    gap: 6px;
+    font-size: 12px;
+    color: #5a5a5a;
+  }
+  .win-nav-btn {
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  .win-nav-btn:hover { background: #e5e5e5; }
+  .win-nav-btn svg { width: 14px; height: 14px; }
+  .win-address {
+    flex: 1;
+    height: 26px;
+    background: #fff;
+    border: 1px solid #ccc;
+    display: flex; align-items: center;
+    padding: 0 8px;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    color: #333;
+  }
+
+  .win-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  .win-sidebar {
+    width: 180px;
+    background: #f9f9f9;
+    border-right: 1px solid #e1e1e1;
+    padding: 8px 0;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .win-sidebar-item {
+    display: flex; align-items: center;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+    gap: 8px;
+  }
+  .win-sidebar-item:hover { background: #e5e5e5; }
+  .win-sidebar-item.active { background: #e5f3ff; color: #0078d7; }
+  .win-sidebar-item svg { width: 16px; height: 16px; }
+
+  .win-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    background: #fff;
+  }
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+  }
+  .file-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 4px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 11px;
+    color: #333;
+    gap: 4px;
+    line-height: 1.3;
+  }
+  .file-item:hover {
+    background: #e5f3ff;
+    border-color: #99ccff;
+  }
+  .file-item svg { width: 40px; height: 40px; }
+
+  .win-statusbar {
+    height: 28px;
+    flex-shrink: 0;
+    background: #f9f9f9;
+    border-top: 1px solid #e1e1e1;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 11px;
+    color: #5a5a5a;
+  }
+
+  /* ===== 右键菜单 ===== */
+  .context-menu {
+    position: fixed;
+    background: #f9f9f9;
+    border: 1px solid #d0d0d0;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    min-width: 180px;
+    padding: 4px 0;
+    z-index: 2000;
+    display: none;
+    color: #1f1f1f;
+  }
+  .context-menu.show { display: block; }
+  .ctx-item {
+    padding: 6px 20px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex; align-items: center;
+    gap: 10px;
+  }
+  .ctx-item:hover { background: #e5f3ff; }
+  .ctx-sep {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 4px 0;
+  }
+
+  /* 响应式 */
+  @media (max-width: 640px) {
+    .search-box { display: none; }
+    .start-menu { width: 100%; height: calc(100% - 40px); }
+    .pinned-apps .pinned-app:nth-child(n+5) { display: none; }
+    .window { min-width: 280px; min-height: 200px; }
+    .win-sidebar { width: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 桌面 -->
+<div class="desktop" id="desktop">
+
+  <!-- 桌面图标 -->
+  <div class="desktop-icons" id="desktopIcons">
+    <div class="d-icon" data-app="thispc" ondblclick="openWindow('thispc')">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="4" width="18" height="14" rx="1.5" fill="#0078d4" stroke="#fff" stroke-width="1"/>
+        <rect x="5" y="18" width="14" height="2" rx="0.5" fill="#0078d4" stroke="#fff" stroke-width="1"/>
+        <path d="M7 8h10M7 11h10M7 14h6" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+      <span>此电脑</span>
+    </div>
+    <div class="d-icon" data-app="recycle" ondblclick="openWindow('recycle')">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 7h14l-1.5 13a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20L5 7z" fill="#6c6c6c" stroke="#fff" stroke-width="0.8"/>
+        <path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7" fill="#8c8c8c" stroke="#fff" stroke-width="0.8"/>
+        <path d="M4 7h16" stroke="#fff" stroke-width="1" stroke-linecap="round"/>
+      </svg>
+      <span>回收站</span>
+    </div>
+    <div class="d-icon" data-app="edge" ondblclick="openWindow('edge')">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="eg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0078d4"/><stop offset="100%" stop-color="#00bcf2"/>
+        </linearGradient></defs>
+        <circle cx="12" cy="12" r="10" fill="url(#eg)"/>
+        <path d="M6 16c3 3 9 3.5 13 1-2-4-7-7-13-1 0 0 0 0 0 0z" fill="#fff" opacity="0.9"/>
+        <path d="M8 10c3-2 7-2 9 1-2-3-6-3-9-1z" fill="#fff" opacity="0.6"/>
+      </svg>
+      <span>Microsoft Edge</span>
+    </div>
+    <div class="d-icon" data-app="documents" ondblclick="openWindow('documents')">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#fff" stroke="#0078d4" stroke-width="1.2"/>
+        <path d="M15 3v4h4" stroke="#0078d4" stroke-width="1.2" fill="none"/>
+        <path d="M8 11h8M8 14h8M8 17h5" stroke="#0078d4" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+      <span>文档</span>
+    </div>
+  </div>
+
+  <!-- 窗口容器 -->
+  <div id="windowContainer"></div>
+
+</div>
+
+<!-- 任务栏 -->
+<div class="taskbar">
+  <div class="start-btn" id="startBtn" onclick="toggleStart()">
+    <svg viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 5h8v7H3V5zm0 9h8v7H3v-7zm10-9h8v7h-8V5zm0 9h8v7h-8v-7z"/>
+    </svg>
+  </div>
+  <div class="search-box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+    </svg>
+    在这里输入你要搜索的内容
+  </div>
+  <div class="task-view" title="任务视图">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+    </svg>
+  </div>
+  <div class="pinned-apps" id="pinnedApps">
+    <div class="pinned-app active" data-app="thispc" onclick="openWindow('thispc')" title="文件资源管理器">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2h9A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11z" fill="#ffc83d" stroke="#fff" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div class="pinned-app" data-app="edge" onclick="openWindow('edge')" title="Microsoft Edge">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="eg2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0078d4"/><stop offset="100%" stop-color="#00bcf2"/>
+        </linearGradient></defs>
+        <circle cx="12" cy="12" r="10" fill="url(#eg2)"/>
+        <path d="M6 16c3 3 9 3.5 13 1-2-4-7-7-13-1z" fill="#fff" opacity="0.9"/>
+      </svg>
+    </div>
+  </div>
+  <div class="taskbar-spacer"></div>
+  <div class="tray">
+    <div class="tray-icon" title="网络">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 13a10 10 0 0 1 14 0"/>
+        <path d="M8.5 16.5a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1.2" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="tray-icon" title="音量">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 10v4h4l5 4V6L8 10H4z" fill="#fff" stroke="#fff"/>
+        <path d="M16 8a5 5 0 0 1 0 8"/>
+      </svg>
+    </div>
+    <div class="clock" id="clock">
+      <span id="clockTime">--:--</span>
+      <span id="clockDate">----/--/--</span>
+    </div>
+  </div>
+  <div class="show-desktop" id="showDesktop" title="显示桌面"></div>
+</div>
+
+<!-- 开始菜单 -->
+<div class="start-menu" id="startMenu">
+  <div class="start-top">
+    <div class="start-apps">
+      <div class="start-app-list-title">最近添加</div>
+      <div class="start-app-item" onclick="openWindow('edge'); toggleStart();">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="eg3" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0078d4"/><stop offset="100%" stop-color="#00bcf2"/>
+          </linearGradient></defs>
+          <circle cx="12" cy="12" r="10" fill="url(#eg3)"/>
+        </svg>
+        Microsoft Edge
+      </div>
+      <div class="start-app-list-title">A</div>
+      <div class="start-app-item" onclick="openWindow('calculator'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="2" width="14" height="20" rx="2" fill="#5c5c5c"/>
+          <rect x="7" y="5" width="10" height="4" rx="0.5" fill="#a8d08d"/>
+          <circle cx="8.5" cy="13" r="1.3" fill="#d0d0d0"/><circle cx="12" cy="13" r="1.3" fill="#d0d0d0"/><circle cx="15.5" cy="13" r="1.3" fill="#d0d0d0"/>
+          <circle cx="8.5" cy="16.5" r="1.3" fill="#d0d0d0"/><circle cx="12" cy="16.5" r="1.3" fill="#d0d0d0"/><circle cx="15.5" cy="16.5" r="1.3" fill="#ff9800"/>
+          <circle cx="12" cy="19.5" r="1.3" fill="#d0d0d0"/>
+        </svg>
+        计算器
+      </div>
+      <div class="start-app-item" onclick="openWindow('notepad'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#fff" stroke="#0078d4" stroke-width="1.2"/>
+          <path d="M15 3v4h4" stroke="#0078d4" stroke-width="1.2" fill="none"/>
+        </svg>
+        记事本
+      </div>
+      <div class="start-app-list-title">S</div>
+      <div class="start-app-item" onclick="openWindow('settings'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="9" fill="#5c5c5c" stroke="#fff" stroke-width="0.5"/>
+          <circle cx="12" cy="12" r="4" fill="#fff"/>
+          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4" stroke="#fff" stroke-width="1.5"/>
+        </svg>
+        设置
+      </div>
+    </div>
+    <div class="start-tiles">
+      <div class="tile" onclick="openWindow('edge'); toggleStart();">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="fill:#fff;width:32px;height:32px">
+          <circle cx="12" cy="12" r="10" fill="#fff"/>
+        </svg>
+        Edge
+      </div>
+      <div class="tile green" onclick="openWindow('mail'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <rect x="3" y="5" width="18" height="14" rx="1"/><path d="m3 7 9 6 9-6"/>
+        </svg>
+        邮件
+      </div>
+      <div class="tile purple" onclick="openWindow('calendar'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 10h18M8 3v4M16 3v4"/>
+        </svg>
+        日历
+      </div>
+      <div class="tile orange" onclick="openWindow('photos'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <rect x="3" y="5" width="18" height="14" rx="1"/><circle cx="10" cy="11" r="2.5"/><path d="m21 17-5-5-9 9"/>
+        </svg>
+        照片
+      </div>
+      <div class="tile pink" onclick="openWindow('store'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <path d="M3 7h18l-1.5 13a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1L3 7z"/><path d="M8 7V4a4 4 0 0 1 8 0v3"/>
+        </svg>
+        应用商店
+      </div>
+      <div class="tile cyan" onclick="openWindow('rtmp'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <rect x="2" y="6" width="20" height="12" rx="2"/><path d="m10 9 5 3-5 3V9z" fill="#fff"/>
+        </svg>
+        RTMP 播放
+      </div>
+    </div>
+  </div>
+  <div class="start-bottom">
+    <div class="start-user">
+      <div class="start-avatar">南</div>
+      <div class="start-user-name">南洛</div>
+    </div>
+    <div class="start-power" title="关机" onclick="shutdown()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v9"/><path d="M5.5 8.5a8 8 0 1 0 13 0"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- 右键菜单 -->
+<div class="context-menu" id="contextMenu">
+  <div class="ctx-item" onclick="openWindow('thispc'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="5" width="16" height="13" rx="1" fill="#0078d4"/>
+    </svg>
+    查看
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="openWindow('thispc'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="4" width="16" height="16" rx="1" fill="#0078d4"/>
+    </svg>
+    刷新
+  </div>
+  <div class="ctx-item" onclick="openWindow('settings'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="8" fill="#5c5c5c"/>
+    </svg>
+    显示设置
+  </div>
+  <div class="ctx-item" onclick="openWindow('settings'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="8" fill="#5c5c5c"/>
+    </svg>
+    个性化
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="openWindow('notepad'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#fff" stroke="#0078d4" stroke-width="1.2"/>
+    </svg>
+    新建
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="openWindow('settings'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="8" fill="#5c5c5c"/>
+    </svg>
+    屏幕分辨率
+  </div>
+</div>
+
+<script>
+  // ===== 时钟 =====
+  function updateClock() {
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, '0');
+    var m = String(now.getMinutes()).padStart(2, '0');
+    var y = now.getFullYear();
+    var mo = String(now.getMonth() + 1).padStart(2, '0');
+    var d = String(now.getDate()).padStart(2, '0');
+    document.getElementById('clockTime').textContent = h + ':' + m;
+    document.getElementById('clockDate').textContent = y + '/' + mo + '/' + d;
+  }
+  updateClock();
+  setInterval(updateClock, 1000 * 30);
+
+  // ===== 开始菜单 =====
+  var startMenu = document.getElementById('startMenu');
+  var startBtn = document.getElementById('startBtn');
+  function toggleStart() {
+    startMenu.classList.toggle('show');
+    startBtn.classList.toggle('active');
+  }
+  document.addEventListener('click', function(e) {
+    if (!startMenu.contains(e.target) && !startBtn.contains(e.target)) {
+      startMenu.classList.remove('show');
+      startBtn.classList.remove('active');
+    }
+  });
+
+  // ===== 窗口管理 =====
+  var windows = {};
+  var zIndexCounter = 100;
+  var windowCounter = 0;
+
+  function getAppConfig(app) {
+    var configs = {
+      thispc: { title: '此电脑', icon: 'pc', w: 820, h: 520, hasSidebar: true, hasToolbar: true, type: 'explorer' },
+      documents: { title: '文档', icon: 'folder', w: 760, h: 500, hasSidebar: true, hasToolbar: true, type: 'explorer' },
+      recycle: { title: '回收站', icon: 'recycle', w: 680, h: 460, hasSidebar: true, hasToolbar: true, type: 'explorer' },
+      edge: { title: 'Microsoft Edge', icon: 'edge', w: 900, h: 600, hasSidebar: false, hasToolbar: true, type: 'browser' },
+      calculator: { title: '计算器', icon: 'calc', w: 320, h: 480, hasSidebar: false, hasToolbar: false, type: 'calc' },
+      notepad: { title: '无标题 - 记事本', icon: 'notepad', w: 600, h: 440, hasSidebar: false, hasToolbar: false, type: 'notepad' },
+      settings: { title: '设置', icon: 'settings', w: 800, h: 560, hasSidebar: true, hasToolbar: false, type: 'settings' },
+      mail: { title: '邮件', icon: 'mail', w: 800, h: 540, hasSidebar: true, hasToolbar: false, type: 'mail' },
+      calendar: { title: '日历', icon: 'calendar', w: 800, h: 540, hasSidebar: true, hasToolbar: false, type: 'calendar' },
+      photos: { title: '照片', icon: 'photos', w: 800, h: 540, hasSidebar: false, hasToolbar: false, type: 'photos' },
+      store: { title: 'Microsoft Store', icon: 'store', w: 860, h: 580, hasSidebar: false, hasToolbar: true, type: 'store' },
+      rtmp: { title: 'RTMP 播放器', icon: 'video', w: 860, h: 560, hasSidebar: false, hasToolbar: false, type: 'rtmp' }
+    };
+    return configs[app] || { title: app, icon: 'app', w: 600, h: 400, hasSidebar: false, hasToolbar: false, type: 'default' };
+  }
+
+  function getIconSvg(icon) {
+    var icons = {
+      pc: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="14" rx="1.5" fill="#0078d4"/><rect x="5" y="18" width="14" height="2" rx="0.5" fill="#0078d4"/></svg>',
+      folder: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2h9A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11z" fill="#ffc83d"/></svg>',
+      recycle: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 7h14l-1.5 13a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20L5 7z" fill="#6c6c6c"/><path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7" fill="#8c8c8c"/></svg>',
+      edge: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="egi" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0078d4"/><stop offset="100%" stop-color="#00bcf2"/></linearGradient></defs><circle cx="12" cy="12" r="10" fill="url(#egi)"/></svg>',
+      calc: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="2" width="14" height="20" rx="2" fill="#5c5c5c"/><rect x="7" y="5" width="10" height="4" rx="0.5" fill="#a8d08d"/></svg>',
+      notepad: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#fff" stroke="#0078d4" stroke-width="1.2"/></svg>',
+      settings: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" fill="#5c5c5c"/><circle cx="12" cy="12" r="4" fill="#fff"/></svg>',
+      mail: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="14" rx="1" fill="#107c10"/><path d="m3 7 9 6 9-6" stroke="#fff" stroke-width="1.5" fill="none"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="16" rx="1" fill="#5c2d91"/><path d="M3 10h18M8 3v4M16 3v4" stroke="#fff" stroke-width="1.5"/></svg>',
+      photos: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="14" rx="1" fill="#d83b01"/><circle cx="10" cy="11" r="2.5" fill="#fff"/></svg>',
+      store: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 7h18l-1.5 13a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1L3 7z" fill="#e3008c"/><path d="M8 7V4a4 4 0 0 1 8 0v3" stroke="#fff" stroke-width="1.5" fill="none"/></svg>',
+      video: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="6" width="20" height="12" rx="2" fill="#00b294"/><path d="m10 9 5 3-5 3V9z" fill="#fff"/></svg>',
+      app: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="2" fill="#0078d4"/></svg>'
+    };
+    return icons[icon] || icons.app;
+  }
+
+  function openWindow(app) {
+    if (windows[app] && !windows[app].minimized) {
+      focusWindow(app);
+      return;
+    }
+    if (windows[app] && windows[app].minimized) {
+      windows[app].minimized = false;
+      windows[app].el.classList.remove('minimized');
+      focusWindow(app);
+      return;
+    }
+
+    var cfg = getAppConfig(app);
+    var container = document.getElementById('windowContainer');
+    var win = document.createElement('div');
+    win.className = 'window';
+    win.id = 'win-' + app;
+
+    // 初始位置
+    var offsetX = 40 + (windowCounter * 24);
+    var offsetY = 40 + (windowCounter * 24);
+    win.style.left = Math.min(offsetX, window.innerWidth - cfg.w - 40) + 'px';
+    win.style.top = Math.min(offsetY, window.innerHeight - cfg.h - 80) + 'px';
+    win.style.width = cfg.w + 'px';
+    win.style.height = cfg.h + 'px';
+    windowCounter++;
+
+    win.innerHTML =
+      '<div class="win-titlebar">' +
+        '<div class="win-title-icon">' + getIconSvg(cfg.icon) + '</div>' +
+        '<div class="win-title-text">' + cfg.title + '</div>' +
+        '<div class="win-controls">' +
+          '<button class="win-btn" data-action="min" title="最小化"><svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="4.5" width="8" height="1" fill="currentColor"/></svg></button>' +
+          '<button class="win-btn" data-action="max" title="最大化"><svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><rect x="1.5" y="1.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>' +
+          '<button class="win-btn close" data-action="close" title="关闭"><svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M1 1 L9 9 M9 1 L1 9" stroke="currentColor" stroke-width="1" fill="none"/></svg></button>' +
+        '</div>' +
+      '</div>' +
+      (cfg.hasToolbar ?
+        '<div class="win-toolbar">' +
+          '<div class="win-nav-btn" title="后退"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg></div>' +
+          '<div class="win-nav-btn" title="前进"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></div>' +
+          '<div class="win-nav-btn" title="向上"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 15 6-6 6 6"/></svg></div>' +
+          '<div class="win-address">' + (cfg.type === 'browser' ? 'https://www.bing.com' : '此电脑') + '</div>' +
+        '</div>' : '') +
+      '<div class="win-body">' +
+        (cfg.hasSidebar ?
+          '<div class="win-sidebar">' +
+            '<div class="win-sidebar-item active"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="5" width="16" height="13" rx="1" fill="currentColor"/></svg>快速访问</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2h9A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11z" fill="currentColor"/></svg>桌面</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="currentColor"/></svg>下载</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="currentColor"/></svg>文档</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="14" rx="1.5" fill="currentColor"/></svg>此电脑</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 7h14l-1.5 13a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20L5 7z" fill="currentColor"/></svg>回收站</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" fill="currentColor"/></svg>网络</div>' +
+          '</div>' : '') +
+        '<div class="win-content" id="content-' + app + '"></div>' +
+      '</div>' +
+      '<div class="win-statusbar"><span id="status-' + app + '">0 个项目</span></div>';
+
+    container.appendChild(win);
+    windows[app] = { el: win, minimized: false, maximized: false };
+    focusWindow(app);
+
+    // 内容填充
+    renderAppContent(app, cfg.type);
+
+    // 拖拽
+    var titlebar = win.querySelector('.win-titlebar');
+    var isDragging = false;
+    var dragOffset = { x: 0, y: 0 };
+    titlebar.addEventListener('mousedown', function(e) {
+      if (e.target.closest('.win-btn')) return;
+      if (windows[app].maximized) return;
+      isDragging = true;
+      var rect = win.getBoundingClientRect();
+      dragOffset.x = e.clientX - rect.left;
+      dragOffset.y = e.clientY - rect.top;
+      focusWindow(app);
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      var x = e.clientX - dragOffset.x;
+      var y = e.clientY - dragOffset.y;
+      win.style.left = Math.max(0, Math.min(x, window.innerWidth - 100)) + 'px';
+      win.style.top = Math.max(0, Math.min(y, window.innerHeight - 80)) + 'px';
+    });
+    document.addEventListener('mouseup', function() { isDragging = false; });
+
+    // 标题栏按钮
+    win.querySelectorAll('.win-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var action = btn.getAttribute('data-action');
+        if (action === 'min') minimizeWindow(app);
+        if (action === 'max') toggleMaximize(app);
+        if (action === 'close') closeWindow(app);
+      });
+    });
+
+    // 点击聚焦
+    win.addEventListener('mousedown', function() { focusWindow(app); });
+
+    // 更新任务栏高亮
+    updatePinnedActive();
+  }
+
+  function focusWindow(app) {
+    if (!windows[app]) return;
+    zIndexCounter++;
+    windows[app].el.style.zIndex = zIndexCounter;
+  }
+
+  function minimizeWindow(app) {
+    if (!windows[app]) return;
+    windows[app].minimized = true;
+    windows[app].el.classList.add('minimized');
+    updatePinnedActive();
+  }
+
+  function toggleMaximize(app) {
+    if (!windows[app]) return;
+    var w = windows[app];
+    if (w.maximized) {
+      w.el.classList.remove('maximized');
+      w.maximized = false;
+    } else {
+      w.el.classList.add('maximized');
+      w.maximized = true;
+    }
+  }
+
+  function closeWindow(app) {
+    if (!windows[app]) return;
+    windows[app].el.remove();
+    delete windows[app];
+    updatePinnedActive();
+  }
+
+  function updatePinnedActive() {
+    document.querySelectorAll('.pinned-app').forEach(function(el) {
+      var app = el.getAttribute('data-app');
+      if (windows[app] && !windows[app].minimized) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    });
+  }
+
+  // ===== 应用内容 =====
+  function renderAppContent(app, type) {
+    var content = document.getElementById('content-' + app);
+    if (!content) return;
+
+    if (type === 'explorer') {
+      var files = [
+        { name: '桌面', type: 'folder' },
+        { name: '下载', type: 'folder' },
+        { name: '文档', type: 'folder' },
+        { name: '图片', type: 'folder' },
+        { name: '音乐', type: 'folder' },
+        { name: '视频', type: 'folder' },
+        { name: '本地磁盘 (C:)', type: 'drive' },
+        { name: '本地磁盘 (D:)', type: 'drive' },
+        { name: 'readme.txt', type: 'text' },
+        { name: '报告.docx', type: 'word' },
+        { name: '数据.xlsx', type: 'excel' },
+        { name: '照片.jpg', type: 'image' }
+      ];
+      var html = '<div class="file-grid">';
+      files.forEach(function(f) {
+        var icon = '';
+        if (f.type === 'folder') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2h9A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11z" fill="#ffc83d"/></svg>';
+        else if (f.type === 'drive') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="6" width="18" height="12" rx="1" fill="#5c5c5c"/><circle cx="18" cy="12" r="1" fill="#fff"/></svg>';
+        else if (f.type === 'text') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#fff" stroke="#0078d4" stroke-width="1.2"/></svg>';
+        else if (f.type === 'word') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#2b579a"/><text x="12" y="17" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold" font-family="Arial">W</text></svg>';
+        else if (f.type === 'excel') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#217346"/><text x="12" y="17" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold" font-family="Arial">X</text></svg>';
+        else icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="14" rx="1" fill="#d83b01"/><circle cx="10" cy="11" r="2.5" fill="#fff"/></svg>';
+        html += '<div class="file-item">' + icon + '<span>' + f.name + '</span></div>';
+      });
+      html += '</div>';
+      content.innerHTML = html;
+      var status = document.getElementById('status-' + app);
+      if (status) status.textContent = files.length + ' 个项目';
+    }
+    else if (type === 'browser') {
+      content.style.background = '#fff';
+      content.style.padding = '40px';
+      content.innerHTML =
+        '<div style="max-width:600px;margin:0 auto;text-align:center;">' +
+          '<div style="font-size:32px;font-weight:600;color:#0078d4;margin-bottom:8px;">Microsoft Edge</div>' +
+          '<div style="color:#666;margin-bottom:24px;">Web 浏览器</div>' +
+          '<div style="width:100%;height:40px;border:1px solid #ccc;border-radius:4px;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#999;margin-bottom:16px;">🔒 https://www.bing.com</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">' +
+            ['百度','微博','B站','知乎','淘宝','京东','GitHub','CSDN'].map(function(s){
+              return '<div style="padding:16px 8px;background:#f5f5f5;border-radius:4px;cursor:pointer;font-size:12px;color:#333;">' + s + '</div>';
+            }).join('') +
+          '</div>' +
+        '</div>';
+    }
+    else if (type === 'calc') {
+      content.style.background = '#f0f0f0';
+      content.style.padding = '0';
+      content.innerHTML =
+        '<div style="padding:16px;text-align:right;font-size:32px;font-weight:300;background:#f0f0f0;color:#000;">0</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#ccc;">' +
+        ['%','CE','C','⌫','1/x','x²','√','÷','7','8','9','×','4','5','6','-','1','2','3','+','±','0','.','='].map(function(k,i){
+          var isOp = ['÷','×','-','+','='].indexOf(k) >= 0;
+          var bg = isOp ? '#0078d4' : '#fafafa';
+          var color = isOp ? '#fff' : '#000';
+          return '<div style="padding:14px 0;background:'+bg+';color:'+color+';text-align:center;cursor:pointer;font-size:16px;">' + k + '</div>';
+        }).join('') +
+        '</div>';
+    }
+    else if (type === 'notepad') {
+      content.style.padding = '0';
+      content.innerHTML =
+        '<div style="height:100%;padding:8px;font-family:Consolas,monospace;font-size:13px;line-height:1.6;color:#000;outline:none;white-space:pre-wrap;" contenteditable="true">欢迎使用记事本。&#10;&#10;在这里输入你的文字...&#10;&#10;---&#10;Windows 10 模拟桌面&#10;南洛的博客</div>';
+    }
+    else if (type === 'settings') {
+      content.style.background = '#f3f3f3';
+      content.innerHTML =
+        '<div style="padding:20px;">' +
+          '<h2 style="font-size:20px;font-weight:600;margin-bottom:16px;">设置</h2>' +
+          '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">' +
+            [
+              ['系统','显示、通知、电源、存储'],
+              ['设备','蓝牙、打印机、鼠标'],
+              ['网络和 Internet','Wi-Fi、以太网、VPN'],
+              ['个性化','背景、颜色、主题'],
+              ['应用','卸载、默认应用、可选功能'],
+              ['账户','账户信息、同步设置'],
+              ['时间和语言','日期时间、语言'],
+              ['游戏','游戏栏、捕获'],
+              ['更新和安全','Windows 更新、备份']
+            ].map(function(item){
+              return '<div style="padding:14px;background:#fff;border:1px solid #e1e1e1;border-radius:2px;cursor:pointer;"><div style="font-weight:600;margin-bottom:4px;">' + item[0] + '</div><div style="font-size:12px;color:#777;">' + item[1] + '</div></div>';
+            }).join('') +
+          '</div>' +
+        '</div>';
+    }
+    else if (type === 'mail') {
+      content.innerHTML =
+        '<div style="padding:20px;color:#666;text-align:center;">' +
+          '<div style="font-size:48px;margin-bottom:16px;">📧</div>' +
+          '<div style="font-size:16px;margin-bottom:8px;">暂无新邮件</div>' +
+          '<div style="font-size:12px;color:#999;">你的收件箱是空的</div>' +
+        '</div>';
+    }
+    else if (type === 'calendar') {
+      var days = ['日','一','二','三','四','五','六'];
+      var today = new Date();
+      var y = today.getFullYear(), m = today.getMonth();
+      var first = new Date(y, m, 1).getDay();
+      var daysInMonth = new Date(y, m + 1, 0).getDate();
+      var td = today.getDate();
+      var html = '<div style="padding:16px;"><div style="font-size:18px;font-weight:600;margin-bottom:12px;">' + y + ' 年 ' + (m+1) + ' 月</div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;font-size:11px;color:#888;margin-bottom:4px;">';
+      days.forEach(function(d){ html += '<div style="padding:6px 0;">' + d + '</div>'; });
+      html += '</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;font-size:13px;">';
+      for (var i = 0; i < first; i++) html += '<div></div>';
+      for (var d = 1; d <= daysInMonth; d++) {
+        var isToday = d === td;
+        html += '<div style="padding:6px 0;' + (isToday ? 'background:#0078d4;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin:0 auto;' : '') + '">' + d + '</div>';
+      }
+      html += '</div></div>';
+      content.innerHTML = html;
+    }
+    else if (type === 'photos') {
+      content.style.background = '#000';
+      content.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#666;font-size:14px;">没有可显示的照片</div>';
+    }
+    else if (type === 'store') {
+      content.innerHTML =
+        '<div style="padding:20px;">' +
+          '<h2 style="font-size:22px;font-weight:600;margin-bottom:12px;">Microsoft Store</h2>' +
+          '<div style="height:120px;background:linear-gradient(135deg,#0078d4,#00bcf2);border-radius:4px;margin-bottom:16px;display:flex;align-items:center;padding:0 24px;color:#fff;">' +
+            '<div><div style="font-size:18px;font-weight:600;">发现精彩应用</div><div style="font-size:12px;opacity:0.8;">精选游戏、应用和电影</div></div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">' +
+            ['Spotify','Discord','VLC','Zoom','Firefox','Steam'].map(function(n){
+              return '<div style="padding:12px;background:#f9f9f9;border-radius:4px;text-align:center;cursor:pointer;"><div style="width:40px;height:40px;background:#0078d4;border-radius:6px;margin:0 auto 8px;"></div><div style="font-size:12px;font-weight:600;">' + n + '</div><div style="font-size:11px;color:#999;">免费</div></div>';
+            }).join('') +
+          '</div>' +
+        '</div>';
+    }
+    else if (type === 'rtmp') {
+      content.style.padding = '0';
+      content.innerHTML =
+        '<div style="width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;position:relative;">' +
+          '<video id="rtmpVideo-' + app + '" autoplay muted playsinline style="width:100%;height:100%;object-fit:contain;"></video>' +
+          '<div id="rtmpNoSignal-' + app + '" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#000;color:#aaa;">' +
+            '<div style="color:#0078d4;font-size:40px;">⟳</div>' +
+            '<div style="font-size:14px;">正在连接</div>' +
+            '<div style="font-size:12px;color:#888;">正在尝试连接到 RTMP 流...</div>' +
+          '</div>' +
+        '</div>';
+      // 尝试加载 flv.js 并播放
+      var script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/flv.js@latest/dist/flv.min.js';
+      script.onload = function() {
+        try {
+          var v = document.getElementById('rtmpVideo-' + app);
+          var ns = document.getElementById('rtmpNoSignal-' + app);
+          var player = flvjs.createPlayer({ type: 'flv', isLive: true, url: 'http://[240e:30b:1b07:400:716:8002:3c39:a1c4]:4321/' });
+          player.attachMediaElement(v);
+          player.load();
+          player.on(flvjs.Events.ERROR, function() { if (ns) ns.style.display = 'flex'; });
+          player.play().then(function(){ if (ns) ns.style.display = 'none'; }).catch(function(){ if (ns) { ns.firstElementChild.textContent = '✕'; ns.style.color = '#e81123'; ns.children[1].textContent = '连接失败'; }});
+          setTimeout(function(){ if (ns && ns.style.display !== 'none') { ns.firstElementChild.textContent = '✕'; ns.style.color = '#e81123'; ns.children[1].textContent = '连接失败'; ns.children[2].textContent = '无法连接到流服务器'; }}, 8000);
+        } catch(e) {}
+      };
+      document.head.appendChild(script);
+    }
+    else {
+      content.innerHTML = '<div style="padding:40px;text-align:center;color:#999;">该应用暂未实现</div>';
+    }
+  }
+
+  // ===== 右键菜单 =====
+  var ctxMenu = document.getElementById('contextMenu');
+  document.getElementById('desktop').addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    ctxMenu.style.left = e.clientX + 'px';
+    ctxMenu.style.top = e.clientY + 'px';
+    ctxMenu.classList.add('show');
+  });
+  document.addEventListener('click', hideContext);
+  function hideContext() { ctxMenu.classList.remove('show'); }
+
+  // ===== 显示桌面 =====
+  document.getElementById('showDesktop').addEventListener('click', function() {
+    for (var k in windows) {
+      if (!windows[k].minimized) minimizeWindow(k);
+    }
+  });
+
+  // ===== 关机 =====
+  function shutdown() {
+    document.body.innerHTML = '<div style="width:100%;height:100%;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Segoe UI,sans-serif;"><div style="font-size:14px;margin-top:24px;">正在关机...</div></div>';
+    setTimeout(function() {
+      document.body.innerHTML = '<div style="width:100%;height:100%;background:#000;"></div>';
+    }, 2000);
+  }
+
+  // 默认打开"此电脑"
+  setTimeout(function() { openWindow('thispc'); }, 300);
+</script>
+
+</body>
+</html>

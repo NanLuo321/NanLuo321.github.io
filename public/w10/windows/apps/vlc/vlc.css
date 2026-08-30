@@ -1,0 +1,384 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    width: 100%;
+    height: 100vh;
+    background: #1c1c1c;
+    color: #ddd;
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+}
+
+/* 顶部 */
+.vlc-top {
+    display: flex;
+    align-items: center;
+    height: 46px;
+    background: #262626;
+    padding: 0 12px;
+    gap: 20px;
+    flex-shrink: 0;
+    border-bottom: 1px solid #000;
+}
+
+.vlc-top .app-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    color: #fff;
+}
+
+.vlc-top .app-title .logo {
+    width: 26px;
+    height: 26px;
+    background: #f07b13;
+    border-radius: 50%;
+    color: #fff;
+    text-align: center;
+    line-height: 26px;
+    font-size: 13px;
+}
+
+.vlc-top .menu {
+    display: flex;
+    gap: 4px;
+}
+
+.vlc-top .menu .mi {
+    color: #ccc;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.vlc-top .menu .mi:hover {
+    background: #3a3a3a;
+    color: #fff;
+}
+
+.vlc-top .right-info {
+    margin-left: auto;
+    font-size: 12px;
+    color: #999;
+}
+
+/* 主区域 */
+.vlc-main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+.video-area {
+    flex: 1;
+    position: relative;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+}
+
+.video-area video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+}
+
+.video-placeholder {
+    text-align: center;
+    color: #777;
+}
+
+.video-placeholder .big-play {
+    font-size: 64px;
+    color: #f07b13;
+    margin-bottom: 14px;
+}
+
+.video-placeholder p {
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.ph-btns button {
+    background: #333;
+    border: none;
+    color: #ddd;
+    padding: 8px 18px;
+    margin: 0 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.ph-btns button:hover {
+    background: #444;
+    color: #fff;
+}
+
+/* 播放列表 */
+.playlist {
+    width: 260px;
+    background: #262626;
+    border-left: 1px solid #000;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.playlist .pl-title {
+    padding: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    border-bottom: 1px solid #333;
+}
+
+.playlist ul {
+    flex: 1;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.playlist ul li {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #ccc;
+    cursor: pointer;
+    border-bottom: 1px solid #2e2e2e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.playlist ul li:hover {
+    background: #333;
+    color: #fff;
+}
+
+.playlist ul li.playing {
+    color: #f07b13;
+    font-weight: 600;
+}
+
+.playlist .stream-box {
+    padding: 10px;
+    border-top: 1px solid #333;
+    display: flex;
+    gap: 6px;
+}
+
+.playlist .stream-box input {
+    flex: 1;
+    min-width: 0;
+    background: #1c1c1c;
+    border: 1px solid #444;
+    color: #ddd;
+    padding: 7px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    outline: none;
+}
+
+.playlist .stream-box input:focus {
+    border-color: #f07b13;
+}
+
+.playlist .stream-box button {
+    background: #f07b13;
+    border: none;
+    color: #fff;
+    padding: 0 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.playlist .stream-box button:hover {
+    background: #ff8c2e;
+}
+
+/* 控制栏 */
+.vlc-controls {
+    height: 64px;
+    background: #262626;
+    border-top: 1px solid #000;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 16px;
+    flex-shrink: 0;
+}
+
+.c-left {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.cb {
+    background: none;
+    border: none;
+    color: #ddd;
+    font-size: 18px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cb:hover {
+    background: #3a3a3a;
+    color: #f07b13;
+}
+
+.cb.play {
+    background: #f07b13;
+    color: #fff;
+    font-size: 20px;
+}
+
+.cb.play:hover {
+    background: #ff8c2e;
+}
+
+.c-mid {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.c-mid .time-cur,
+.c-mid .time-total {
+    font-size: 12px;
+    color: #bbb;
+    min-width: 40px;
+    text-align: center;
+}
+
+.seek {
+    flex: 1;
+    height: 4px;
+    background: #444;
+    border-radius: 2px;
+    position: relative;
+    cursor: pointer;
+    min-width: 60px;
+}
+
+.seek .seek-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0%;
+    background: #f07b13;
+    border-radius: 2px;
+}
+
+.seek .seek-dot {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background: #f07b13;
+    border-radius: 50%;
+}
+
+.c-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.c-right .vol-ic {
+    font-size: 16px;
+    color: #bbb;
+}
+
+.vol-seek {
+    width: 80px;
+    height: 4px;
+    background: #444;
+    border-radius: 2px;
+    position: relative;
+    cursor: pointer;
+}
+
+.vol-seek .seek-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 80%;
+    background: #f07b13;
+    border-radius: 2px;
+}
+
+.vol-seek .seek-dot {
+    position: absolute;
+    top: 50%;
+    left: 80%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background: #f07b13;
+    border-radius: 50%;
+}
+
+.vol-num {
+    font-size: 12px;
+    color: #bbb;
+    min-width: 24px;
+}
+
+/* 扩展模式（模拟全屏） */
+body.expanded .vlc-top,
+body.expanded .vlc-controls,
+body.expanded .playlist {
+    display: none;
+}
+
+body.expanded .vlc-main {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+}
+
+body.expanded .video-area {
+    flex: 1;
+}
+

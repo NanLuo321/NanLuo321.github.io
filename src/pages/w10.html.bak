@@ -1,0 +1,4190 @@
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows 10</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    color: #fff;
+    background: #0078d7;
+  }
+
+  /* ===== 桌面壁纸（Win10 蓝色光效） ===== */
+  .desktop {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(100, 180, 255, 0.35) 0%, transparent 55%),
+      radial-gradient(ellipse at 70% 65%, rgba(0, 120, 215, 0.5) 0%, transparent 60%),
+      linear-gradient(135deg, #0078d7 0%, #005a9e 40%, #003e77 75%, #002447 100%);
+    background-size: cover;
+  }
+  .desktop::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 25% 35%, rgba(150, 220, 255, 0.2) 0%, transparent 40%),
+      radial-gradient(circle at 75% 70%, rgba(30, 90, 160, 0.3) 0%, transparent 45%);
+    pointer-events: none;
+  }
+
+  /* ===== 桌面图标 ===== */
+  .desktop-icons {
+    position: absolute;
+    top: 12px; left: 12px;
+    display: grid;
+    grid-template-columns: 80px;
+    gap: 4px;
+  }
+  .d-icon {
+    width: 80px;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: center;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    font-size: 12px;
+    line-height: 1.3;
+    word-break: break-all;
+  }
+  .d-icon:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.3);
+  }
+  .d-icon.selected {
+    background: rgba(0, 120, 215, 0.4);
+    border-color: rgba(255,255,255,0.5);
+  }
+  .d-icon svg {
+    width: 44px; height: 44px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  }
+
+  /* ===== 任务栏 ===== */
+  .taskbar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 40px;
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    z-index: 1000;
+  }
+
+  .start-btn {
+    width: 48px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .start-btn:hover, .start-btn.active { background: rgba(255,255,255,0.08); }
+  .start-btn svg { width: 20px; height: 20px; }
+
+  .search-box {
+    width: 280px; height: 30px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 2px;
+    display: flex; align-items: center;
+    padding: 0 10px;
+    margin-left: 4px;
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+  }
+  .search-box svg { width: 14px; height: 14px; margin-right: 8px; opacity: 0.7; }
+
+  .task-view {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-left: 4px;
+  }
+  .task-view:hover { background: rgba(255,255,255,0.08); }
+  .task-view svg { width: 18px; height: 18px; opacity: 0.85; }
+
+  .pinned-apps {
+    display: flex; align-items: center;
+    margin-left: 8px;
+    height: 100%;
+  }
+  .pinned-app {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    position: relative;
+  }
+  .pinned-app:hover { background: rgba(255,255,255,0.08); }
+  .pinned-app.active::after {
+    content: "";
+    position: absolute;
+    bottom: 2px; left: 50%;
+    transform: translateX(-50%);
+    width: 16px; height: 3px;
+    background: #0078d7;
+    border-radius: 2px;
+  }
+  .pinned-app svg { width: 20px; height: 20px; }
+
+  .taskbar-spacer { flex: 1; }
+
+  .tray {
+    display: flex; align-items: center;
+    height: 100%;
+    padding-right: 4px;
+  }
+  .tray-icon {
+    width: 28px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .tray-icon:hover { background: rgba(255,255,255,0.08); }
+  .tray-icon svg { width: 14px; height: 14px; opacity: 0.85; }
+
+  .clock {
+    padding: 0 12px;
+    height: 100%;
+    display: flex; flex-direction: column;
+    align-items: flex-end; justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1.35;
+    color: #fff;
+  }
+  .clock:hover { background: rgba(255,255,255,0.08); }
+
+  .show-desktop {
+    width: 4px; height: 100%;
+    border-left: 1px solid rgba(255,255,255,0.15);
+    cursor: pointer;
+  }
+  .show-desktop:hover { background: rgba(255,255,255,0.1); }
+
+  /* ===== 开始菜单 ===== */
+  .start-menu {
+    position: fixed;
+    bottom: 40px; left: 0;
+    width: 600px; height: 560px;
+    background: rgba(25, 25, 25, 0.95);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-bottom: none;
+    display: none;
+    flex-direction: column;
+    z-index: 999;
+    animation: startIn 0.2s ease-out;
+  }
+  .start-menu.show { display: flex; }
+  @keyframes startIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .start-top {
+    flex: 1;
+    display: flex;
+    padding: 12px 0 0 0;
+  }
+  .start-apps {
+    width: 240px;
+    padding: 0 8px;
+    overflow-y: auto;
+  }
+  .start-app-list-title {
+    font-size: 13px;
+    color: #fff;
+    padding: 8px 12px 4px;
+    font-weight: 600;
+  }
+  .start-app-item {
+    display: flex; align-items: center;
+    padding: 6px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #fff;
+    gap: 10px;
+  }
+  .start-app-item:hover { background: rgba(255,255,255,0.08); }
+  .start-app-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  .start-tiles {
+    flex: 1;
+    padding: 0 16px 12px 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 80px;
+    gap: 4px;
+    align-content: start;
+  }
+  .tile {
+    background: #0078d7;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    border: 1px solid transparent;
+    color: #fff;
+    font-size: 11px;
+    gap: 6px;
+    transition: transform 0.1s;
+  }
+  .tile:hover { border-color: rgba(255,255,255,0.3); }
+  .tile:active { transform: scale(0.97); }
+  .tile svg { width: 28px; height: 28px; }
+  .tile.green { background: #107c10; }
+  .tile.purple { background: #5c2d91; }
+  .tile.orange { background: #d83b01; }
+  .tile.pink { background: #e3008c; }
+  .tile.cyan { background: #00b294; }
+  .tile.gray { background: #5c5c5c; }
+
+  .start-bottom {
+    height: 48px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .start-user {
+    display: flex; align-items: center;
+    gap: 10px;
+    flex: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 2px;
+  }
+  .start-user:hover { background: rgba(255,255,255,0.08); }
+  .start-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #0078d7;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+  }
+  .start-user-name { font-size: 13px; }
+  .start-power {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .start-power:hover { background: rgba(255,255,255,0.08); }
+  .start-power svg { width: 16px; height: 16px; }
+
+  /* ===== 窗口 ===== */
+  .window {
+    position: absolute;
+    min-width: 400px;
+    min-height: 280px;
+    background: #f3f3f3;
+    border: 1px solid #d0d0d0;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    color: #1f1f1f;
+    z-index: 100;
+    border-radius: 0;
+  }
+  .window.maximized {
+    top: 0 !important; left: 0 !important;
+    width: 100% !important;
+    height: calc(100% - 40px) !important;
+    border: none;
+  }
+  .window.minimized { display: none; }
+
+  .win-titlebar {
+    height: 32px;
+    flex-shrink: 0;
+    background: #ffffff;
+    border-bottom: 1px solid #e1e1e1;
+    display: flex;
+    align-items: stretch;
+    cursor: default;
+  }
+  .window:not(.maximized) .win-titlebar { cursor: move; }
+
+  .win-title-icon {
+    display: flex; align-items: center;
+    padding-left: 12px;
+    color: #0078d7;
+  }
+  .win-title-icon svg { width: 16px; height: 16px; }
+  .win-title-text {
+    flex: 1;
+    display: flex; align-items: center;
+    padding-left: 8px;
+    font-size: 12px;
+    color: #1f1f1f;
+  }
+  .win-controls { display: flex; height: 100%; }
+  .win-btn {
+    width: 46px; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: #1f1f1f;
+    transition: background 0.12s;
+    border: none; background: transparent;
+  }
+  .win-btn:hover { background: #e5e5e5; }
+  .win-btn.close:hover { background: #e81123; color: #fff; }
+  .win-btn svg { width: 10px; height: 10px; }
+
+  .win-toolbar {
+    height: 38px;
+    flex-shrink: 0;
+    background: #f9f9f9;
+    border-bottom: 1px solid #e1e1e1;
+    display: flex; align-items: center;
+    padding: 0 10px;
+    gap: 6px;
+    font-size: 12px;
+    color: #5a5a5a;
+  }
+  .win-nav-btn {
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  .win-nav-btn:hover { background: #e5e5e5; }
+  .win-nav-btn svg { width: 14px; height: 14px; }
+  .win-address {
+    flex: 1;
+    height: 26px;
+    background: #fff;
+    border: 1px solid #ccc;
+    display: flex; align-items: center;
+    padding: 0 8px;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    color: #333;
+  }
+  input.win-address {
+    outline: none;
+    border-radius: 2px;
+    padding: 0 10px;
+    user-select: text;
+  }
+  input.win-address:focus {
+    border-color: #0078d4;
+  }
+
+  .win-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  .win-sidebar {
+    width: 180px;
+    background: #f9f9f9;
+    border-right: 1px solid #e1e1e1;
+    padding: 8px 0;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .win-sidebar-item {
+    display: flex; align-items: center;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+    gap: 8px;
+  }
+  .win-sidebar-item:hover { background: #e5e5e5; }
+  .win-sidebar-item.active { background: #e5f3ff; color: #0078d7; }
+  .win-sidebar-item svg { width: 16px; height: 16px; }
+
+  .win-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    background: #fff;
+  }
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+  }
+  .file-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 4px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 11px;
+    color: #333;
+    gap: 4px;
+    line-height: 1.3;
+  }
+  .file-item:hover {
+    background: #e5f3ff;
+    border-color: #99ccff;
+  }
+  .file-item svg { width: 40px; height: 40px; }
+
+  .win-statusbar {
+    height: 28px;
+    flex-shrink: 0;
+    background: #f9f9f9;
+    border-top: 1px solid #e1e1e1;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 11px;
+    color: #5a5a5a;
+  }
+
+  /* ===== 右键菜单 ===== */
+  .context-menu {
+    position: fixed;
+    background: #f9f9f9;
+    border: 1px solid #d0d0d0;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    min-width: 180px;
+    padding: 4px 0;
+    z-index: 2000;
+    display: none;
+    color: #1f1f1f;
+  }
+  .context-menu.show { display: block; }
+  .ctx-item {
+    padding: 6px 20px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex; align-items: center;
+    gap: 10px;
+  }
+  .ctx-item:hover { background: #e5f3ff; }
+  .ctx-sep {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 4px 0;
+  }
+
+  /* ===== 窗口 resize 手柄 ===== */
+  .window-resize-handle {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    z-index: 10;
+  }
+  .window-resize-handle::before {
+    content: "";
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 10px;
+    height: 10px;
+    background:
+      linear-gradient(135deg, transparent 40%, #b0b0b0 40%, #b0b0b0 50%, transparent 50%, transparent 60%, #b0b0b0 60%, #b0b0b0 70%, transparent 70%, transparent 80%, #b0b0b0 80%, #b0b0b0 90%, transparent 90%);
+  }
+  .window.maximized .window-resize-handle { display: none; }
+
+  /* ===== 记事本菜单栏 ===== */
+  .notepad-menubar {
+    height: 24px;
+    background: #f0f0f0;
+    border-bottom: 1px solid #d0d0d0;
+    display: flex;
+    align-items: stretch;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: #333;
+    position: relative;
+  }
+  .notepad-menu-item {
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    cursor: default;
+  }
+  .notepad-menu-item:hover { background: #e5f3ff; }
+  .notepad-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #f9f9f9;
+    border: 1px solid #d0d0d0;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+    min-width: 180px;
+    z-index: 50;
+  }
+  .notepad-dropdown.show { display: block; }
+  .notepad-dd-item {
+    padding: 5px 24px 5px 20px;
+    font-size: 12px;
+    color: #333;
+    cursor: default;
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .notepad-dd-item:hover { background: #e5f3ff; }
+  .notepad-dd-item.disabled { color: #aaa; }
+  .notepad-dd-item.disabled:hover { background: transparent; }
+  .notepad-dd-sep { height: 1px; background: #e0e0e0; margin: 3px 0; }
+  .notepad-dd-shortcut { color: #888; font-size: 11px; }
+  .notepad-textarea {
+    flex: 1;
+    padding: 4px 6px;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #000;
+    outline: none;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    background: #fff;
+    user-select: text;
+    resize: none;
+    border: none;
+  }
+
+  /* ===== 托盘弹出面板 ===== */
+  .tray-panel {
+    position: fixed;
+    bottom: 40px;
+    background: rgba(25, 25, 25, 0.92);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-bottom: none;
+    color: #fff;
+    z-index: 999;
+    display: none;
+    animation: trayIn 0.18s ease-out;
+  }
+  .tray-panel.show { display: block; }
+  @keyframes trayIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 网络面板 */
+  .network-panel {
+    right: 92px;
+    width: 320px;
+    padding: 16px;
+  }
+  .network-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  .network-item:hover { background: rgba(255,255,255,0.1); }
+  .network-item svg { width: 24px; height: 24px; flex-shrink: 0; }
+  .network-info { flex: 1; }
+  .network-name { font-size: 13px; font-weight: 600; }
+  .network-status { font-size: 11px; color: #aaa; margin-top: 2px; }
+  .network-connected { color: #7ecf7e; }
+
+  /* 音量面板 */
+  .volume-panel {
+    right: 60px;
+    width: 280px;
+    padding: 16px;
+  }
+  .volume-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .volume-icon-btn {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .volume-icon-btn:hover { background: rgba(255,255,255,0.1); }
+  .volume-icon-btn svg { width: 20px; height: 20px; }
+  .volume-slider-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    position: relative;
+    cursor: pointer;
+  }
+  .volume-slider-fill {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    background: #0078d7;
+    border-radius: 2px;
+  }
+  .volume-slider-thumb {
+    position: absolute;
+    top: 50%;
+    width: 16px; height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  }
+  .volume-label {
+    font-size: 12px;
+    color: #ccc;
+    min-width: 32px;
+    text-align: right;
+  }
+
+  /* 日历面板 */
+  .calendar-panel {
+    right: 0;
+    width: 340px;
+    padding: 12px 16px 16px;
+  }
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 4px 10px;
+  }
+  .cal-title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .cal-nav {
+    display: flex;
+    gap: 4px;
+  }
+  .cal-nav-btn {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    border-radius: 2px;
+    font-size: 12px;
+  }
+  .cal-nav-btn:hover { background: rgba(255,255,255,0.1); }
+  .cal-grid-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 11px;
+    color: #888;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .cal-grid-header div { padding: 4px 0; }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 12px;
+    padding-top: 4px;
+  }
+  .cal-day {
+    padding: 8px 0;
+    cursor: default;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 2px auto;
+  }
+  .cal-day.today {
+    background: #0078d7;
+    color: #fff;
+    font-weight: 600;
+  }
+  .cal-day.other { color: #555; }
+  .cal-time-big {
+    font-size: 28px;
+    font-weight: 300;
+    padding: 4px 4px 8px;
+  }
+  .cal-date-big {
+    font-size: 13px;
+    color: #ccc;
+    padding: 0 4px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 8px;
+  }
+
+  /* ===== 打开方式对话框 ===== */
+  .open-with-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 420px;
+    background: #f3f3f3;
+    border: 1px solid #d0d0d0;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    z-index: 3000;
+    color: #1f1f1f;
+    font-size: 12px;
+  }
+  .owd-titlebar {
+    height: 30px;
+    background: #fff;
+    border-bottom: 1px solid #e1e1e1;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .owd-title-text { flex: 1; }
+  .owd-close {
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    margin-right: -10px;
+  }
+  .owd-close:hover { background: #e81123; color: #fff; }
+  .owd-body { padding: 16px; }
+  .owd-desc {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .owd-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid #d0d0d0;
+    border-radius: 2px;
+    cursor: pointer;
+    margin-bottom: 6px;
+    background: #fff;
+  }
+  .owd-option:hover { border-color: #0078d4; background: #e5f3ff; }
+  .owd-option svg { width: 32px; height: 32px; flex-shrink: 0; }
+  .owd-option-name { font-weight: 600; font-size: 12px; }
+  .owd-option-sub { font-size: 11px; color: #888; margin-top: 2px; }
+  .owd-always {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+  }
+  .owd-always input { cursor: pointer; }
+  .owd-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 16px;
+  }
+  .owd-btn {
+    padding: 5px 18px;
+    font-size: 12px;
+    border: 1px solid #adadad;
+    background: #e1e1e1;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .owd-btn:hover { background: #e5f3ff; border-color: #0078d4; }
+  .owd-btn.primary {
+    background: #0078d4;
+    border-color: #0078d4;
+    color: #fff;
+  }
+  .owd-btn.primary:hover { background: #006cbd; }
+  .owd-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 2999;
+  }
+
+  /* ===== 照片查看器 ===== */
+  .photo-viewer {
+    width: 100%;
+    height: 100%;
+    background: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+  }
+  .photo-viewer-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .photo-placeholder {
+    width: 280px;
+    height: 200px;
+    background: linear-gradient(135deg, #2c3e50 0%, #4a6580 50%, #2c3e50 100%);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #8899aa;
+    font-size: 12px;
+  }
+  .photo-placeholder svg { width: 48px; height: 48px; opacity: 0.5; }
+  .photo-filename {
+    font-size: 13px;
+    color: #ccc;
+    max-width: 80%;
+    text-align: center;
+    word-break: break-all;
+  }
+
+  /* 响应式 */
+  @media (max-width: 640px) {
+    .search-box { display: none; }
+    .start-menu { width: 100%; height: calc(100% - 40px); }
+    .pinned-apps .pinned-app:nth-child(n+5) { display: none; }
+    .window { min-width: 280px; min-height: 200px; }
+    .win-sidebar { width: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 桌面 -->
+<div class="desktop" id="desktop">
+
+  <!-- 桌面图标 -->
+  <div class="desktop-icons" id="desktopIcons">
+    <div class="d-icon" data-app="thispc" ondblclick="openWindow('thispc')">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="4" width="18" height="14" rx="1.5" fill="#0078d4" stroke="#fff" stroke-width="1"/>
+        <rect x="5" y="18" width="14" height="2" rx="0.5" fill="#0078d4" stroke="#fff" stroke-width="1"/>
+        <path d="M7 8h10M7 11h10M7 14h6" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+      <span>此电脑</span>
+    </div>
+    <div class="d-icon" data-app="recycle" ondblclick="openWindow('recycle')">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 7h14l-1.5 13a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20L5 7z" fill="#6c6c6c" stroke="#fff" stroke-width="0.8"/>
+        <path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7" fill="#8c8c8c" stroke="#fff" stroke-width="0.8"/>
+        <path d="M4 7h16" stroke="#fff" stroke-width="1" stroke-linecap="round"/>
+      </svg>
+      <span>回收站</span>
+    </div>
+    <div class="d-icon" data-app="edge" ondblclick="openWindow('edge')">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="eg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0078d4"/><stop offset="100%" stop-color="#00bcf2"/>
+        </linearGradient></defs>
+        <circle cx="12" cy="12" r="10" fill="url(#eg)"/>
+        <path d="M6 16c3 3 9 3.5 13 1-2-4-7-7-13-1 0 0 0 0 0 0z" fill="#fff" opacity="0.9"/>
+        <path d="M8 10c3-2 7-2 9 1-2-3-6-3-9-1z" fill="#fff" opacity="0.6"/>
+      </svg>
+      <span>Microsoft Edge</span>
+    </div>
+    <div class="d-icon" data-app="vlc" ondblclick="openWindow('vlc')">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <!-- VLC 橙色交通锥 -->
+        <defs>
+          <linearGradient id="vlcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#ff8c00"/>
+            <stop offset="50%" stop-color="#ff6600"/>
+            <stop offset="100%" stop-color="#e65c00"/>
+          </linearGradient>
+        </defs>
+        <!-- 锥底底座 -->
+        <ellipse cx="24" cy="42" rx="16" ry="3.5" fill="#333"/>
+        <ellipse cx="24" cy="40" rx="16" ry="3.5" fill="#555"/>
+        <!-- 锥体 - 橙色主体 -->
+        <path d="M20 40 L14 22 L24 6 L34 22 L28 40 Z" fill="url(#vlcGrad)"/>
+        <!-- 白色条纹 -->
+        <path d="M17.5 26 L24 16 L30.5 26 L28.5 30 L24 23 L19.5 30 Z" fill="#fff" opacity="0.9"/>
+        <!-- 顶部黑色小帽 -->
+        <ellipse cx="24" cy="6.5" rx="2.5" ry="1" fill="#222"/>
+        <!-- 高光 -->
+        <path d="M21 12 L17 24 L19 24 L23 12 Z" fill="#fff" opacity="0.25"/>
+      </svg>
+      <span>VLC media player</span>
+    </div>
+
+  </div>
+  <!-- 动态桌面文件（保存到网页桌面的文件） -->
+  <div class="desktop-icons" id="desktopFiles"></div>
+
+  <!-- 窗口容器 -->
+  <div id="windowContainer"></div>
+
+</div>
+
+<!-- 任务栏 -->
+<div class="taskbar">
+  <div class="start-btn" id="startBtn" onclick="toggleStart()">
+    <svg viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 5h8v7H3V5zm0 9h8v7H3v-7zm10-9h8v7h-8V5zm0 9h8v7h-8v-7z"/>
+    </svg>
+  </div>
+  <div class="search-box" id="searchBox" onclick="openSearchPanel()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+    </svg>
+    在这里输入你要搜索的内容
+  </div>
+  <div class="task-view" title="任务视图" id="taskViewBtn" onclick="openTaskView()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+    </svg>
+  </div>
+  <div class="pinned-apps" id="pinnedApps">
+    <div class="pinned-app active" data-app="thispc" ondblclick="openWindow('thispc')" title="文件资源管理器">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2h9A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11z" fill="#ffc83d" stroke="#fff" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div class="pinned-app" data-app="edge" ondblclick="openWindow('edge')" title="Microsoft Edge">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="eg2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0078d4"/><stop offset="100%" stop-color="#00bcf2"/>
+        </linearGradient></defs>
+        <circle cx="12" cy="12" r="10" fill="url(#eg2)"/>
+        <path d="M6 16c3 3 9 3.5 13 1-2-4-7-7-13-1z" fill="#fff" opacity="0.9"/>
+      </svg>
+    </div>
+    <div class="pinned-app" data-app="vlc" ondblclick="openWindow('vlc')" title="VLC media player">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="12" cy="21" rx="8" ry="1.8" fill="#333"/>
+        <path d="M10 20 L7 11 L12 3 L17 11 L14 20 Z" fill="#ff6600"/>
+        <path d="M8.6 13 L12 8 L15.4 13 L14.4 15 L12 11.5 L9.6 15 Z" fill="#fff" opacity="0.9"/>
+        <ellipse cx="12" cy="3.2" rx="1.2" ry="0.5" fill="#222"/>
+      </svg>
+    </div>
+  </div>
+  <div class="taskbar-spacer"></div>
+  <div class="tray">
+    <div class="tray-icon" id="trayNetwork" title="网络" onclick="toggleTrayPanel('network')">
+      <svg id="trayNetworkIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- 电脑主体 -->
+        <rect x="3" y="4" width="18" height="12" rx="1" fill="none" stroke="#fff" stroke-width="1.6"/>
+        <rect x="5" y="6" width="14" height="8" fill="none" stroke="#fff" stroke-width="0.8" opacity="0.5"/>
+        <!-- 底座 -->
+        <rect x="9" y="17" width="6" height="1.5" fill="#fff"/>
+        <rect x="7" y="19" width="10" height="1" rx="0.5" fill="#fff"/>
+        <!-- 网线 -->
+        <path d="M12 16 L12 14" stroke="#fff" stroke-width="1.2"/>
+        <path d="M9 13.5 L15 13.5" stroke="#fff" stroke-width="1.2"/>
+        <path d="M10 13.5 L10 11.5 L14 11.5 L14 13.5" fill="none" stroke="#fff" stroke-width="1.2"/>
+        <path d="M10.5 11.5 L10.5 9.5 L13.5 9.5 L13.5 11.5" fill="none" stroke="#fff" stroke-width="1"/>
+      </svg>
+    </div>
+    <div class="tray-icon" id="trayVolume" title="音量" onclick="toggleTrayPanel('volume')">
+      <svg id="trayVolumeIcon" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+      </svg>
+    </div>
+    <div class="clock" id="clock" onclick="toggleTrayPanel('calendar')">
+      <span id="clockTime">--:--</span>
+      <span id="clockDate">----/--/--</span>
+    </div>
+  </div>
+  <div class="show-desktop" id="showDesktop" title="显示桌面"></div>
+</div>
+
+<!-- 开始菜单 -->
+<div class="start-menu" id="startMenu">
+  <div class="start-top">
+    <div class="start-apps">
+      <div class="start-app-list-title">最近添加</div>
+      <div class="start-app-item" onclick="openWindow('edge'); toggleStart();">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="eg3" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0078d4"/><stop offset="100%" stop-color="#00bcf2"/>
+          </linearGradient></defs>
+          <circle cx="12" cy="12" r="10" fill="url(#eg3)"/>
+        </svg>
+        Microsoft Edge
+      </div>
+      <div class="start-app-list-title">A</div>
+      <div class="start-app-item" onclick="openWindow('calculator'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="2" width="14" height="20" rx="2" fill="#5c5c5c"/>
+          <rect x="7" y="5" width="10" height="4" rx="0.5" fill="#a8d08d"/>
+          <circle cx="8.5" cy="13" r="1.3" fill="#d0d0d0"/><circle cx="12" cy="13" r="1.3" fill="#d0d0d0"/><circle cx="15.5" cy="13" r="1.3" fill="#d0d0d0"/>
+          <circle cx="8.5" cy="16.5" r="1.3" fill="#d0d0d0"/><circle cx="12" cy="16.5" r="1.3" fill="#d0d0d0"/><circle cx="15.5" cy="16.5" r="1.3" fill="#ff9800"/>
+          <circle cx="12" cy="19.5" r="1.3" fill="#d0d0d0"/>
+        </svg>
+        计算器
+      </div>
+      <div class="start-app-item" onclick="openWindow('notepad'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#fff" stroke="#0078d4" stroke-width="1.2"/>
+          <path d="M15 3v4h4" stroke="#0078d4" stroke-width="1.2" fill="none"/>
+        </svg>
+        记事本
+      </div>
+      <div class="start-app-list-title">S</div>
+      <div class="start-app-item" onclick="openWindow('settings'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="9" fill="#5c5c5c" stroke="#fff" stroke-width="0.5"/>
+          <circle cx="12" cy="12" r="4" fill="#fff"/>
+          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4" stroke="#fff" stroke-width="1.5"/>
+        </svg>
+        设置
+      </div>
+      <div class="start-app-list-title">V</div>
+      <div class="start-app-item" onclick="openWindow('vlc'); toggleStart();">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="12" cy="21" rx="8" ry="1.8" fill="#333"/>
+          <path d="M10 20 L7 11 L12 3 L17 11 L14 20 Z" fill="#ff6600"/>
+          <path d="M8.6 13 L12 8 L15.4 13 L14.4 15 L12 11.5 L9.6 15 Z" fill="#fff" opacity="0.9"/>
+        </svg>
+        VLC media player
+      </div>
+    </div>
+    <div class="start-tiles">
+      <div class="tile" onclick="openWindow('edge'); toggleStart();">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="fill:#fff;width:32px;height:32px">
+          <circle cx="12" cy="12" r="10" fill="#fff"/>
+        </svg>
+        Edge
+      </div>
+      <div class="tile green" onclick="openWindow('mail'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <rect x="3" y="5" width="18" height="14" rx="1"/><path d="m3 7 9 6 9-6"/>
+        </svg>
+        邮件
+      </div>
+      <div class="tile purple" onclick="openWindow('calendar'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 10h18M8 3v4M16 3v4"/>
+        </svg>
+        日历
+      </div>
+      <div class="tile orange" onclick="openWindow('photos'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <rect x="3" y="5" width="18" height="14" rx="1"/><circle cx="10" cy="11" r="2.5"/><path d="m21 17-5-5-9 9"/>
+        </svg>
+        照片
+      </div>
+      <div class="tile pink" onclick="openWindow('store'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <path d="M3 7h18l-1.5 13a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1L3 7z"/><path d="M8 7V4a4 4 0 0 1 8 0v3"/>
+        </svg>
+        应用商店
+      </div>
+      <div class="tile cyan" onclick="openWindow('rtmp'); toggleStart();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <rect x="2" y="6" width="20" height="12" rx="2"/><path d="m10 9 5 3-5 3V9z" fill="#fff"/>
+        </svg>
+        CAM？
+      </div>
+      <div class="tile orange" onclick="openWindow('vlc'); toggleStart();">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="12" cy="21" rx="8" ry="1.8" fill="#fff" opacity="0.3"/>
+          <path d="M10 20 L7 11 L12 3 L17 11 L14 20 Z" fill="#fff"/>
+          <path d="M8.6 13 L12 8 L15.4 13 L14.4 15 L12 11.5 L9.6 15 Z" fill="#ff6600"/>
+        </svg>
+        VLC
+      </div>
+    </div>
+  </div>
+  <div class="start-bottom">
+    <div class="start-user">
+      <div class="start-avatar">南</div>
+      <div class="start-user-name">南洛</div>
+    </div>
+    <div class="start-power" title="关机" onclick="shutdown()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v9"/><path d="M5.5 8.5a8 8 0 1 0 13 0"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- 右键菜单 -->
+<div class="context-menu" id="contextMenu">
+  <div class="ctx-item" onclick="openWindow('thispc'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="5" width="16" height="13" rx="1" fill="#0078d4"/>
+    </svg>
+    查看
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctxDeleteFile" onclick="deleteSelectedDesktopFile(); hideContext();" style="color:#e81123;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    <span>删除</span>
+  </div>
+  <div class="ctx-item" onclick="openWindow('thispc'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="4" width="16" height="16" rx="1" fill="#0078d4"/>
+    </svg>
+    刷新
+  </div>
+  <div class="ctx-item" onclick="openWindow('settings'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="8" fill="#5c5c5c"/>
+    </svg>
+    显示设置
+  </div>
+  <div class="ctx-item" onclick="openWindow('settings'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="8" fill="#5c5c5c"/>
+    </svg>
+    个性化
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="openWindow('notepad'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#fff" stroke="#0078d4" stroke-width="1.2"/>
+    </svg>
+    新建
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="openWindow('settings'); hideContext();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="8" fill="#5c5c5c"/>
+    </svg>
+    屏幕分辨率
+  </div>
+</div>
+
+<!-- 网络面板 -->
+<div class="tray-panel network-panel" id="networkPanel">
+  <div style="font-size:13px;font-weight:600;margin-bottom:10px;">网络</div>
+  <div class="network-item">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="4" width="18" height="12" rx="1" fill="none" stroke="#fff" stroke-width="1.6"/>
+      <rect x="9" y="17" width="6" height="1.5" fill="#fff"/>
+      <rect x="7" y="19" width="10" height="1" rx="0.5" fill="#fff"/>
+      <path d="M12 16 L12 14" stroke="#fff" stroke-width="1.2"/>
+      <path d="M9 13.5 L15 13.5" stroke="#fff" stroke-width="1.2"/>
+      <path d="M10 13.5 L10 11.5 L14 11.5 L14 13.5" fill="none" stroke="#fff" stroke-width="1.2"/>
+    </svg>
+    <div class="network-info">
+      <div class="network-name">以太网</div>
+      <div class="network-status"><span class="network-connected">已连接</span> · Internet 访问</div>
+    </div>
+  </div>
+  <div style="margin-top:12px;font-size:11px;color:#888;">已连接到 网络</div>
+</div>
+
+<!-- 音量面板 -->
+<div class="tray-panel volume-panel" id="volumePanel">
+  <div class="volume-slider-row">
+    <div class="volume-icon-btn" id="volPanelMuteBtn" onclick="toggleSystemVolumeMute()" title="静音">
+      <svg id="volPanelIcon" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+      </svg>
+    </div>
+    <div class="volume-slider-track" id="volPanelTrack">
+      <div class="volume-slider-fill" id="volPanelFill" style="width:70%;"></div>
+      <div class="volume-slider-thumb" id="volPanelThumb" style="left:70%;"></div>
+    </div>
+    <div class="volume-label" id="volPanelLabel">70</div>
+  </div>
+</div>
+
+<!-- 日历面板 -->
+<div class="tray-panel calendar-panel" id="calendarPanel">
+  <div class="cal-time-big" id="calBigTime">--:--</div>
+  <div class="cal-date-big" id="calBigDate">----年--月--日 星期-</div>
+  <div class="cal-header">
+    <div class="cal-title" id="calTitle">---- 年 -- 月</div>
+    <div class="cal-nav">
+      <div class="cal-nav-btn" onclick="changeCalMonth(-1)" title="上个月">&#8249;</div>
+      <div class="cal-nav-btn" onclick="changeCalMonth(1)" title="下个月">&#8250;</div>
+    </div>
+  </div>
+  <div class="cal-grid-header">
+    <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+  </div>
+  <div class="cal-grid" id="calGrid"></div>
+</div>
+
+<!-- 隐藏的文件选择器 -->
+<input type="file" id="notepadFileInput" accept=".txt,text/plain" style="display:none;">
+
+<!-- 记事本保存对话框 -->
+<div id="saveDialog" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:3000;align-items:center;justify-content:center;">
+  <div id="saveDialogInner" style="width:420px;background:#fff;border:1px solid #999;box-shadow:0 8px 32px rgba(0,0,0,0.3);position:relative;font-family:'Segoe UI','Microsoft YaHei UI',sans-serif;">
+    <!-- 标题栏（可拖动） -->
+    <div id="saveDlgTitleBar" style="background:#0078d7;color:#fff;padding:8px 12px;font-size:13px;display:flex;align-items:center;cursor:move;">
+      <span style="flex:1;">保存文件</span>
+      <span id="saveDlgClose" style="width:24px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;">✕</span>
+    </div>
+    <!-- 内容区 -->
+    <div style="padding:16px;color:#333;font-size:12px;">
+      <div style="margin-bottom:8px;">文件名：</div>
+      <input type="text" id="saveDlgFilename" placeholder="新建文本文档.txt" style="width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:2px;font-size:12px;box-sizing:border-box;outline:none;" />
+      <div style="margin-top:14px;margin-bottom:8px;font-weight:600;">保存方式：</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <label id="saveOptDesktop" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e0e0e0;border-radius:2px;cursor:pointer;background:#f9f9f9;">
+          <input type="radio" name="saveOpt" value="desktop" checked style="cursor:pointer;">
+          <div>
+            <div style="font-weight:600;color:#333;">保存到网页桌面</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;">在桌面生成 txt 文件图标，双击可用记事本打开</div>
+          </div>
+        </label>
+        <label id="saveOptDownload" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e0e0e0;border-radius:2px;cursor:pointer;background:#f9f9f9;">
+          <input type="radio" name="saveOpt" value="download" style="cursor:pointer;">
+          <div>
+            <div style="font-weight:600;color:#333;">下载到本地</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;">将 .txt 文件下载到你的电脑</div>
+          </div>
+        </label>
+      </div>
+    </div>
+    <!-- 按钮区 -->
+    <div style="padding:0 16px 14px;display:flex;justify-content:flex-end;gap:8px;">
+      <button id="saveDlgOk" style="padding:6px 20px;background:#0078d7;color:#fff;border:1px solid #0067b8;border-radius:2px;font-size:12px;cursor:pointer;">保存</button>
+      <button id="saveDlgCancel" style="padding:6px 20px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:2px;font-size:12px;cursor:pointer;">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== 时钟 =====
+  function updateClock() {
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, '0');
+    var m = String(now.getMinutes()).padStart(2, '0');
+    var y = now.getFullYear();
+    var mo = String(now.getMonth() + 1).padStart(2, '0');
+    var d = String(now.getDate()).padStart(2, '0');
+    document.getElementById('clockTime').textContent = h + ':' + m;
+    document.getElementById('clockDate').textContent = y + '/' + mo + '/' + d;
+  }
+  updateClock();
+  setInterval(updateClock, 1000 * 30);
+
+  // 初始化托盘音量图标
+  setTimeout(function() { updateVolumePanel(); }, 0);
+
+  // 音量滑块拖动（全局绑定）
+  var isVolPanelDragging = false;
+  function initVolumeSlider() {
+    var track = document.getElementById('volPanelTrack');
+    if (!track) return;
+
+    function handleVolClick(e) {
+      var rect = track.getBoundingClientRect();
+      var pct = (e.clientX - rect.left) / rect.width;
+      pct = Math.max(0, Math.min(1, pct));
+      systemVolume = Math.round(pct * 100);
+      if (systemVolume > 0) systemMuted = false;
+      updateVolumePanel();
+    }
+
+    track.addEventListener('mousedown', function(e) {
+      isVolPanelDragging = true;
+      handleVolClick(e);
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (isVolPanelDragging) handleVolClick(e);
+    });
+    document.addEventListener('mouseup', function() { isVolPanelDragging = false; });
+  }
+  initVolumeSlider();
+
+  // 记事本文件选择（全局，避免重复绑定）
+  var notepadFileInputEl = document.getElementById('notepadFileInput');
+  if (notepadFileInputEl) {
+    notepadFileInputEl.addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var ta = document.getElementById('notepad-textarea');
+        if (ta) {
+          ta.value = ev.target.result;
+          notepadState.filename = file.name;
+          notepadState.dirty = false;
+          notepadState.content = ta.value;
+          updateNotepadTitle();
+          // 更新状态栏
+          var statusEl = document.getElementById('notepad-status');
+          if (statusEl) statusEl.textContent = '第 1 行，第 1 列';
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  // ===== 开始菜单 =====
+  var startMenu = document.getElementById('startMenu');
+  var startBtn = document.getElementById('startBtn');
+  function toggleStart() {
+    startMenu.classList.toggle('show');
+    startBtn.classList.toggle('active');
+  }
+  document.addEventListener('click', function(e) {
+    if (!startMenu.contains(e.target) && !startBtn.contains(e.target)) {
+      startMenu.classList.remove('show');
+      startBtn.classList.remove('active');
+    }
+  });
+
+  // ===== 窗口管理 =====
+  var windows = {};
+  var zIndexCounter = 100;
+  var windowCounter = 0;
+
+  function getAppConfig(app) {
+    var configs = {
+      thispc: { title: '此电脑', icon: 'pc', w: 820, h: 520, hasSidebar: true, hasToolbar: true, type: 'explorer' },
+      documents: { title: '文档', icon: 'folder', w: 760, h: 500, hasSidebar: true, hasToolbar: true, type: 'explorer' },
+      recycle: { title: '回收站', icon: 'recycle', w: 680, h: 460, hasSidebar: true, hasToolbar: true, type: 'explorer' },
+      edge: { title: 'Microsoft Edge', icon: 'edge', w: 900, h: 600, hasSidebar: false, hasToolbar: true, type: 'browser' },
+      calculator: { title: '计算器', icon: 'calc', w: 320, h: 480, hasSidebar: false, hasToolbar: false, type: 'calc' },
+      notepad: { title: '无标题 - 记事本', icon: 'notepad', w: 600, h: 440, hasSidebar: false, hasToolbar: false, type: 'notepad' },
+      settings: { title: '设置', icon: 'settings', w: 800, h: 560, hasSidebar: true, hasToolbar: false, type: 'settings' },
+      mail: { title: '邮件', icon: 'mail', w: 800, h: 540, hasSidebar: true, hasToolbar: false, type: 'mail' },
+      calendar: { title: '日历', icon: 'calendar', w: 800, h: 540, hasSidebar: true, hasToolbar: false, type: 'calendar' },
+      photos: { title: '照片', icon: 'photos', w: 800, h: 540, hasSidebar: false, hasToolbar: false, type: 'photos' },
+      store: { title: 'Microsoft Store', icon: 'store', w: 860, h: 580, hasSidebar: false, hasToolbar: true, type: 'store' },
+      rtmp: { title: 'CAM？', icon: 'video', w: 860, h: 560, hasSidebar: false, hasToolbar: false, type: 'rtmp' },
+      vlc: { title: 'VLC media player', icon: 'vlc', w: 720, h: 520, hasSidebar: false, hasToolbar: false, type: 'vlc' }
+    };
+    return configs[app] || { title: app, icon: 'app', w: 600, h: 400, hasSidebar: false, hasToolbar: false, type: 'default' };
+  }
+
+  function getIconSvg(icon) {
+    var icons = {
+      pc: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="14" rx="1.5" fill="#0078d4"/><rect x="5" y="18" width="14" height="2" rx="0.5" fill="#0078d4"/></svg>',
+      folder: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2h9A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11z" fill="#ffc83d"/></svg>',
+      recycle: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 7h14l-1.5 13a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20L5 7z" fill="#6c6c6c"/><path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7" fill="#8c8c8c"/></svg>',
+      edge: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="egi" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0078d4"/><stop offset="100%" stop-color="#00bcf2"/></linearGradient></defs><circle cx="12" cy="12" r="10" fill="url(#egi)"/></svg>',
+      calc: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="2" width="14" height="20" rx="2" fill="#5c5c5c"/><rect x="7" y="5" width="10" height="4" rx="0.5" fill="#a8d08d"/></svg>',
+      notepad: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#fff" stroke="#0078d4" stroke-width="1.2"/></svg>',
+      settings: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" fill="#5c5c5c"/><circle cx="12" cy="12" r="4" fill="#fff"/></svg>',
+      mail: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="14" rx="1" fill="#107c10"/><path d="m3 7 9 6 9-6" stroke="#fff" stroke-width="1.5" fill="none"/></svg>',
+      calendar: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="16" rx="1" fill="#5c2d91"/><path d="M3 10h18M8 3v4M16 3v4" stroke="#fff" stroke-width="1.5"/></svg>',
+      photos: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="14" rx="1" fill="#d83b01"/><circle cx="10" cy="11" r="2.5" fill="#fff"/></svg>',
+      store: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 7h18l-1.5 13a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1L3 7z" fill="#e3008c"/><path d="M8 7V4a4 4 0 0 1 8 0v3" stroke="#fff" stroke-width="1.5" fill="none"/></svg>',
+      video: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="6" width="20" height="12" rx="2" fill="#00b294"/><path d="m10 9 5 3-5 3V9z" fill="#fff"/></svg>',
+      vlc: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="21" rx="8" ry="1.8" fill="#333"/><path d="M10 20 L7 11 L12 3 L17 11 L14 20 Z" fill="#ff6600"/><path d="M8.6 13 L12 8 L15.4 13 L14.4 15 L12 11.5 L9.6 15 Z" fill="#fff" opacity="0.9"/></svg>',
+      app: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="16" rx="2" fill="#0078d4"/></svg>'
+    };
+    return icons[icon] || icons.app;
+  }
+
+  function openWindow(app) {
+    if (windows[app] && !windows[app].minimized) {
+      focusWindow(app);
+      return;
+    }
+    if (windows[app] && windows[app].minimized) {
+      windows[app].minimized = false;
+      windows[app].el.classList.remove('minimized');
+      focusWindow(app);
+      return;
+    }
+
+    var cfg = getAppConfig(app);
+    var container = document.getElementById('windowContainer');
+    var win = document.createElement('div');
+    win.className = 'window';
+    win.id = 'win-' + app;
+
+    // 初始位置
+    var offsetX = 40 + (windowCounter * 24);
+    var offsetY = 40 + (windowCounter * 24);
+    win.style.left = Math.min(offsetX, window.innerWidth - cfg.w - 40) + 'px';
+    win.style.top = Math.min(offsetY, window.innerHeight - cfg.h - 80) + 'px';
+    win.style.width = cfg.w + 'px';
+    win.style.height = cfg.h + 'px';
+    windowCounter++;
+
+    win.innerHTML =
+      '<div class="win-titlebar">' +
+        '<div class="win-title-icon">' + getIconSvg(cfg.icon) + '</div>' +
+        '<div class="win-title-text">' + cfg.title + '</div>' +
+        '<div class="win-controls">' +
+          '<button class="win-btn" data-action="min" title="最小化"><svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="4.5" width="8" height="1" fill="currentColor"/></svg></button>' +
+          '<button class="win-btn" data-action="max" title="最大化"><svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><rect x="1.5" y="1.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>' +
+          '<button class="win-btn close" data-action="close" title="关闭"><svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M1 1 L9 9 M9 1 L1 9" stroke="currentColor" stroke-width="1" fill="none"/></svg></button>' +
+        '</div>' +
+      '</div>' +
+      (cfg.hasToolbar ?
+        (cfg.type === 'browser' ?
+          '<div class="win-toolbar" id="toolbar-' + app + '">' +
+            '<div class="win-nav-btn" id="back-' + app + '" title="后退"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg></div>' +
+            '<div class="win-nav-btn" id="fwd-' + app + '" title="前进"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></div>' +
+            '<div class="win-nav-btn" id="refresh-' + app + '" title="刷新"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></div>' +
+            '<input class="win-address" id="addr-' + app + '" type="text" value="https://www.bing.com" spellcheck="false">' +
+            '<div class="win-nav-btn" id="sc-toggle-' + app + '" title="显示/隐藏快捷方式" style="font-size:13px;font-weight:bold;color:#ffd700;">🔽 快捷</div>' +
+          '</div>' :
+          '<div class="win-toolbar">' +
+            '<div class="win-nav-btn" title="后退"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 6-6 6 6 6"/></svg></div>' +
+            '<div class="win-nav-btn" title="前进"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></div>' +
+            '<div class="win-nav-btn" title="向上"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 15 6-6 6 6"/></svg></div>' +
+            '<div class="win-address">此电脑</div>' +
+          '</div>') : '') +
+      '<div class="win-body">' +
+        (cfg.hasSidebar ?
+          '<div class="win-sidebar">' +
+            '<div class="win-sidebar-item active"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="5" width="16" height="13" rx="1" fill="currentColor"/></svg>快速访问</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2h9A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11z" fill="currentColor"/></svg>桌面</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="currentColor"/></svg>下载</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="currentColor"/></svg>文档</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="14" rx="1.5" fill="currentColor"/></svg>此电脑</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 7h14l-1.5 13a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20L5 7z" fill="currentColor"/></svg>回收站</div>' +
+            '<div class="win-sidebar-item"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" fill="currentColor"/></svg>网络</div>' +
+          '</div>' : '') +
+        '<div class="win-content" id="content-' + app + '"></div>' +
+      '</div>' +
+      (cfg.type === 'explorer' ? '<div class="win-statusbar"><span id="status-' + app + '">0 个项目</span></div>' : '') +
+      '<div class="window-resize-handle" id="resize-' + app + '"></div>';
+
+    container.appendChild(win);
+    windows[app] = { el: win, minimized: false, maximized: false };
+    focusWindow(app);
+
+    // 内容填充
+    renderAppContent(app, cfg.type);
+
+    // 拖拽
+    var titlebar = win.querySelector('.win-titlebar');
+    var isDragging = false;
+    var dragOffset = { x: 0, y: 0 };
+    titlebar.addEventListener('mousedown', function(e) {
+      if (e.target.closest('.win-btn')) return;
+      if (windows[app].maximized) return;
+      isDragging = true;
+      var rect = win.getBoundingClientRect();
+      dragOffset.x = e.clientX - rect.left;
+      dragOffset.y = e.clientY - rect.top;
+      focusWindow(app);
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      var x = e.clientX - dragOffset.x;
+      var y = e.clientY - dragOffset.y;
+      win.style.left = Math.max(0, Math.min(x, window.innerWidth - 100)) + 'px';
+      win.style.top = Math.max(0, Math.min(y, window.innerHeight - 80)) + 'px';
+    });
+    document.addEventListener('mouseup', function() { isDragging = false; });
+
+    // 窗口 resize
+    var resizeHandle = document.getElementById('resize-' + app);
+    var isResizing = false;
+    var resizeStart = { x: 0, y: 0, w: 0, h: 0 };
+    resizeHandle.addEventListener('mousedown', function(e) {
+      if (windows[app].maximized) return;
+      isResizing = true;
+      resizeStart.x = e.clientX;
+      resizeStart.y = e.clientY;
+      var rect = win.getBoundingClientRect();
+      resizeStart.w = rect.width;
+      resizeStart.h = rect.height;
+      focusWindow(app);
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!isResizing) return;
+      var newW = Math.max(400, resizeStart.w + (e.clientX - resizeStart.x));
+      var newH = Math.max(280, resizeStart.h + (e.clientY - resizeStart.y));
+      win.style.width = newW + 'px';
+      win.style.height = newH + 'px';
+    });
+    document.addEventListener('mouseup', function() { isResizing = false; });
+
+    // 标题栏按钮
+    win.querySelectorAll('.win-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var action = btn.getAttribute('data-action');
+        if (action === 'min') minimizeWindow(app);
+        if (action === 'max') toggleMaximize(app);
+        if (action === 'close') closeWindow(app);
+      });
+    });
+
+    // 点击聚焦
+    win.addEventListener('mousedown', function() { focusWindow(app); });
+
+    // 更新任务栏高亮
+    updatePinnedActive();
+  }
+
+  function focusWindow(app) {
+    if (!windows[app]) return;
+    zIndexCounter++;
+    windows[app].el.style.zIndex = zIndexCounter;
+  }
+
+  function minimizeWindow(app) {
+    if (!windows[app]) return;
+    windows[app].minimized = true;
+    windows[app].el.classList.add('minimized');
+    updatePinnedActive();
+  }
+
+  function toggleMaximize(app) {
+    if (!windows[app]) return;
+    var w = windows[app];
+    if (w.maximized) {
+      w.el.classList.remove('maximized');
+      w.maximized = false;
+    } else {
+      w.el.classList.add('maximized');
+      w.maximized = true;
+    }
+  }
+
+  function closeWindow(app) {
+    if (!windows[app]) return;
+    windows[app].el.remove();
+    delete windows[app];
+    updatePinnedActive();
+  }
+
+  function updatePinnedActive() {
+    document.querySelectorAll('.pinned-app').forEach(function(el) {
+      var app = el.getAttribute('data-app');
+      if (windows[app] && !windows[app].minimized) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    });
+  }
+
+  // ===== 文件系统数据 =====
+  var fileSystem = {
+    '此电脑': {
+      type: 'folder',
+      children: ['桌面', '下载', '文档', '图片', '音乐', '视频', '本地磁盘 (C:)', '本地磁盘 (D:)'],
+      items: [
+        { name: '桌面', type: 'folder' },
+        { name: '下载', type: 'folder' },
+        { name: '文档', type: 'folder' },
+        { name: '图片', type: 'folder' },
+        { name: '音乐', type: 'folder' },
+        { name: '视频', type: 'folder' },
+        { name: '本地磁盘 (C:)', type: 'drive' },
+        { name: '本地磁盘 (D:)', type: 'drive' }
+      ]
+    },
+    '桌面': {
+      type: 'folder',
+      items: [
+        { name: 'readme.txt', type: 'text', content: '欢迎使用 Windows 10 模拟桌面\n\n这是一个纯前端实现的 Windows 10 桌面模拟器。\n\n功能列表：\n- 文件资源管理器\n- 记事本（支持打开和保存到网页桌面/下载到本地）\n- 照片查看器\n- VLC 媒体播放器（支持网络串流）\n- CAM？摄像头\n- 浏览器（支持 iframe 浏览）\n- 计算器\n- 等等...\n\n作者：南洛\n博客：NanLuo321.github.io' },
+        { name: '照片.jpg', type: 'image' },
+        { name: '视频.mp4', type: 'video' }
+      ]
+    },
+    '下载': {
+      type: 'folder',
+      items: [
+        { name: '报告.docx', type: 'word' },
+        { name: '数据.xlsx', type: 'excel' },
+        { name: '截图.png', type: 'image' }
+      ]
+    },
+    '文档': {
+      type: 'folder',
+      items: [
+        { name: 'readme.txt', type: 'text', content: '文档文件夹\n\n这里存放你的文档文件。' },
+        { name: '报告.docx', type: 'word' }
+      ]
+    },
+    '图片': {
+      type: 'folder',
+      items: [
+        { name: '照片.jpg', type: 'image' },
+        { name: '风景.png', type: 'image' },
+        { name: '头像.webp', type: 'image' },
+        { name: '动图.gif', type: 'image' }
+      ]
+    },
+    '音乐': {
+      type: 'folder',
+      items: [
+        { name: '示例音乐.mp3', type: 'audio' }
+      ]
+    },
+    '视频': {
+      type: 'folder',
+      items: [
+        { name: '视频.mp4', type: 'video' },
+        { name: '电影.mkv', type: 'video' },
+        { name: '录屏.avi', type: 'video' }
+      ]
+    },
+    '本地磁盘 (C:)': {
+      type: 'drive',
+      items: [
+        { name: 'Windows', type: 'folder' },
+        { name: 'Program Files', type: 'folder' },
+        { name: 'Users', type: 'folder' }
+      ]
+    },
+    '本地磁盘 (D:)': {
+      type: 'drive',
+      items: [
+        { name: '工作', type: 'folder' },
+        { name: '娱乐', type: 'folder' },
+        { name: 'readme.txt', type: 'text', content: 'D 盘根目录\n\n这里是 D 盘的说明文件。' }
+      ]
+    }
+  };
+
+  // 记录当前每个 explorer 窗口的路径
+  var explorerPaths = {};
+
+  // 记录每个浏览器窗口的快捷方式显示状态
+  var browserShortcutsVisible = {};
+
+  // 桌面文件数组（保存到网页桌面的文件）
+  var desktopFiles = [];
+  var desktopIconPositions = {}; // { id: {row, col} }
+
+  // 加载桌面文件位置
+  function loadDesktopPositions() {
+    try {
+      var saved = localStorage.getItem('w10_desktop_positions');
+      if (saved) desktopIconPositions = JSON.parse(saved);
+    } catch(e) {}
+  }
+  loadDesktopPositions();
+
+  // 保存桌面文件位置
+  function saveDesktopPositions() {
+    try {
+      localStorage.setItem('w10_desktop_positions', JSON.stringify(desktopIconPositions));
+    } catch(e) {}
+  }
+
+  // 加载桌面文件内容
+  function loadDesktopFiles() {
+    try {
+      var saved = localStorage.getItem('w10_desktop_files');
+      if (saved) {
+        desktopFiles = JSON.parse(saved);
+        renderDesktopFiles();
+      }
+    } catch(e) {}
+  }
+
+  // 保存桌面文件内容
+  function saveDesktopFiles() {
+    try {
+      localStorage.setItem('w10_desktop_files', JSON.stringify(desktopFiles));
+    } catch(e) {}
+  }
+
+  // 初始化桌面图标拖动
+  function initDesktopDrag() {
+    var icons = document.querySelectorAll('#desktopFiles .d-icon');
+    icons.forEach(function(icon) {
+      makeDesktopIconDraggable(icon);
+    });
+  }
+
+  function makeDesktopIconDraggable(icon) {
+    var isDragging = false;
+    var startX, startY, origX, origY;
+    var gridSize = 90; // 网格大小
+
+    icon.addEventListener('mousedown', function(e) {
+      isDragging = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      // Get current position
+      var rect = icon.getBoundingClientRect();
+      var desktopRect = document.getElementById('desktop').getBoundingClientRect();
+      origX = rect.left - desktopRect.left;
+      origY = rect.top - desktopRect.top;
+      icon.style.position = 'absolute';
+      icon.style.left = origX + 'px';
+      icon.style.top = origY + 'px';
+      icon.style.margin = '0';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) {
+        // First mouse move - mark as dragging and prevent click
+        if (Math.abs(e.clientX - startX) > 3 || Math.abs(e.clientY - startY) > 3) {
+          isDragging = true;
+          icon.classList.add('dragging');
+          e.preventDefault();
+        }
+        return;
+      }
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      icon.style.left = (origX + dx) + 'px';
+      icon.style.top = (origY + dy) + 'px';
+    });
+
+    document.addEventListener('mouseup', function(e) {
+      if (!isDragging) return;
+      isDragging = false;
+      icon.classList.remove('dragging');
+      // Snap to grid
+      var currentLeft = parseFloat(icon.style.left) || 0;
+      var currentTop = parseFloat(icon.style.top) || 0;
+      var snappedLeft = Math.round(currentLeft / gridSize) * gridSize + 12;
+      var snappedTop = Math.round(currentTop / gridSize) * gridSize + 12;
+      icon.style.left = snappedLeft + 'px';
+      icon.style.top = snappedTop + 'px';
+      // Save position
+      var id = icon.getAttribute('data-app') || icon.getAttribute('data-file-id');
+      if (id) {
+        desktopIconPositions[id] = { row: Math.round(currentTop / gridSize), col: Math.round(currentLeft / gridSize) };
+        saveDesktopPositions();
+      }
+    });
+  }
+
+  // 删除桌面文件
+    // 右键删除桌面文件
+  function deleteSelectedDesktopFile() {
+    var selected = document.querySelector('#desktopFiles .d-icon.selected');
+    if (!selected) return;
+    var name = selected.getAttribute('data-file-id');
+    if (name && confirm('确定要删除 "' + name + '" 吗？')) {
+      deleteDesktopFile(name);
+    }
+  }
+
+  // 桌面文件右键菜单
+  function showDesktopFileContextMenu(e, name) {
+    e.preventDefault();
+    e.stopPropagation();
+    var ctxMenu = document.getElementById('contextMenu');
+    if (!ctxMenu) return;
+    // 高亮当前文件
+    var icons = document.querySelectorAll('#desktopFiles .d-icon');
+    icons.forEach(function(ic) { ic.classList.remove('selected'); });
+    var target = e.currentTarget;
+    target.classList.add('selected');
+    // 存储当前文件名用于删除
+    ctxMenu.setAttribute('data-target-file', name);
+    // 显示删除项
+    var delItem = document.getElementById('ctxDeleteFile');
+    if (delItem) delItem.style.display = 'flex';
+    // 显示菜单
+    ctxMenu.style.left = e.clientX + 'px';
+    ctxMenu.style.top = e.clientY + 'px';
+    ctxMenu.classList.add('show');
+  }
+
+  function deleteDesktopFile(name) {
+    for (var i = 0; i < desktopFiles.length; i++) {
+      if (desktopFiles[i].name === name) {
+        desktopFiles.splice(i, 1);
+        break;
+      }
+    }
+    renderDesktopFiles();
+    saveDesktopFiles();
+  }
+
+  // 渲染桌面文件图标
+  function renderDesktopFiles() {
+    var container = document.getElementById('desktopFiles');
+    if (!container) return;
+    container.innerHTML = '';
+    var gridSize = 90;
+    for (var i = 0; i < desktopFiles.length; i++) {
+      (function(idx) {
+        var f = desktopFiles[idx];
+        var div = document.createElement('div');
+        div.className = 'd-icon';
+        div.title = f.name;
+        div.setAttribute('data-file-id', f.name);
+        div.innerHTML =
+
+          '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:44px;height:44px;">' +
+            '<path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#fff" stroke="#0078d4" stroke-width="1.2"/>' +
+            '<path d="M8 11h8M8 14h8M8 17h5" stroke="#0078d4" stroke-width="1.2" stroke-linecap="round"/>' +
+          '</svg>' +
+          '<span>' + f.name + '</span>';
+        // 恢复保存的位置
+        var pos = desktopIconPositions[f.name];
+        if (pos) {
+          div.style.position = 'absolute';
+          div.style.left = (pos.col * gridSize + 12) + 'px';
+          div.style.top = (pos.row * gridSize + 12) + 'px';
+          div.style.margin = '0';
+        }
+        // 双击打开
+        div.addEventListener('dblclick', function() {
+          openNotepadWithFile(f.name, f.content);
+        });
+        // 右键菜单
+        div.addEventListener('contextmenu', function(e) {
+          showDesktopFileContextMenu(e, f.name);
+        });
+
+        // 单击选中
+        div.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var icons = document.querySelectorAll('.d-icon');
+          icons.forEach(function(ic) { ic.classList.remove('selected'); });
+          div.classList.add('selected');
+        });
+        container.appendChild(div);
+        // 启用拖动
+        makeDesktopIconDraggable(div);
+      })(i);
+    }
+  }
+
+  // 获取文件后缀
+  function getFileExt(name) {
+    var idx = name.lastIndexOf('.');
+    if (idx < 0) return '';
+    return name.substring(idx + 1).toLowerCase();
+  }
+
+  // 判断是否为图片类型
+  function isImageFile(name) {
+    var ext = getFileExt(name);
+    return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].indexOf(ext) >= 0;
+  }
+
+  // 判断是否为视频类型
+  function isVideoFile(name) {
+    var ext = getFileExt(name);
+    return ['mp4', 'avi', 'mkv', 'mov'].indexOf(ext) >= 0;
+  }
+
+  // 判断是否为文本类型
+  function isTextFile(name) {
+    var ext = getFileExt(name);
+    return ext === 'txt';
+  }
+
+  // 打开文件（根据后缀关联应用）
+  function openFileByType(fileItem) {
+    var name = fileItem.name;
+    if (isTextFile(name)) {
+      // txt → 记事本
+      openNotepadWithFile(name, fileItem.content || '');
+    } else if (isImageFile(name)) {
+      // 图片 → 照片应用
+      openPhotosWithFile(name);
+    } else if (isVideoFile(name)) {
+      // 视频 → 打开方式对话框
+      showOpenWithDialog(name, fileItem);
+    } else {
+      // 其他类型 → 提示
+      alert('无法打开此文件：' + name + '\n没有关联的应用程序。');
+    }
+  }
+
+  // 用记事本打开文件
+  function openNotepadWithFile(filename, content) {
+    // 如果记事本已打开，直接更新内容
+    if (windows['notepad'] && !windows['notepad'].minimized) {
+      focusWindow('notepad');
+    } else if (windows['notepad'] && windows['notepad'].minimized) {
+      windows['notepad'].minimized = false;
+      windows['notepad'].el.classList.remove('minimized');
+      focusWindow('notepad');
+    } else {
+      openWindow('notepad');
+    }
+    // 延迟设置内容（等待窗口创建）
+    setTimeout(function() {
+      var ta = document.getElementById('notepad-textarea');
+      if (ta) {
+        ta.value = content;
+        notepadState.filename = filename;
+        notepadState.dirty = false;
+        notepadState.content = content;
+        updateNotepadTitle();
+      }
+    }, 50);
+  }
+
+  // 用照片应用打开图片
+  function openPhotosWithFile(filename) {
+    if (windows['photos'] && !windows['photos'].minimized) {
+      focusWindow('photos');
+    } else if (windows['photos'] && windows['photos'].minimized) {
+      windows['photos'].minimized = false;
+      windows['photos'].el.classList.remove('minimized');
+      focusWindow('photos');
+    } else {
+      openWindow('photos');
+    }
+    setTimeout(function() {
+      var pv = document.getElementById('photo-viewer');
+      if (pv) {
+        pv.setAttribute('data-file', filename);
+        var fn = pv.querySelector('.photo-filename');
+        if (fn) fn.textContent = filename;
+      }
+      // 更新窗口标题
+      var winEl = windows['photos'] ? windows['photos'].el : null;
+      if (winEl) {
+        var titleEl = winEl.querySelector('.win-title-text');
+        if (titleEl) titleEl.textContent = filename + ' - 照片';
+      }
+    }, 50);
+  }
+
+  // VLC 打开视频文件
+  function openVLCWithVideo(filename) {
+    if (windows['vlc'] && !windows['vlc'].minimized) {
+      focusWindow('vlc');
+    } else if (windows['vlc'] && windows['vlc'].minimized) {
+      windows['vlc'].minimized = false;
+      windows['vlc'].el.classList.remove('minimized');
+      focusWindow('vlc');
+    } else {
+      openWindow('vlc');
+    }
+    setTimeout(function() {
+      var statusBar = document.getElementById('vlc-status-vlc');
+      if (statusBar) statusBar.textContent = '正在播放: ' + filename + ' （视频占位）';
+      var logo = document.getElementById('vlc-logo-vlc');
+      var video = document.getElementById('vlc-video-vlc');
+      if (logo) {
+        logo.innerHTML = '<div style="text-align:center;">' +
+          '<div style="width:200px;height:140px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:4px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;">' +
+          '<svg width="40" height="40" viewBox="0 0 24 24" fill="#fff" opacity="0.3"><path d="m10 9 5 3-5 3V9z"/></svg>' +
+          '</div>' +
+          '<div style="font-size:13px;color:#888;">' + filename + '</div>' +
+          '<div style="font-size:11px;color:#666;margin-top:4px;">视频占位 - 无法解码</div>' +
+          '</div>';
+      }
+    }, 50);
+  }
+
+  // 电影和电视 打开视频
+  function openMoviesTvWithVideo(filename) {
+    // 复用 photos 窗口样式播放视频
+    if (windows['photos'] && !windows['photos'].minimized) {
+      focusWindow('photos');
+    } else if (windows['photos'] && windows['photos'].minimized) {
+      windows['photos'].minimized = false;
+      windows['photos'].el.classList.remove('minimized');
+      focusWindow('photos');
+    } else {
+      openWindow('photos');
+    }
+    setTimeout(function() {
+      var pv = document.getElementById('photo-viewer');
+      if (pv) {
+        pv.setAttribute('data-file', filename);
+        var body = pv.querySelector('.photo-viewer-body');
+        if (body) {
+          body.innerHTML = '<div style="text-align:center;">' +
+            '<div class="photo-placeholder">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" opacity="0.3"/></svg>' +
+            '<span>视频占位 - 无法播放</span>' +
+            '</div>' +
+            '<div class="photo-filename" style="margin-top:12px;">' + filename + '</div>' +
+            '</div>';
+        }
+      }
+      var winEl = windows['photos'] ? windows['photos'].el : null;
+      if (winEl) {
+        var titleEl = winEl.querySelector('.win-title-text');
+        if (titleEl) titleEl.textContent = filename + ' - 电影和电视';
+      }
+    }, 50);
+  }
+
+  // ===== 打开方式对话框 =====
+  function showOpenWithDialog(filename, fileItem) {
+    var overlay = document.createElement('div');
+    overlay.className = 'owd-overlay';
+    var dialog = document.createElement('div');
+    dialog.className = 'open-with-dialog';
+
+    var moviesTvIcon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="5" width="20" height="14" rx="2" fill="#0078d4"/><path d="m10 9 5 3-5 3V9z" fill="#fff"/></svg>';
+    var vlcIcon = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="21" rx="8" ry="1.8" fill="#333"/><path d="M10 20 L7 11 L12 3 L17 11 L14 20 Z" fill="#ff6600"/><path d="M8.6 13 L12 8 L15.4 13 L14.4 15 L12 11.5 L9.6 15 Z" fill="#fff" opacity="0.9"/></svg>';
+
+    dialog.innerHTML =
+      '<div class="owd-titlebar">' +
+        '<div class="owd-title-text">你要如何打开这个文件？</div>' +
+        '<div class="owd-close" id="owd-close">✕</div>' +
+      '</div>' +
+      '<div class="owd-body">' +
+        '<div class="owd-desc">.<span id="owd-ext">' + getFileExt(filename) + '</span> 文件 - 选择一个应用以打开 "' + filename + '"</div>' +
+        '<div class="owd-option" data-app="moviestv">' +
+          moviesTvIcon +
+          '<div><div class="owd-option-name">电影和电视</div><div class="owd-option-sub">Windows 默认视频播放器</div></div>' +
+        '</div>' +
+        '<div class="owd-option" data-app="vlc">' +
+          vlcIcon +
+          '<div><div class="owd-option-name">VLC media player</div><div class="owd-option-sub">开源多媒体播放器</div></div>' +
+        '</div>' +
+        '<label class="owd-always">' +
+          '<input type="checkbox" id="owd-always">' +
+          '<span>始终使用此应用打开 .' + getFileExt(filename) + ' 文件</span>' +
+        '</label>' +
+        '<div class="owd-buttons">' +
+          '<button class="owd-btn" id="owd-cancel">取消</button>' +
+          '<button class="owd-btn primary" id="owd-ok" disabled style="opacity:0.5;">确定</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(dialog);
+
+    var selectedApp = null;
+    var options = dialog.querySelectorAll('.owd-option');
+    var okBtn = dialog.querySelector('#owd-ok');
+
+    function selectOption(app) {
+      selectedApp = app;
+      options.forEach(function(o) {
+        if (o.getAttribute('data-app') === app) {
+          o.style.borderColor = '#0078d4';
+          o.style.background = '#e5f3ff';
+        } else {
+          o.style.borderColor = '#d0d0d0';
+          o.style.background = '#fff';
+        }
+      });
+      okBtn.disabled = false;
+      okBtn.style.opacity = '1';
+    }
+
+    options.forEach(function(opt) {
+      opt.addEventListener('click', function() {
+        selectOption(opt.getAttribute('data-app'));
+      });
+    });
+
+    function closeDialog() {
+      overlay.remove();
+      dialog.remove();
+    }
+
+    dialog.querySelector('#owd-close').addEventListener('click', closeDialog);
+    dialog.querySelector('#owd-cancel').addEventListener('click', closeDialog);
+    overlay.addEventListener('click', closeDialog);
+
+    okBtn.addEventListener('click', function() {
+      if (!selectedApp) return;
+      if (selectedApp === 'moviestv') {
+        openMoviesTvWithVideo(filename);
+      } else if (selectedApp === 'vlc') {
+        openVLCWithVideo(filename);
+      }
+      closeDialog();
+    });
+
+    // 双击选项直接打开
+    options.forEach(function(opt) {
+      opt.addEventListener('dblclick', function() {
+        selectOption(opt.getAttribute('data-app'));
+        okBtn.click();
+      });
+    });
+  }
+
+  // ===== 记事本状态 =====
+  var notepadState = {
+    filename: null,
+    dirty: false,
+    content: ''
+  };
+
+  var calcState = { display: '0', prev: null, op: null, reset: false, dot: false };
+
+  function updateNotepadTitle() {
+    var winEl = windows['notepad'] ? windows['notepad'].el : null;
+    if (!winEl) return;
+    var titleEl = winEl.querySelector('.win-title-text');
+    if (!titleEl) return;
+    var name = notepadState.filename || '无标题';
+    var star = notepadState.dirty ? '*' : '';
+    titleEl.textContent = star + name + ' - 记事本';
+  }
+
+  // ===== 应用内容 =====
+  function renderAppContent(app, type) {
+    var content = document.getElementById('content-' + app);
+    if (!content) return;
+
+    if (type === 'explorer') {
+      // 初始路径
+      var initPath = '此电脑';
+      if (app === 'documents') initPath = '文档';
+      if (app === 'recycle') initPath = '回收站';
+      explorerPaths[app] = initPath;
+
+      function renderExplorer() {
+        var currentPath = explorerPaths[app];
+        var folder = fileSystem[currentPath];
+        var files = folder ? folder.items : [];
+
+        // 更新地址栏
+        var addrEl = win.querySelector('.win-address');
+        if (addrEl && addrEl.tagName !== 'INPUT') {
+          addrEl.textContent = currentPath;
+        }
+
+        var html = '<div class="file-grid">';
+        files.forEach(function(f, idx) {
+          var icon = '';
+          if (f.type === 'folder') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2h9A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11z" fill="#ffc83d"/></svg>';
+          else if (f.type === 'drive') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="6" width="18" height="12" rx="1" fill="#5c5c5c"/><circle cx="18" cy="12" r="1" fill="#fff"/></svg>';
+          else if (f.type === 'text') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#fff" stroke="#0078d4" stroke-width="1.2"/></svg>';
+          else if (f.type === 'word') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#2b579a"/><text x="12" y="17" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold" font-family="Arial">W</text></svg>';
+          else if (f.type === 'excel') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z" fill="#217346"/><text x="12" y="17" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold" font-family="Arial">X</text></svg>';
+          else if (f.type === 'image') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="14" rx="1" fill="#d83b01"/><circle cx="10" cy="11" r="2.5" fill="#fff"/><path d="m21 17-5-5-9 9" stroke="#fff" stroke-width="1.2" fill="none"/></svg>';
+          else if (f.type === 'video') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="6" width="20" height="12" rx="2" fill="#5c2d91"/><path d="m10 9 5 3-5 3V9z" fill="#fff"/></svg>';
+          else if (f.type === 'audio') icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18V5l12-2v13" fill="#107c10"/><circle cx="6" cy="18" r="3" fill="#fff"/><circle cx="18" cy="16" r="3" fill="#fff"/></svg>';
+          else icon = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="14" rx="1" fill="#5c5c5c"/></svg>';
+          html += '<div class="file-item" data-idx="' + idx + '">' + icon + '<span>' + f.name + '</span></div>';
+        });
+        html += '</div>';
+        content.innerHTML = html;
+        var status = document.getElementById('status-' + app);
+        if (status) status.textContent = files.length + ' 个项目';
+
+        // 绑定双击事件
+        var fileItems = content.querySelectorAll('.file-item');
+        fileItems.forEach(function(item) {
+          item.addEventListener('dblclick', function() {
+            var idx = parseInt(item.getAttribute('data-idx'));
+            var f = files[idx];
+            if (!f) return;
+            if (f.type === 'folder' || f.type === 'drive') {
+              // 进入文件夹/驱动器
+              if (fileSystem[f.name]) {
+                explorerPaths[app] = f.name;
+                renderExplorer();
+              }
+            } else {
+              // 打开文件
+              openFileByType(f);
+            }
+          });
+        });
+      }
+
+      var win = windows[app] ? windows[app].el : null;
+      renderExplorer();
+
+      // 绑定后退/向上按钮
+      if (win) {
+        var navBtns = win.querySelectorAll('.win-nav-btn');
+        if (navBtns.length >= 3) {
+          // 第三个是向上按钮
+          navBtns[2].addEventListener('click', function() {
+            // 简化版：始终回到"此电脑"
+            if (explorerPaths[app] !== '此电脑') {
+              explorerPaths[app] = '此电脑';
+              renderExplorer();
+            }
+          });
+        }
+        if (navBtns.length >= 1) {
+          navBtns[0].addEventListener('click', function() {
+            if (explorerPaths[app] !== '此电脑') {
+              explorerPaths[app] = '此电脑';
+              renderExplorer();
+            }
+          });
+        }
+      }
+    }
+    else if (type === 'browser') {
+      content.style.padding = '0';
+      content.style.display = 'flex';
+      content.style.flexDirection = 'column';
+      content.style.background = '#fff';
+
+      var shortcuts = [
+        { name: '百度', url: 'https://www.baidu.com', color: '#2932e1' },
+        { name: '微博', url: 'https://weibo.com', color: '#e6162d' },
+        { name: 'B站', url: 'https://www.bilibili.com', color: '#fb7299' },
+        { name: '知乎', url: 'https://www.zhihu.com', color: '#0066ff' },
+        { name: '淘宝', url: 'https://www.taobao.com', color: '#ff5000' },
+        { name: '京东', url: 'https://www.jd.com', color: '#e1251b' },
+        { name: 'GitHub', url: 'https://github.com', color: '#24292e' },
+        { name: 'CSDN', url: 'https://www.csdn.net', color: '#fc5531' }
+      ];
+
+      content.innerHTML =
+        '<div id="browser-page-' + app + '" style="flex:1;position:relative;background:#fff;">' +
+          '<iframe id="browser-iframe-' + app + '" src="https://www.bing.com" style="width:100%;height:100%;border:0;display:block;" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>' +
+        '</div>' +
+        '<div id="browser-shortcuts-' + app + '" style="padding:12px 20px 14px;background:#f9f9f9;border-top:1px solid #e5e5e5;flex-shrink:0;">' +
+          '<div style="font-size:12px;color:#666;margin-bottom:8px;">快速链接</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">' +
+            shortcuts.map(function(s, i) {
+              return '<div class="sc-' + app + '" data-idx="' + i + '" style="padding:10px 6px;background:#fff;border:1px solid #e5e5e5;border-radius:4px;cursor:pointer;text-align:center;transition:all 0.15s;">' +
+                '<div style="width:28px;height:28px;margin:0 auto 4px;border-radius:6px;background:' + s.color + ';display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;">' + s.name.charAt(0) + '</div>' +
+                '<div style="font-size:11px;color:#333;">' + s.name + '</div>' +
+              '</div>';
+            }).join('') +
+          '</div>' +
+        '</div>';
+
+      // 浏览器状态
+      var browserState = {
+        history: ['https://www.bing.com'],
+        historyIndex: 0
+      };
+
+      function navigateTo(url, addHistory) {
+        if (addHistory !== false) {
+          // 如果不是在历史末尾，清除后面的历史
+          if (browserState.historyIndex < browserState.history.length - 1) {
+            browserState.history = browserState.history.slice(0, browserState.historyIndex + 1);
+          }
+          browserState.history.push(url);
+          browserState.historyIndex = browserState.history.length - 1;
+        }
+        // 更新地址栏
+        var addrInput = document.getElementById('addr-' + app);
+        if (addrInput) addrInput.value = url;
+
+        // 更新 iframe
+        var iframe = document.getElementById('browser-iframe-' + app);
+        if (iframe) {
+          iframe.src = url;
+        }
+        updateNavButtons();
+      }
+
+      function updateNavButtons() {
+        var backBtn = document.getElementById('back-' + app);
+        var fwdBtn = document.getElementById('fwd-' + app);
+        if (backBtn) backBtn.style.opacity = browserState.historyIndex > 0 ? '1' : '0.4';
+        if (fwdBtn) fwdBtn.style.opacity = browserState.historyIndex < browserState.history.length - 1 ? '1' : '0.4';
+      }
+
+      function goBack() {
+        if (browserState.historyIndex > 0) {
+          browserState.historyIndex--;
+          navigateTo(browserState.history[browserState.historyIndex], false);
+        }
+      }
+
+      function goForward() {
+        if (browserState.historyIndex < browserState.history.length - 1) {
+          browserState.historyIndex++;
+          navigateTo(browserState.history[browserState.historyIndex], false);
+        }
+      }
+
+      function handleAddressSubmit() {
+        var addrInput = document.getElementById('addr-' + app);
+        if (!addrInput) return;
+        var val = addrInput.value.trim();
+        if (!val) return;
+
+        // 如果包含 "." 且没有空格，认为是网址，否则是搜索词
+        var url;
+        if (val.indexOf('.') >= 0 && val.indexOf(' ') < 0) {
+          // 网址
+          if (val.indexOf('http://') !== 0 && val.indexOf('https://') !== 0) {
+            url = 'https://' + val;
+          } else {
+            url = val;
+          }
+        } else {
+          // 搜索词 -> 必应搜索
+          url = 'https://www.bing.com/search?q=' + encodeURIComponent(val);
+        }
+        navigateTo(url, true);
+      }
+
+      // 绑定地址栏事件
+      var addrInput = document.getElementById('addr-' + app);
+      if (addrInput) {
+        addrInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddressSubmit();
+          }
+        });
+      }
+
+      // 绑定后退/前进/刷新按钮
+      var backBtn = document.getElementById('back-' + app);
+      if (backBtn) backBtn.addEventListener('click', goBack);
+      var fwdBtn = document.getElementById('fwd-' + app);
+      if (fwdBtn) fwdBtn.addEventListener('click', goForward);
+      var refreshBtn = document.getElementById('refresh-' + app);
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+          var iframe = document.getElementById('browser-iframe-' + app);
+          if (iframe) {
+            iframe.src = browserState.history[browserState.historyIndex];
+          }
+        });
+      }
+
+      // 绑定快捷方式点击
+      var scItems = content.querySelectorAll('.sc-' + app);
+      scItems.forEach(function(item) {
+        item.addEventListener('click', function() {
+          var idx = parseInt(item.getAttribute('data-idx'));
+          var url = shortcuts[idx].url;
+          navigateTo(url, true);
+        });
+        item.addEventListener('mouseenter', function() {
+          item.style.borderColor = '#0078d4';
+          item.style.transform = 'translateY(-2px)';
+          item.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+        });
+        item.addEventListener('mouseleave', function() {
+          item.style.borderColor = '#e5e5e5';
+          item.style.transform = '';
+          item.style.boxShadow = '';
+        });
+      });
+
+      // 初始化导航按钮状态
+      updateNavButtons();
+
+      // 快捷方式显示/隐藏切换
+      browserShortcutsVisible[app] = true;
+      var scToggleBtn = document.getElementById('sc-toggle-' + app);
+      if (scToggleBtn) {
+        updateScToggleBtn(app);
+        scToggleBtn.addEventListener('click', function() {
+          var scEl = document.getElementById('browser-shortcuts-' + app);
+          if (!scEl) return;
+          browserShortcutsVisible[app] = !browserShortcutsVisible[app];
+          if (browserShortcutsVisible[app]) {
+            scEl.style.display = '';
+            scToggleBtn.style.opacity = '1';
+            scToggleBtn.textContent = '🔽 快捷';
+          } else {
+            scEl.style.display = 'none';
+            scToggleBtn.style.opacity = '0.6';
+            scToggleBtn.textContent = '▶ 快捷';
+          }
+        });
+      }
+      function updateScToggleBtn(app) {
+        var btn = document.getElementById('sc-toggle-' + app);
+        if (btn) {
+          if (browserShortcutsVisible[app]) {
+            btn.textContent = '🔽 快捷';
+            btn.style.opacity = '1';
+          } else {
+            btn.textContent = '▶ 快捷';
+            btn.style.opacity = '0.6';
+          }
+        }
+      }
+    }
+    else if (type === 'calc') {
+      content.style.background = '#f0f0f0';
+      content.style.padding = '0';
+      content.innerHTML =
+        '<div id="calc-display" style="padding:16px;text-align:right;font-size:32px;font-weight:300;background:#f0f0f0;color:#000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">0</div>' +
+        '<div id="calc-buttons" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#ccc;">' +
+        ['%','CE','C','⌫','1/x','x²','√','÷','7','8','9','×','4','5','6','-','1','2','3','+','±','0','.','='].map(function(k,i){
+          var isOp = ['÷','×','-','+','='].indexOf(k) >= 0;
+          var bg = isOp ? '#0078d4' : '#fafafa';
+          var color = isOp ? '#fff' : '#000';
+          return '<div data-calc-key="'+k+'" style="padding:14px 0;background:'+bg+';color:'+color+';text-align:center;cursor:pointer;font-size:16px;user-select:none;">' + k + '</div>';
+        }).join('') +
+        '</div>';
+      // 计算器逻辑
+      content.querySelector('#calc-buttons').addEventListener('click', function(e) {
+        var key = e.target.getAttribute('data-calc-key');
+        if (!key) return;
+        var s = calcState;
+        var d = s.display;
+        if (key >= '0' && key <= '9') {
+          if (s.reset || d === '0') { d = key; s.reset = false; s.dot = false; }
+          else { d += key; }
+        }
+        else if (key === '.') {
+          if (s.reset) { d = '0.'; s.reset = false; s.dot = true; }
+          else if (!s.dot) { d += '.'; s.dot = true; }
+        }
+        else if (key === '±') {
+          d = d.charAt(0) === '-' ? d.slice(1) : '-' + d;
+        }
+        else if (key === 'C' || key === 'CE') {
+          d = '0'; s.prev = null; s.op = null; s.reset = false; s.dot = false;
+        }
+        else if (key === '⌫') {
+          d = d.length > 1 ? d.slice(0, -1) : '0';
+        }
+        else if (key === '1/x') {
+          d = (1 / parseFloat(d)).toString();
+        }
+        else if (key === 'x²') {
+          d = (parseFloat(d) * parseFloat(d)).toString();
+        }
+        else if (key === '√') {
+          d = Math.sqrt(parseFloat(d)).toString();
+        }
+        else if (key === '%') {
+          d = (parseFloat(d) / 100).toString();
+        }
+        else if (['÷','×','-','+'].indexOf(key) >= 0) {
+          if (s.op && !s.reset) {
+            d = calcCompute(s.prev, d, s.op);
+          }
+          s.prev = d;
+          s.op = key;
+          s.reset = true;
+          s.dot = false;
+        }
+        else if (key === '=') {
+          if (s.op) {
+            d = calcCompute(s.prev, d, s.op);
+            s.op = null;
+            s.prev = null;
+          }
+          s.reset = true;
+          s.dot = d.indexOf('.') >= 0;
+        }
+        // 格式化显示
+        var num = parseFloat(d);
+        if (!isNaN(num)) {
+          var parts = d.split('.');
+          if (parts.length > 1) {
+            d = num.toString();
+            // 保留小数点
+            if (d.indexOf('.') < 0) d += '.';
+            d += parts[1];
+          } else {
+            d = num.toString();
+          }
+        }
+        s.display = d;
+        content.querySelector('#calc-display').textContent = d;
+      });
+      function calcCompute(a, b, op) {
+        var x = parseFloat(a), y = parseFloat(b);
+        switch(op) {
+          case '÷': return (x / y).toString();
+          case '×': return (x * y).toString();
+          case '-': return (x - y).toString();
+          case '+': return (x + y).toString();
+          default: return b;
+        }
+      }
+    }
+    else if (type === 'notepad') {
+      content.style.padding = '0';
+      content.style.display = 'flex';
+      content.style.flexDirection = 'column';
+      content.style.background = '#fff';
+
+      // 重置状态
+      notepadState.filename = null;
+      notepadState.dirty = false;
+      notepadState.content = '';
+
+      content.innerHTML =
+        // 菜单栏
+        '<div class="notepad-menubar" id="notepad-menubar">' +
+          '<div class="notepad-menu-item" data-menu="file">文件(<u>F</u>)</div>' +
+          '<div class="notepad-menu-item" data-menu="edit">编辑(<u>E</u>)</div>' +
+          '<div class="notepad-menu-item" data-menu="format">格式(<u>O</u>)</div>' +
+          '<div class="notepad-menu-item" data-menu="view">查看(<u>V</u>)</div>' +
+          '<div class="notepad-menu-item" data-menu="help">帮助(<u>H</u>)</div>' +
+          // 文件下拉菜单
+          '<div class="notepad-dropdown" id="notepad-dd-file">' +
+            '<div class="notepad-dd-item" data-action="new">新建<span class="notepad-dd-shortcut">Ctrl+N</span></div>' +
+            '<div class="notepad-dd-item" data-action="open">打开...<span class="notepad-dd-shortcut">Ctrl+O</span></div>' +
+            '<div class="notepad-dd-item" data-action="save">保存<span class="notepad-dd-shortcut">Ctrl+S</span></div>' +
+            '<div class="notepad-dd-item" data-action="saveas">另存为...<span class="notepad-dd-shortcut">Ctrl+Shift+S</span></div>' +
+            '<div class="notepad-dd-sep"></div>' +
+            '<div class="notepad-dd-item disabled">页面设置...</div>' +
+            '<div class="notepad-dd-item disabled">打印...<span class="notepad-dd-shortcut">Ctrl+P</span></div>' +
+            '<div class="notepad-dd-sep"></div>' +
+            '<div class="notepad-dd-item" data-action="exit">退出</div>' +
+          '</div>' +
+        '</div>' +
+        // 文本区
+        '<textarea class="notepad-textarea" id="notepad-textarea" spellcheck="false">欢迎使用记事本。\n\n在这里输入你的文字...\n\n---\nWindows 10 模拟桌面\n南洛的博客</textarea>' +
+        // 状态栏
+        '<div style="height:24px;background:#f0f0f0;border-top:1px solid #d0d0d0;display:flex;align-items:center;padding:0 12px;font-size:11px;color:#5a5a5a;flex-shrink:0;">' +
+          '<span id="notepad-status">第 1 行，第 1 列</span>' +
+          '<span style="flex:1;"></span>' +
+          '<span>100%</span>' +
+          '<span style="margin-left:16px;">Windows (CRLF)</span>' +
+          '<span style="margin-left:16px;">UTF-8</span>' +
+        '</div>';
+
+      // 初始化状态
+      var ta = document.getElementById('notepad-textarea');
+      notepadState.content = ta.value;
+      updateNotepadTitle();
+
+      // 菜单栏交互
+      var menuBar = document.getElementById('notepad-menubar');
+      var menuItems = menuBar.querySelectorAll('.notepad-menu-item');
+      var activeDropdown = null;
+
+      function closeAllDropdowns() {
+        menuBar.querySelectorAll('.notepad-dropdown').forEach(function(dd) {
+          dd.classList.remove('show');
+        });
+        activeDropdown = null;
+      }
+
+      menuItems.forEach(function(item) {
+        item.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var menu = item.getAttribute('data-menu');
+          var dd = document.getElementById('notepad-dd-' + menu);
+          if (!dd) return;
+          if (activeDropdown === dd) {
+            closeAllDropdowns();
+          } else {
+            closeAllDropdowns();
+            dd.classList.add('show');
+            // 定位到菜单项下方
+            var rect = item.getBoundingClientRect();
+            var menuRect = menuBar.getBoundingClientRect();
+            dd.style.left = (rect.left - menuRect.left) + 'px';
+            activeDropdown = dd;
+          }
+        });
+        item.addEventListener('mouseenter', function() {
+          if (activeDropdown) {
+            var menu = item.getAttribute('data-menu');
+            var dd = document.getElementById('notepad-dd-' + menu);
+            if (dd && dd !== activeDropdown) {
+              closeAllDropdowns();
+              dd.classList.add('show');
+              var rect = item.getBoundingClientRect();
+              var menuRect = menuBar.getBoundingClientRect();
+              dd.style.left = (rect.left - menuRect.left) + 'px';
+              activeDropdown = dd;
+            }
+          }
+        });
+      });
+
+      document.addEventListener('click', function() {
+        closeAllDropdowns();
+      });
+
+      // 下拉菜单项点击
+      var ddItems = document.querySelectorAll('#notepad-dd-file .notepad-dd-item:not(.disabled)');
+      ddItems.forEach(function(item) {
+        item.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var action = item.getAttribute('data-action');
+          closeAllDropdowns();
+          if (action === 'new') notepadNew();
+          else if (action === 'open') notepadOpen();
+          else if (action === 'save') notepadSave();
+          else if (action === 'saveas') notepadSaveAs();
+          else if (action === 'exit') closeWindow('notepad');
+        });
+      });
+
+      // 新建
+      function notepadNew() {
+        if (notepadState.dirty) {
+          if (!confirm('是否保存更改到 ' + (notepadState.filename || '无标题') + '？')) {
+            // 用户取消，不新建
+            return;
+          }
+          // 保存当前
+          notepadSave();
+        }
+        ta.value = '';
+        notepadState.filename = null;
+        notepadState.dirty = false;
+        notepadState.content = '';
+        updateNotepadTitle();
+        updateNotepadStatus();
+      }
+
+      // 打开
+      function notepadOpen() {
+        if (notepadState.dirty) {
+          if (!confirm('是否保存更改到 ' + (notepadState.filename || '无标题') + '？')) {
+            return;
+          }
+        }
+        var fileInput = document.getElementById('notepadFileInput');
+        fileInput.value = '';
+        fileInput.click();
+      }
+
+      // 文件选择（已在全局绑定）
+
+      // 保存
+      function notepadSave() {
+        showSaveDialog(notepadState.filename || '新建文本文档.txt');
+      }
+
+      // 另存为
+      function notepadSaveAs() {
+        showSaveDialog(notepadState.filename || '新建文本文档.txt');
+      }
+
+      // 显示保存对话框
+      function showSaveDialog(defaultName) {
+        var dlg = document.getElementById('saveDialog');
+        var inner = document.getElementById('saveDialogInner');
+        var nameInput = document.getElementById('saveDlgFilename');
+        if (!dlg || !nameInput) return;
+        nameInput.value = defaultName;
+        // 重置位置：放在记事本窗口附近，避免与文档窗口重叠
+        if (inner) {
+          inner.style.position = '';
+          inner.style.left = '';
+          inner.style.top = '';
+          inner.style.margin = '';
+          // 如果记事本窗口存在，放在记事本窗口旁边
+          var notepadWin = document.getElementById('win-notepad');
+          if (notepadWin) {
+            var nr = notepadWin.getBoundingClientRect();
+            inner.style.position = 'fixed';
+            inner.style.left = (nr.right + 20) + 'px';
+            inner.style.top = (nr.top + 60) + 'px';
+            inner.style.margin = '0';
+          }
+        }
+        dlg.style.display = 'flex';
+        setTimeout(function() { nameInput.focus(); nameInput.select(); }, 50);
+      }
+
+      // 保存对话框 - 执行保存
+      function executeSave() {
+        var nameInput = document.getElementById('saveDlgFilename');
+        var radios = document.querySelectorAll('input[name="saveOpt"]:checked');
+        var name = nameInput ? nameInput.value.trim() : '';
+        if (!name) {
+          nameInput.focus();
+          return;
+        }
+        if (name.lastIndexOf('.txt') !== name.length - 4) {
+          name += '.txt';
+        }
+        var option = radios.length > 0 ? radios[0].value : 'desktop';
+        var content = ta.value;
+
+        if (option === 'desktop') {
+          // 保存到网页桌面
+          var found = false;
+          for (var i = 0; i < desktopFiles.length; i++) {
+            if (desktopFiles[i].name === name) {
+              desktopFiles[i].content = content;
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            desktopFiles.push({ name: name, content: content });
+          }
+          renderDesktopFiles();
+          saveDesktopFiles();
+          notepadState.filename = name;
+          notepadState.dirty = false;
+          notepadState.content = content;
+          updateNotepadTitle();
+        } else {
+          // 下载到本地
+          downloadTextFile(content, name);
+          notepadState.filename = name;
+          notepadState.dirty = false;
+          notepadState.content = content;
+          updateNotepadTitle();
+        }
+
+        hideSaveDialog();
+      }
+
+      // 隐藏保存对话框
+      function hideSaveDialog() {
+        var dlg = document.getElementById('saveDialog');
+        if (dlg) dlg.style.display = 'none';
+      }
+
+      // 保存对话框拖动
+      
+
+      // 绑定保存对话框按钮（只绑定一次）
+      if (!window._saveDlgBound) {
+        window._saveDlgBound = true;
+        var saveDlgOk = document.getElementById('saveDlgOk');
+        var saveDlgCancel = document.getElementById('saveDlgCancel');
+        var saveDlgClose = document.getElementById('saveDlgClose');
+        var saveDlgFilename = document.getElementById('saveDlgFilename');
+        if (saveDlgOk) saveDlgOk.addEventListener('click', executeSave);
+        if (saveDlgCancel) saveDlgCancel.addEventListener('click', hideSaveDialog);
+        if (saveDlgClose) saveDlgClose.addEventListener('click', hideSaveDialog);
+        if (saveDlgFilename) {
+          saveDlgFilename.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              executeSave();
+            } else if (e.key === 'Escape') {
+              hideSaveDialog();
+            }
+          });
+        }
+        // 选项 hover 效果
+        var saveOptDesktop = document.getElementById('saveOptDesktop');
+        var saveOptDownload = document.getElementById('saveOptDownload');
+        if (saveOptDesktop) {
+          saveOptDesktop.addEventListener('mouseenter', function() {
+            saveOptDesktop.style.borderColor = '#0078d4';
+            saveOptDesktop.style.background = '#e5f3ff';
+          });
+          saveOptDesktop.addEventListener('mouseleave', function() {
+            saveOptDesktop.style.borderColor = '#e0e0e0';
+            saveOptDesktop.style.background = '#f9f9f9';
+          });
+        }
+        if (saveOptDownload) {
+          saveOptDownload.addEventListener('mouseenter', function() {
+            saveOptDownload.style.borderColor = '#0078d4';
+            saveOptDownload.style.background = '#e5f3ff';
+          });
+          saveOptDownload.addEventListener('mouseleave', function() {
+            saveOptDownload.style.borderColor = '#e0e0e0';
+            saveOptDownload.style.background = '#f9f9f9';
+          });
+        }
+      }
+
+      // 初始化保存对话框拖动
+      initSaveDialogDrag();
+
+      // 下载文本文件
+      function downloadTextFile(text, filename) {
+        var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 100);
+      }
+
+      // 文本变化检测
+      ta.addEventListener('input', function() {
+        if (ta.value !== notepadState.content) {
+          notepadState.dirty = true;
+        } else {
+          notepadState.dirty = false;
+        }
+        updateNotepadTitle();
+        updateNotepadStatus();
+      });
+
+      ta.addEventListener('keyup', updateNotepadStatus);
+      ta.addEventListener('click', updateNotepadStatus);
+
+      function updateNotepadStatus() {
+        var statusEl = document.getElementById('notepad-status');
+        if (!statusEl) return;
+        var pos = ta.selectionStart;
+        var textBefore = ta.value.substring(0, pos);
+        var line = textBefore.split('\n').length;
+        var col = pos - textBefore.lastIndexOf('\n');
+        statusEl.textContent = '第 ' + line + ' 行，第 ' + col + ' 列';
+      }
+
+      // 快捷键
+      ta.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 's') {
+          e.preventDefault();
+          notepadSave();
+        } else if (e.ctrlKey && e.key === 'n') {
+          e.preventDefault();
+          notepadNew();
+        } else if (e.ctrlKey && e.key === 'o') {
+          e.preventDefault();
+          notepadOpen();
+        } else if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+          e.preventDefault();
+          notepadSaveAs();
+        }
+      });
+    }
+    else if (type === 'settings') {
+      content.style.background = '#f3f3f3';
+      content.innerHTML =
+        '<div style="display:flex;height:100%;">' +
+          '<div id="settings-sidebar" style="width:200px;background:#f3f3f3;border-right:1px solid #e1e1e1;flex-shrink:0;overflow-y:auto;padding:8px 0;">' +
+            '<div style="padding:16px 16px 8px;font-size:18px;font-weight:600;">设置</div>' +
+            '<div id="settings-nav" style="display:flex;flex-direction:column;">' +
+              '<div class="settings-nav-item active" data-page="personalize" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;border-left:3px solid #0078d7;background:#e5f0fa;font-weight:600;"><span>🎨</span><span>个性化</span></div>' +
+              '<div class="settings-nav-item" data-page="display" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;border-left:3px solid transparent;"><span>🖥️</span><span>显示</span></div>' +
+              '<div class="settings-nav-item" data-page="system" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;border-left:3px solid transparent;"><span>⚙️</span><span>系统</span></div>' +
+              '<div class="settings-nav-item" data-page="network" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;border-left:3px solid transparent;"><span>🌐</span><span>网络和 Internet</span></div>' +
+              '<div class="settings-nav-item" data-page="apps" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;border-left:3px solid transparent;"><span>📦</span><span>应用</span></div>' +
+              '<div class="settings-nav-item" data-page="about" style="padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;border-left:3px solid transparent;"><span>ℹ️</span><span>关于</span></div>' +
+            '</div>' +
+          '</div>' +
+          '<div id="settings-content" style="flex:1;overflow-y:auto;padding:24px;background:#fff;">' +
+            renderSettingsPage('personalize') +
+          '</div>' +
+        '</div>';
+
+      setTimeout(function() {
+        var navItems = document.querySelectorAll('#settings-nav .settings-nav-item');
+        navItems.forEach(function(item) {
+          item.addEventListener('click', function() {
+            navItems.forEach(function(n) { n.style.background = 'transparent'; n.style.borderLeftColor = 'transparent'; n.style.fontWeight = 'normal'; n.classList.remove('active'); });
+            item.style.background = '#e5f0fa';
+            item.style.borderLeftColor = '#0078d7';
+            item.style.fontWeight = '600';
+            item.classList.add('active');
+            var page = item.getAttribute('data-page');
+            var contentArea = document.getElementById('settings-content');
+            if (contentArea) contentArea.innerHTML = renderSettingsPage(page);
+            if (page === 'display' || page === 'personalize') { bindResolutionSelect(); }
+            if (page === 'personalize') { bindThemeToggle(); bindBgColorPicker(); }
+          });
+        });
+      }, 50);
+    }
+
+    function renderSettingsPage(page) {
+      if (page === 'personalize') {
+        return '' +
+          '<h2 style="font-size:22px;font-weight:600;margin-bottom:24px;">个性化</h2>' +
+          '<div style="margin-bottom:28px;">' +
+            '<div style="font-size:14px;font-weight:600;margin-bottom:12px;">主题</div>' +
+            '<div style="display:flex;gap:12px;">' +
+              '<div id="theme-light" class="theme-card" style="flex:1;padding:14px;border:2px solid ' + (window._settingsTheme !== 'dark' ? '#0078d7' : '#e1e1e1') + ';border-radius:4px;cursor:pointer;text-align:center;background:#fff;">' +
+                '<div style="font-size:28px;margin-bottom:6px;">☀️</div>' +
+                '<div style="font-size:12px;font-weight:600;">浅色</div>' +
+              '</div>' +
+              '<div id="theme-dark" class="theme-card" style="flex:1;padding:14px;border:2px solid ' + (window._settingsTheme === 'dark' ? '#0078d7' : '#e1e1e1') + ';border-radius:4px;cursor:pointer;text-align:center;background:#2a2a2a;color:#fff;">' +
+                '<div style="font-size:28px;margin-bottom:6px;">🌙</div>' +
+                '<div style="font-size:12px;font-weight:600;">深色</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="margin-bottom:28px;">' +
+            '<div style="font-size:14px;font-weight:600;margin-bottom:12px;">背景颜色</div>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;" id="bg-color-picker">' +
+              '["#0078d7","#107c10","#e81123","#ff8c00","#9b59b6","#1abc9c","#34495e","#f39c12","#2c3e50","#e74c3c","#3498db","#27ae60","#8e44ad","#d35400","#7f8c8d","#000000"].map(function(c) {' +
+              '  var sel = (window._settingsBgColor || "#0078d7") === c;' +
+              '  return "<div class="bg-color-opt" data-color=\"" + c + "\" style=\"width:36px;height:36px;border-radius:50%;background:" + c + ";cursor:pointer;border:2px solid " + (sel ? "#fff" : "transparent") + ";box-shadow:" + (sel ? "0 0 0 2px " + c : "none") + ";display:inline-block;margin:2px;\"></div>";' +
+              '}).join("")' +
+            '</div>' +
+          '</div>' +
+          '<div style="margin-bottom:28px;">' +
+            '<div style="font-size:14px;font-weight:600;margin-bottom:12px;">屏幕分辨率</div>' +
+            '<div>' +
+              '<select id="resolution-select" style="width:260px;padding:8px 10px;border:1px solid #ccc;border-radius:2px;font-size:13px;outline:none;">' +
+                '<option value="3180x2160">3180 × 2160 (推荐)</option>' +
+                '<option value="2560x1440">2560 × 1440</option>' +
+                '<option value="1920x1080">1920 × 1080</option>' +
+                '<option value="1680x1050">1680 × 1050</option>' +
+                '<option value="1440x900">1440 × 900</option>' +
+                '<option value="1366x768">1366 × 768</option>' +
+                '<option value="1280x720">1280 × 720</option>' +
+                '<option value="1024x768">1024 × 768</option>' +
+              '</select>' +
+              '<div style="font-size:11px;color:#888;margin-top:6px;">当前分辨率影响桌面图标和窗口显示</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:12px;">更改将在下次打开时生效</div>';
+      } else if (page === 'display') {
+        return '' +
+          '<h2 style="font-size:22px;font-weight:600;margin-bottom:24px;">显示</h2>' +
+          '<div style="margin-bottom:28px;">' +
+            '<div style="font-size:14px;font-weight:600;margin-bottom:12px;">屏幕分辨率</div>' +
+            '<div>' +
+              '<select id="resolution-select" style="width:260px;padding:8px 10px;border:1px solid #ccc;border-radius:2px;font-size:13px;outline:none;">' +
+                '<option value="3180x2160">3180 × 2160 (推荐)</option>' +
+                '<option value="2560x1440">2560 × 1440</option>' +
+                '<option value="1920x1080">1920 × 1080</option>' +
+                '<option value="1680x1050">1680 × 1050</option>' +
+                '<option value="1440x900">1440 × 900</option>' +
+                '<option value="1366x768">1366 × 768</option>' +
+                '<option value="1280x720">1280 × 720</option>' +
+                '<option value="1024x768">1024 × 768</option>' +
+              '</select>' +
+              '<div style="font-size:11px;color:#888;margin-top:6px;">拖动滑块或选择分辨率来调整显示大小</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="margin-bottom:28px;">' +
+            '<div style="font-size:14px;font-weight:600;margin-bottom:12px;">缩放与布局</div>' +
+            '<div style="font-size:13px;color:#555;margin-bottom:4px;">更改文本、应用等项目的大小</div>' +
+            '<select style="width:260px;padding:8px 10px;border:1px solid #ccc;border-radius:2px;font-size:13px;outline:none;">' +
+              '<option value="100">100% (推荐)</option>' +
+              '<option value="125">125%</option>' +
+              '<option value="150">150%</option>' +
+              '<option value="175">175%</option>' +
+              '<option value="200">200%</option>' +
+            '</select>' +
+          '</div>' +
+          '<div style="font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:12px;">更改将在下次打开时生效</div>';
+      } else if (page === 'system') {
+        return '' +
+          '<h2 style="font-size:22px;font-weight:600;margin-bottom:24px;">系统</h2>' +
+          '<div style="margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:4px;">' +
+            '<div style="font-size:14px;font-weight:600;">通知</div>' +
+            '<div style="font-size:12px;color:#888;margin-top:4px;">在此处查看和管理通知设置</div>' +
+          '</div>' +
+          '<div style="margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:4px;">' +
+            '<div style="font-size:14px;font-weight:600;">存储</div>' +
+            '<div style="font-size:12px;color:#888;margin-top:4px;">管理存储空间和磁盘使用情况</div>' +
+          '</div>' +
+          '<div style="margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:4px;">' +
+            '<div style="font-size:14px;font-weight:600;">电源</div>' +
+            '<div style="font-size:12px;color:#888;margin-top:4px;">调整电源设置和节能选项</div>' +
+          '</div>';
+      } else if (page === 'network') {
+        return '' +
+          '<h2 style="font-size:22px;font-weight:600;margin-bottom:24px;">网络和 Internet</h2>' +
+          '<div style="margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:4px;display:flex;align-items:center;gap:12px;">' +
+            '<div style="width:8px;height:8px;border-radius:50%;background:#107c10;"></div>' +
+            '<div><div style="font-size:14px;font-weight:600;">以太网</div><div style="font-size:12px;color:#888;">已连接 · Internet 访问</div></div>' +
+          '</div>' +
+          '<div style="margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:4px;">' +
+            '<div style="font-size:14px;font-weight:600;">Wi-Fi</div>' +
+            '<div style="font-size:12px;color:#888;margin-top:4px;">Wi-Fi 已关闭</div>' +
+          '</div>' +
+          '<div style="margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:4px;">' +
+            '<div style="font-size:14px;font-weight:600;">VPN</div>' +
+            '<div style="font-size:12px;color:#888;margin-top:4px;">未连接</div>' +
+          '</div>';
+      } else if (page === 'apps') {
+        return '' +
+          '<h2 style="font-size:22px;font-weight:600;margin-bottom:24px;">应用</h2>' +
+          '<div style="margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:4px;">' +
+            '<div style="font-size:14px;font-weight:600;">已安装的应用</div>' +
+            '<div style="font-size:12px;color:#888;margin-top:4px;">管理和卸载已安装的应用</div>' +
+          '</div>' +
+          '<div style="margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:4px;">' +
+            '<div style="font-size:14px;font-weight:600;">默认应用</div>' +
+            '<div style="font-size:12px;color:#888;margin-top:4px;">选择默认浏览器、音乐播放器等</div>' +
+          '</div>';
+      } else if (page === 'about') {
+        return '' +
+          '<h2 style="font-size:22px;font-weight:600;margin-bottom:24px;">关于</h2>' +
+          '<div style="margin-bottom:12px;padding:12px;background:#f9f9f9;border-radius:4px;">' +
+            '<div style="font-size:14px;font-weight:600;">Windows 10 网页模拟器</div>' +
+            '<div style="font-size:12px;color:#888;margin-top:4px;">版本 1.0.0</div>' +
+          '</div>' +
+          '<div style="margin-bottom:12px;padding:12px;background:#f9f9f9;border-radius:4px;">' +
+            '<div style="font-size:14px;font-weight:600;">设备规格</div>' +
+            '<div style="font-size:12px;color:#888;margin-top:4px;">处理器：模拟环境</div>' +
+            '<div style="font-size:12px;color:#888;">已安装内存：模拟环境</div>' +
+          '</div>';
+      }
+      return '<div style="padding:20px;color:#888;">页面加载中...</div>';
+    }
+
+    window._settingsTheme = localStorage.getItem('w10_settings_theme') || 'light';
+    window._settingsBgColor = localStorage.getItem('w10_settings_bgcolor') || '#0078d7';
+    window._settingsResolution = localStorage.getItem('w10_settings_resolution') || '3180x2160';
+
+    function bindResolutionSelect() {
+      setTimeout(function() {
+        var sel = document.getElementById('resolution-select');
+        if (!sel) return;
+        var saved = window._settingsResolution || '3180x2160';
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === saved) { sel.selectedIndex = i; break; }
+        }
+        sel.addEventListener('change', function() {
+          window._settingsResolution = sel.value;
+          localStorage.setItem('w10_settings_resolution', sel.value);
+        });
+      }, 50);
+    }
+
+    function bindThemeToggle() {
+      setTimeout(function() {
+        var light = document.getElementById('theme-light');
+        var dark = document.getElementById('theme-dark');
+        if (light) {
+          light.addEventListener('click', function() {
+            window._settingsTheme = 'light';
+            localStorage.setItem('w10_settings_theme', 'light');
+            document.querySelectorAll('.theme-card').forEach(function(c) {
+              if (c.id === 'theme-light') { c.style.borderColor = '#0078d7'; }
+              else { c.style.borderColor = '#e1e1e1'; }
+            });
+          });
+        }
+        if (dark) {
+          dark.addEventListener('click', function() {
+            window._settingsTheme = 'dark';
+            localStorage.setItem('w10_settings_theme', 'dark');
+            document.querySelectorAll('.theme-card').forEach(function(c) {
+              if (c.id === 'theme-dark') { c.style.borderColor = '#0078d7'; }
+              else { c.style.borderColor = '#e1e1e1'; }
+            });
+          });
+        }
+      }, 50);
+    }
+
+    function bindBgColorPicker() {
+      setTimeout(function() {
+        var opts = document.querySelectorAll('.bg-color-opt');
+        opts.forEach(function(opt) {
+          opt.addEventListener('click', function() {
+            var color = opt.getAttribute('data-color');
+            window._settingsBgColor = color;
+            localStorage.setItem('w10_settings_bgcolor', color);
+            opts.forEach(function(o) {
+              o.style.borderColor = 'transparent';
+              o.style.boxShadow = 'none';
+            });
+            opt.style.borderColor = '#fff';
+            opt.style.boxShadow = '0 0 0 2px ' + color;
+          });
+        });
+      }, 50);
+    }
+
+
+    
+
+    
+
+    
+    else if (type === 'vlc') {
+      content.style.padding = '0';
+      content.style.background = '#1a1a1a';
+      content.style.display = 'flex';
+      content.style.flexDirection = 'column';
+      content.style.color = '#ccc';
+      content.style.fontSize = '12px';
+
+      var menuItems = ['媒体', '播放', '音频', '视频', '字幕', '工具', '视图', '帮助'];
+
+      content.innerHTML =
+        // 菜单栏
+        '<div id="vlc-menu-' + app + '" style="display:flex;background:#2b2b2b;border-bottom:1px solid #111;flex-shrink:0;position:relative;">' +
+          menuItems.map(function(m) {
+            return '<div class="vlc-menu-item" data-menu="' + m + '" style="padding:6px 14px;cursor:default;font-size:12px;color:#ddd;">' + m + '</div>';
+          }).join('') +
+          // 媒体下拉菜单
+          '<div id="vlc-dropdown-' + app + '" style="display:none;position:absolute;top:100%;left:0;background:#333;border:1px solid #111;min-width:180px;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.5);">' +
+            '<div class="vlc-dd-item" id="vlc-open-' + app + '" style="padding:6px 20px;cursor:default;font-size:12px;color:#ddd;">打开文件...<span style="float:right;color:#888;">Ctrl+O</span></div>' +
+            '<div style="height:1px;background:#222;margin:4px 0;"></div>' +
+            '<div class="vlc-dd-item" style="padding:6px 20px;cursor:default;font-size:12px;color:#888;">打开文件夹...</div>' +
+            '<div class="vlc-dd-item" id="vlc-netstream-' + app + '" style="padding:6px 20px;cursor:default;font-size:12px;color:#ddd;">打开网络串流...<span style="float:right;color:#888;">Ctrl+N</span></div>' +
+            '<div style="height:1px;background:#222;margin:4px 0;"></div>' +
+            '<div class="vlc-dd-item" style="padding:6px 20px;cursor:default;font-size:12px;color:#888;">退出</div>' +
+          '</div>' +
+        '</div>' +
+        // 视频显示区
+        '<div id="vlc-video-wrap-' + app + '" style="flex:1;background:#000;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">' +
+          '<video id="vlc-video-' + app + '" style="width:100%;height:100%;object-fit:contain;display:none;"></video>' +
+          '<div id="vlc-logo-' + app + '" style="text-align:center;color:#666;">' +
+            '<svg viewBox="0 0 96 96" width="64" height="64" style="margin-bottom:8px;opacity:0.5;" xmlns="http://www.w3.org/2000/svg">' +
+              '<ellipse cx="48" cy="84" rx="32" ry="7" fill="#222"/>' +
+              '<path d="M40 80 L28 44 L48 12 L68 44 L56 80 Z" fill="#ff6600"/>' +
+              '<path d="M34.4 52 L48 32 L61.6 52 L57.6 60 L48 46 L38.4 60 Z" fill="#fff" opacity="0.85"/>' +
+              '<ellipse cx="48" cy="13" ry="4.8" rx="2.4" fill="#222"/>' +
+            '</svg>' +
+            '<div style="font-size:14px;color:#888;">VLC media player</div>' +
+          '</div>' +
+          // 隐藏的文件选择 input
+          '<input type="file" id="vlc-file-' + app + '" accept="video/*" style="display:none;">' +
+          // 网络串流对话框
+          '<div id="vlc-netstream-dlg-' + app + '" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;z-index:20;">' +
+            '<div style="width:420px;background:#fff;border:1px solid #999;box-shadow:0 8px 32px rgba(0,0,0,0.5);font-family:"Segoe UI",sans-serif;">' +
+              // 标题栏
+              '<div style="background:#0078d7;color:#fff;padding:8px 12px;font-size:13px;display:flex;align-items:center;">' +
+                '<span style="flex:1;">打开网络串流</span>' +
+                '<span id="vlc-netstream-close-' + app + '" style="width:24px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;">✕</span>' +
+              '</div>' +
+              // 内容区
+              '<div style="padding:16px;color:#333;font-size:12px;">' +
+                '<div style="margin-bottom:8px;font-weight:600;">请输入网络 URL（RTMP / HTTP / HTTPS）：</div>' +
+                '<input type="text" id="vlc-netstream-input-' + app + '" placeholder="rtmp://..." style="width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:2px;font-size:12px;font-family:Consolas,monospace;box-sizing:border-box;outline:none;" />' +
+                '<div style="margin-top:6px;color:#888;font-size:11px;">示例: rtmp://server/live/stream 或 http://example.com/video.mp4</div>' +
+              '</div>' +
+              // 按钮区
+              '<div style="padding:0 16px 16px;display:flex;justify-content:flex-end;gap:8px;">' +
+                '<button id="vlc-netstream-play-' + app + '" style="padding:6px 20px;background:#0078d7;color:#fff;border:1px solid #0067b8;border-radius:2px;font-size:12px;cursor:pointer;">播放</button>' +
+                '<button id="vlc-netstream-cancel-' + app + '" style="padding:6px 20px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:2px;font-size:12px;cursor:pointer;">取消</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        // 进度控制条
+        '<div style="background:#2b2b2b;padding:4px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
+          '<div id="vlc-curtime-' + app + '" style="font-size:11px;color:#aaa;font-family:Consolas,monospace;min-width:42px;text-align:right;">00:00</div>' +
+          '<div id="vlc-progress-' + app + '" style="flex:1;height:6px;background:#1a1a1a;border-radius:3px;cursor:pointer;position:relative;">' +
+            '<div id="vlc-progress-fill-' + app + '" style="position:absolute;left:0;top:0;height:100%;width:0%;background:#ff6600;border-radius:3px;"></div>' +
+            '<div id="vlc-progress-thumb-' + app + '" style="position:absolute;top:50%;left:0%;width:12px;height:12px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 1px 3px rgba(0,0,0,0.5);display:none;"></div>' +
+          '</div>' +
+          '<div id="vlc-totaltime-' + app + '" style="font-size:11px;color:#aaa;font-family:Consolas,monospace;min-width:42px;">00:00</div>' +
+        '</div>' +
+        // 控制按钮区
+        '<div style="background:#2b2b2b;padding:4px 12px 8px;display:flex;align-items:center;gap:6px;flex-shrink:0;border-top:1px solid #1a1a1a;">' +
+          // 上一曲
+          '<button id="vlc-prev-' + app + '" class="vlc-ctrl-btn" title="上一曲" style="width:32px;height:28px;background:transparent;border:none;color:#ccc;cursor:pointer;border-radius:3px;display:flex;align-items:center;justify-content:center;">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM9.5 12l8.5 6V6z"/></svg>' +
+          '</button>' +
+          // 播放/暂停
+          '<button id="vlc-play-' + app + '" class="vlc-ctrl-btn" title="播放" style="width:36px;height:32px;background:#444;border:1px solid #555;color:#fff;cursor:pointer;border-radius:3px;display:flex;align-items:center;justify-content:center;">' +
+            '<svg id="vlc-play-icon-' + app + '" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
+          '</button>' +
+          // 停止
+          '<button id="vlc-stop-' + app + '" class="vlc-ctrl-btn" title="停止" style="width:32px;height:28px;background:transparent;border:none;color:#ccc;cursor:pointer;border-radius:3px;display:flex;align-items:center;justify-content:center;">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>' +
+          '</button>' +
+          // 下一曲
+          '<button id="vlc-next-' + app + '" class="vlc-ctrl-btn" title="下一曲" style="width:32px;height:28px;background:transparent;border:none;color:#ccc;cursor:pointer;border-radius:3px;display:flex;align-items:center;justify-content:center;">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z"/></svg>' +
+          '</button>' +
+          // 音量控制
+          '<div style="display:flex;align-items:center;gap:6px;margin-left:12px;">' +
+            '<button id="vlc-mute-' + app + '" class="vlc-ctrl-btn" title="静音" style="width:28px;height:28px;background:transparent;border:none;color:#ccc;cursor:pointer;border-radius:3px;display:flex;align-items:center;justify-content:center;">' +
+              '<svg id="vlc-vol-icon-' + app + '" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>' +
+            '</button>' +
+            '<div id="vlc-volume-' + app + '" style="width:80px;height:4px;background:#1a1a1a;border-radius:2px;cursor:pointer;position:relative;">' +
+              '<div id="vlc-volume-fill-' + app + '" style="position:absolute;left:0;top:0;height:100%;width:70%;background:#ff6600;border-radius:2px;"></div>' +
+              '<div id="vlc-volume-thumb-' + app + '" style="position:absolute;top:50%;left:70%;width:10px;height:10px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 1px 2px rgba(0,0,0,0.5);"></div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="flex:1;"></div>' +
+          // 全屏按钮
+          '<button id="vlc-fs-' + app + '" class="vlc-ctrl-btn" title="全屏" style="width:28px;height:28px;background:transparent;border:none;color:#ccc;cursor:pointer;border-radius:3px;display:flex;align-items:center;justify-content:center;">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>' +
+          '</button>' +
+        '</div>' +
+        // 状态栏
+        '<div id="vlc-status-' + app + '" style="background:#2b2b2b;border-top:1px solid #1a1a1a;padding:4px 12px;font-size:11px;color:#888;flex-shrink:0;">空闲</div>';
+
+      // VLC 播放器状态
+      var vlc = {
+        video: document.getElementById('vlc-video-' + app),
+        logo: document.getElementById('vlc-logo-' + app),
+        progress: document.getElementById('vlc-progress-' + app),
+        progressFill: document.getElementById('vlc-progress-fill-' + app),
+        progressThumb: document.getElementById('vlc-progress-thumb-' + app),
+        curTime: document.getElementById('vlc-curtime-' + app),
+        totalTime: document.getElementById('vlc-totaltime-' + app),
+        playBtn: document.getElementById('vlc-play-' + app),
+        playIcon: document.getElementById('vlc-play-icon-' + app),
+        volumeBar: document.getElementById('vlc-volume-' + app),
+        volumeFill: document.getElementById('vlc-volume-fill-' + app),
+        volumeThumb: document.getElementById('vlc-volume-thumb-' + app),
+        muteBtn: document.getElementById('vlc-mute-' + app),
+        volIcon: document.getElementById('vlc-vol-icon-' + app),
+        statusBar: document.getElementById('vlc-status-' + app),
+        videoWrap: document.getElementById('vlc-video-wrap-' + app),
+        fileInput: document.getElementById('vlc-file-' + app),
+        menuBar: document.getElementById('vlc-menu-' + app),
+        dropdown: document.getElementById('vlc-dropdown-' + app),
+        isPlaying: false,
+        isMuted: false,
+        volume: 0.7,
+        isDragging: false,
+        isFullscreen: false
+      };
+
+      function formatTime(sec) {
+        if (isNaN(sec) || !isFinite(sec)) return '00:00';
+        var m = Math.floor(sec / 60);
+        var s = Math.floor(sec % 60);
+        var h = Math.floor(m / 60);
+        m = m % 60;
+        if (h > 0) {
+          return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        }
+        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+      }
+
+      function updatePlayIcon() {
+        if (vlc.isPlaying) {
+          vlc.playIcon.innerHTML = '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>';
+          vlc.playBtn.title = '暂停';
+        } else {
+          vlc.playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+          vlc.playBtn.title = '播放';
+        }
+      }
+
+      function togglePlay() {
+        if (!vlc.video.src) {
+          vlc.statusBar.textContent = '请先打开一个媒体文件';
+          return;
+        }
+        if (vlc.isPlaying) {
+          vlc.video.pause();
+        } else {
+          vlc.video.play().catch(function() {});
+        }
+      }
+
+      function stopVideo() {
+        if (!vlc.video.src) return;
+        vlc.video.pause();
+        vlc.video.currentTime = 0;
+        vlc.isPlaying = false;
+        updatePlayIcon();
+        vlc.statusBar.textContent = '已停止';
+      }
+
+      function setVolume(val) {
+        val = Math.max(0, Math.min(1, val));
+        vlc.volume = val;
+        vlc.video.volume = val;
+        vlc.volumeFill.style.width = (val * 100) + '%';
+        vlc.volumeThumb.style.left = (val * 100) + '%';
+        if (val === 0) {
+          vlc.isMuted = true;
+          vlc.volIcon.innerHTML = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+        } else if (val < 0.5) {
+          vlc.isMuted = false;
+          vlc.volIcon.innerHTML = '<path d="M7 9v6h4l5 5V4l-5 5H7z"/>';
+        } else {
+          vlc.isMuted = false;
+          vlc.volIcon.innerHTML = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
+        }
+      }
+
+      function toggleMute() {
+        if (vlc.isMuted) {
+          setVolume(vlc.volume > 0 ? vlc.volume : 0.5);
+        } else {
+          vlc.isMuted = true;
+          vlc.video.muted = true;
+          vlc.volIcon.innerHTML = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+        }
+        vlc.video.muted = vlc.isMuted;
+      }
+
+      function toggleFullscreen() {
+        var winEl = windows[app] ? windows[app].el : null;
+        if (!winEl) return;
+        if (!vlc.isFullscreen) {
+          vlc.isFullscreen = true;
+          winEl.classList.add('maximized');
+          if (windows[app]) windows[app].maximized = true;
+        } else {
+          vlc.isFullscreen = false;
+          winEl.classList.remove('maximized');
+          if (windows[app]) windows[app].maximized = false;
+        }
+      }
+
+      function seekTo(percent) {
+        if (!vlc.video.src || !vlc.video.duration) return;
+        vlc.video.currentTime = percent * vlc.video.duration;
+      }
+
+      // 绑定视频事件
+      vlc.video.addEventListener('play', function() {
+        vlc.isPlaying = true;
+        updatePlayIcon();
+        vlc.logo.style.display = 'none';
+        vlc.video.style.display = 'block';
+        vlc.statusBar.textContent = '正在播放';
+      });
+      vlc.video.addEventListener('pause', function() {
+        vlc.isPlaying = false;
+        updatePlayIcon();
+        vlc.statusBar.textContent = '已暂停';
+      });
+      vlc.video.addEventListener('ended', function() {
+        vlc.isPlaying = false;
+        updatePlayIcon();
+        vlc.statusBar.textContent = '播放结束';
+      });
+      vlc.video.addEventListener('timeupdate', function() {
+        if (!vlc.isDragging && vlc.video.duration) {
+          var pct = (vlc.video.currentTime / vlc.video.duration) * 100;
+          vlc.progressFill.style.width = pct + '%';
+          vlc.progressThumb.style.left = pct + '%';
+          vlc.curTime.textContent = formatTime(vlc.video.currentTime);
+        }
+      });
+      vlc.video.addEventListener('loadedmetadata', function() {
+        vlc.totalTime.textContent = formatTime(vlc.video.duration);
+        vlc.progressThumb.style.display = 'block';
+        vlc.statusBar.textContent = '已载入: ' + (vlc.video.src ? '本地文件' : '');
+      });
+
+      // 播放/暂停按钮
+      vlc.playBtn.addEventListener('click', togglePlay);
+
+      // 停止按钮
+      document.getElementById('vlc-stop-' + app).addEventListener('click', stopVideo);
+
+      // 上一曲/下一曲（简单跳转到开头/结尾）
+      document.getElementById('vlc-prev-' + app).addEventListener('click', function() {
+        if (vlc.video.src) {
+          vlc.video.currentTime = 0;
+          vlc.statusBar.textContent = '跳到开头';
+        }
+      });
+      document.getElementById('vlc-next-' + app).addEventListener('click', function() {
+        if (vlc.video.src && vlc.video.duration) {
+          vlc.video.currentTime = vlc.video.duration;
+          vlc.statusBar.textContent = '跳到结尾';
+        }
+      });
+
+      // 静音按钮
+      vlc.muteBtn.addEventListener('click', toggleMute);
+
+      // 全屏按钮
+      document.getElementById('vlc-fs-' + app).addEventListener('click', toggleFullscreen);
+
+      // 进度条拖动
+      var isSeeking = false;
+      function handleProgressClick(e) {
+        var rect = vlc.progress.getBoundingClientRect();
+        var pct = (e.clientX - rect.left) / rect.width;
+        pct = Math.max(0, Math.min(1, pct));
+        seekTo(pct);
+        vlc.progressFill.style.width = (pct * 100) + '%';
+        vlc.progressThumb.style.left = (pct * 100) + '%';
+      }
+      vlc.progress.addEventListener('mousedown', function(e) {
+        isSeeking = true;
+        vlc.isDragging = true;
+        handleProgressClick(e);
+      });
+      document.addEventListener('mousemove', function(e) {
+        if (isSeeking) handleProgressClick(e);
+      });
+      document.addEventListener('mouseup', function() {
+        if (isSeeking) {
+          isSeeking = false;
+          vlc.isDragging = false;
+        }
+      });
+
+      // 音量条拖动
+      var isVolDragging = false;
+      function handleVolumeClick(e) {
+        var rect = vlc.volumeBar.getBoundingClientRect();
+        var pct = (e.clientX - rect.left) / rect.width;
+        pct = Math.max(0, Math.min(1, pct));
+        setVolume(pct);
+      }
+      vlc.volumeBar.addEventListener('mousedown', function(e) {
+        isVolDragging = true;
+        handleVolumeClick(e);
+      });
+      document.addEventListener('mousemove', function(e) {
+        if (isVolDragging) handleVolumeClick(e);
+      });
+      document.addEventListener('mouseup', function() { isVolDragging = false; });
+
+      // 文件选择
+      vlc.fileInput.addEventListener('change', function(e) {
+        var file = e.target.files[0];
+        if (file) {
+          var url = URL.createObjectURL(file);
+          vlc.video.src = url;
+          vlc.logo.style.display = 'none';
+          vlc.video.style.display = 'block';
+          vlc.video.play().then(function() {
+            vlc.isPlaying = true;
+            updatePlayIcon();
+          }).catch(function() {
+            vlc.isPlaying = false;
+            updatePlayIcon();
+          });
+          vlc.statusBar.textContent = '正在播放: ' + file.name;
+          vlc.dropdown.style.display = 'none';
+        }
+      });
+
+      // 菜单栏 - 媒体下拉
+      var mediaMenuItem = vlc.menuBar.querySelector('[data-menu="媒体"]');
+      mediaMenuItem.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (vlc.dropdown.style.display === 'block') {
+          vlc.dropdown.style.display = 'none';
+        } else {
+          vlc.dropdown.style.display = 'block';
+        }
+      });
+      document.addEventListener('click', function() {
+        vlc.dropdown.style.display = 'none';
+      });
+
+      // 打开文件菜单项
+      document.getElementById('vlc-open-' + app).addEventListener('click', function(e) {
+        e.stopPropagation();
+        vlc.fileInput.click();
+      });
+
+      // 打开网络串流菜单项
+      document.getElementById('vlc-netstream-' + app).addEventListener('click', function(e) {
+        e.stopPropagation();
+        vlc.dropdown.style.display = 'none';
+        var dlg = document.getElementById('vlc-netstream-dlg-' + app);
+        if (dlg) {
+          dlg.style.display = 'flex';
+          var input = document.getElementById('vlc-netstream-input-' + app);
+          if (input) {
+            input.value = '';
+            setTimeout(function() { input.focus(); }, 50);
+          }
+        }
+      });
+
+      // 网络串流对话框 - 关闭/取消
+      function closeNetStreamDlg() {
+        var dlg = document.getElementById('vlc-netstream-dlg-' + app);
+        if (dlg) dlg.style.display = 'none';
+      }
+      document.getElementById('vlc-netstream-close-' + app).addEventListener('click', closeNetStreamDlg);
+      document.getElementById('vlc-netstream-cancel-' + app).addEventListener('click', closeNetStreamDlg);
+
+      // 网络串流对话框 - 播放
+      document.getElementById('vlc-netstream-play-' + app).addEventListener('click', function() {
+        var input = document.getElementById('vlc-netstream-input-' + app);
+        var url = input ? input.value.trim() : '';
+        if (!url) {
+          input.focus();
+          return;
+        }
+        closeNetStreamDlg();
+        playNetworkStream(url);
+      });
+
+      // 网络串流输入框回车播放
+      var netInput = document.getElementById('vlc-netstream-input-' + app);
+      if (netInput) {
+        netInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('vlc-netstream-play-' + app).click();
+          }
+        });
+      }
+
+      // 播放网络串流
+      function playNetworkStream(url) {
+        vlc.logo.style.display = 'none';
+        vlc.video.style.display = 'none';
+        // 显示连接中状态
+        var connectingEl = document.getElementById('vlc-connecting-' + app);
+        if (!connectingEl) {
+          connectingEl = document.createElement('div');
+          connectingEl.id = 'vlc-connecting-' + app;
+          connectingEl.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#000;color:#ccc;z-index:5;';
+          connectingEl.innerHTML =
+            '<div style="width:32px;height:32px;border:3px solid #333;border-top-color:#ff6600;border-radius:50%;animation:vlcSpin 1s linear infinite;"></div>' +
+            '<div id="vlc-connecting-text-' + app + '" style="font-size:13px;color:#aaa;">正在连接...</div>';
+          vlc.videoWrap.appendChild(connectingEl);
+          // 添加动画样式（如果还没加）
+          if (!document.getElementById('vlc-spin-style')) {
+            var style = document.createElement('style');
+            style.id = 'vlc-spin-style';
+            style.textContent = '@keyframes vlcSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+            document.head.appendChild(style);
+          }
+        }
+        connectingEl.style.display = 'flex';
+        var connText = document.getElementById('vlc-connecting-text-' + app);
+        if (connText) connText.textContent = '正在连接 ' + url + ' ...';
+        vlc.statusBar.textContent = '正在连接: ' + url;
+        vlc.isPlaying = false;
+        updatePlayIcon();
+        // 模拟连接过程，2秒后黑屏
+        setTimeout(function() {
+          if (connectingEl) connectingEl.style.display = 'none';
+          // 黑屏 - 什么都不显示，因为 videoWrap 本身就是黑色背景
+          vlc.video.style.display = 'none';
+          vlc.logo.style.display = 'none';
+          vlc.statusBar.textContent = '无法播放: 浏览器不支持该流媒体格式 (' + url + ')';
+        }, 2000);
+      }
+
+      // 菜单 hover 效果
+      var menuItemsEl = vlc.menuBar.querySelectorAll('.vlc-menu-item');
+      menuItemsEl.forEach(function(item) {
+        item.addEventListener('mouseenter', function() {
+          item.style.background = '#3a3a3a';
+          item.style.color = '#fff';
+        });
+        item.addEventListener('mouseleave', function() {
+          item.style.background = '';
+          item.style.color = '#ddd';
+        });
+      });
+
+      // 下拉菜单项 hover
+      var ddItems = vlc.dropdown.querySelectorAll('.vlc-dd-item');
+      ddItems.forEach(function(item) {
+        item.addEventListener('mouseenter', function() {
+          item.style.background = '#ff6600';
+          item.style.color = '#fff';
+        });
+        item.addEventListener('mouseleave', function() {
+          item.style.background = '';
+          if (item.style.color === 'rgb(255, 255, 255)') item.style.color = '';
+        });
+      });
+
+      // 控制按钮 hover
+      var ctrlBtns = content.querySelectorAll('.vlc-ctrl-btn');
+      ctrlBtns.forEach(function(btn) {
+        btn.addEventListener('mouseenter', function() {
+          btn.style.background = '#3a3a3a';
+        });
+        btn.addEventListener('mouseleave', function() {
+          if (btn === vlc.playBtn) {
+            btn.style.background = '#444';
+          } else {
+            btn.style.background = 'transparent';
+          }
+        });
+      });
+
+      // 双击视频区全屏
+      vlc.videoWrap.addEventListener('dblclick', function(e) {
+        if (e.target === vlc.videoWrap || e.target === vlc.video || e.target === vlc.logo) {
+          toggleFullscreen();
+        }
+      });
+
+      // 初始化音量
+      setVolume(0.7);
+    }
+    else {
+      content.innerHTML = '<div style="padding:40px;text-align:center;color:#999;">该应用暂未实现</div>';
+    }
+  }
+
+  // ===== 托盘面板 =====
+  var systemVolume = 70;
+  var systemMuted = false;
+  var calCurrentDate = new Date();
+
+  function toggleTrayPanel(panel) {
+    var panels = ['network', 'volume', 'calendar'];
+    var targetPanel = document.getElementById(panel + 'Panel');
+    var isShowing = targetPanel.classList.contains('show');
+
+    // 关闭所有面板
+    panels.forEach(function(p) {
+      var el = document.getElementById(p + 'Panel');
+      if (el) el.classList.remove('show');
+    });
+
+    // 如果目标面板没显示，则显示
+    if (!isShowing) {
+      targetPanel.classList.add('show');
+      if (panel === 'calendar') {
+        renderCalendar();
+      }
+      if (panel === 'volume') {
+        updateVolumePanel();
+      }
+    }
+  }
+
+  // 点击其他地方关闭托盘面板
+  document.addEventListener('click', function(e) {
+    var panels = ['network', 'volume', 'calendar'];
+    var clickedOnPanel = false;
+    var clickedOnTray = false;
+
+    panels.forEach(function(p) {
+      var el = document.getElementById(p + 'Panel');
+      if (el && el.contains(e.target)) clickedOnPanel = true;
+    });
+
+    // 检查是否点击了托盘图标
+    var trayIcons = ['trayNetwork', 'trayVolume', 'clock'];
+    trayIcons.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && el.contains(e.target)) clickedOnTray = true;
+    });
+
+    if (!clickedOnPanel && !clickedOnTray) {
+      panels.forEach(function(p) {
+        var el = document.getElementById(p + 'Panel');
+        if (el) el.classList.remove('show');
+      });
+    }
+  });
+
+  // ===== 系统音量 =====
+  function updateVolumePanel() {
+    var fill = document.getElementById('volPanelFill');
+    var thumb = document.getElementById('volPanelThumb');
+    var label = document.getElementById('volPanelLabel');
+    var icon = document.getElementById('volPanelIcon');
+    var trayIcon = document.getElementById('trayVolumeIcon');
+
+    var vol = systemMuted ? 0 : systemVolume;
+
+    if (fill) fill.style.width = vol + '%';
+    if (thumb) thumb.style.left = vol + '%';
+    if (label) label.textContent = Math.round(vol);
+
+    // 更新音量图标（面板）
+    if (icon) {
+      if (vol === 0) {
+        icon.innerHTML = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+      } else if (vol <= 33) {
+        icon.innerHTML = '<path d="M7 9v6h4l5 5V4l-5 5H7z"/>';
+      } else if (vol <= 66) {
+        icon.innerHTML = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>';
+      } else {
+        icon.innerHTML = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
+      }
+    }
+
+    // 更新托盘音量图标
+    if (trayIcon) {
+      if (vol === 0) {
+        trayIcon.innerHTML = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+      } else if (vol <= 33) {
+        trayIcon.innerHTML = '<path d="M7 9v6h4l5 5V4l-5 5H7z"/>';
+      } else if (vol <= 66) {
+        trayIcon.innerHTML = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>';
+      } else {
+        trayIcon.innerHTML = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
+      }
+    }
+  }
+
+  function toggleSystemVolumeMute() {
+    systemMuted = !systemMuted;
+    updateVolumePanel();
+  }
+
+  // ===== 日历面板 =====
+  function renderCalendar() {
+    var grid = document.getElementById('calGrid');
+    var title = document.getElementById('calTitle');
+    var bigTime = document.getElementById('calBigTime');
+    var bigDate = document.getElementById('calBigDate');
+    if (!grid) return;
+
+    var y = calCurrentDate.getFullYear();
+    var m = calCurrentDate.getMonth();
+    var today = new Date();
+    var isCurrentMonth = (today.getFullYear() === y && today.getMonth() === m);
+    var todayDate = today.getDate();
+
+    if (title) title.textContent = y + ' 年 ' + (m + 1) + ' 月';
+
+    // 更新大时间和日期
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, '0');
+    var min = String(now.getMinutes()).padStart(2, '0');
+    if (bigTime) bigTime.textContent = h + ':' + min;
+    var weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+    if (bigDate) {
+      bigDate.textContent = y + '年' + (m+1) + '月' + todayDate + '日 星期' + weekDays[now.getDay()];
+    }
+
+    var firstDay = new Date(y, m, 1).getDay();
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var prevMonthDays = new Date(y, m, 0).getDate();
+
+    var html = '';
+
+    // 上月末尾几天
+    for (var i = firstDay - 1; i >= 0; i--) {
+      html += '<div class="cal-day other">' + (prevMonthDays - i) + '</div>';
+    }
+
+    // 当月
+    for (var d = 1; d <= daysInMonth; d++) {
+      var isToday = isCurrentMonth && d === todayDate;
+      html += '<div class="cal-day' + (isToday ? ' today' : '') + '">' + d + '</div>';
+    }
+
+    // 下月开头几天（补齐到6行42格）
+    var totalCells = firstDay + daysInMonth;
+    var remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    // 确保至少6行
+    if (totalCells + remaining < 42) remaining += 7;
+    for (var j = 1; j <= remaining; j++) {
+      html += '<div class="cal-day other">' + j + '</div>';
+    }
+
+    grid.innerHTML = html;
+  }
+
+  function changeCalMonth(delta) {
+    calCurrentDate.setMonth(calCurrentDate.getMonth() + delta);
+    renderCalendar();
+  }
+
+  // 每分钟更新日历面板的大时间
+  setInterval(function() {
+    var calPanel = document.getElementById('calendarPanel');
+    if (calPanel && calPanel.classList.contains('show')) {
+      renderCalendar();
+    }
+  }, 60000);
+
+  // ===== 右键菜单 =====
+  var ctxMenu = document.getElementById('contextMenu');
+  document.getElementById('desktop').addEventListener('contextmenu', function(e) {
+    // 如果点击的是桌面文件图标，不触发桌面右键菜单
+    if (e.target.closest('#desktopFiles .d-icon')) return;
+    e.preventDefault();
+    // 隐藏删除项
+    var delItem = document.getElementById('ctxDeleteFile');
+    if (delItem) delItem.style.display = 'none';
+    ctxMenu.style.left = e.clientX + 'px';
+    ctxMenu.style.top = e.clientY + 'px';
+    ctxMenu.classList.add('show');
+  });
+  document.addEventListener('click', hideContext);
+  function hideContext() { ctxMenu.classList.remove('show'); }
+
+  // ===== 搜索面板 =====
+  function openSearchPanel() {
+    closeAllWindows();
+    var overlay = document.createElement('div');
+    overlay.id = 'searchOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:1499;';
+    overlay.addEventListener('click', function() { closeSearchPanel(); });
+
+    var panel = document.createElement('div');
+    panel.id = 'searchPanel';
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#f3f3f3;z-index:1500;box-shadow:0 4px 20px rgba(0,0,0,0.3);padding:20px 40px;display:none;';
+
+    panel.innerHTML =
+      '<div style="max-width:720px;margin:0 auto;">' +
+        '<div style="display:flex;align-items:center;background:#fff;border:1px solid #ccc;border-radius:4px;padding:8px 14px;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+          '<input id="searchInput" type="text" placeholder="在这里输入你要搜索的内容" style="flex:1;border:none;outline:none;font-size:14px;margin-left:10px;background:transparent;">' +
+          '<span onclick="closeSearchPanel()" style="cursor:pointer;font-size:18px;color:#888;padding:0 4px;">✕</span>' +
+        '</div>' +
+        '<div id="searchResults" style="margin-top:16px;min-height:80px;color:#888;font-size:13px;">输入关键词开始搜索...</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(panel);
+    panel.style.display = 'block';
+
+    // 聚焦搜索框
+    setTimeout(function() {
+      var inp = document.getElementById('searchInput');
+      if (inp) inp.focus();
+    }, 100);
+
+    // 搜索输入监听
+    setTimeout(function() {
+      var inp = document.getElementById('searchInput');
+      if (inp) {
+        inp.addEventListener('input', function() {
+          doSearch(inp.value);
+        });
+        inp.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') doSearch(inp.value);
+          if (e.key === 'Escape') closeSearchPanel();
+        });
+      }
+    }, 150);
+  }
+
+  function closeSearchPanel() {
+    var panel = document.getElementById('searchPanel');
+    var overlay = document.getElementById('searchOverlay');
+    if (panel) { panel.remove(); }
+    if (overlay) { overlay.remove(); }
+  }
+
+  function doSearch(query) {
+    var results = document.getElementById('searchResults');
+    if (!results) return;
+    if (!query || query.trim() === '') {
+      results.innerHTML = '输入关键词开始搜索...';
+      return;
+    }
+    var q = query.toLowerCase().trim();
+    var matches = [];
+    var apps = [
+      { name: '此电脑', key: 'thispc', desc: '文件资源管理器' },
+      { name: '回收站', key: 'recycle', desc: '已删除的文件和文件夹' },
+      { name: 'Microsoft Edge', key: 'edge', desc: 'Microsoft 浏览器' },
+      { name: 'VLC media player', key: 'vlc', desc: 'VLC 媒体播放器' },
+      { name: 'CAM?', key: 'cam', desc: '摄像头和串流监控' },
+      { name: '记事本', key: 'notepad', desc: '纯文本编辑' },
+      { name: '设置', key: 'settings', desc: 'Windows 设置' },
+      { name: '计算器', key: 'calc', desc: '标准计算器' },
+      { name: '命令提示符', key: 'cmd', desc: '命令行界面' }
+    ];
+    for (var i = 0; i < apps.length; i++) {
+      if (apps[i].name.toLowerCase().indexOf(q) >= 0 || apps[i].desc.toLowerCase().indexOf(q) >= 0) {
+        matches.push(apps[i]);
+      }
+    }
+    // 搜索已保存的桌面文件
+    for (var i = 0; i < desktopFiles.length; i++) {
+      if (desktopFiles[i].name.toLowerCase().indexOf(q) >= 0) {
+        matches.push({ name: desktopFiles[i].name, key: 'file:' + desktopFiles[i].name, desc: '桌面文件' });
+      }
+    }
+    if (matches.length === 0) {
+      results.innerHTML = '<div style="padding:20px;text-align:center;color:#999;font-size:14px;">未找到相关结果</div>';
+    } else {
+      var html = '<div style="font-size:11px;color:#888;margin-bottom:8px;">最佳匹配</div>';
+      for (var i = 0; i < matches.length; i++) {
+        (function(m) {
+          var icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="1.5"><rect x="3" y="4" width="18" height="14" rx="1.5"/></svg>';
+          if (m.key === 'settings') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+          if (m.key === 'edge') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="1.5"><path d="M21 12a9 9 0 0 1-9 9c-2.5 0-4.7-1-6.3-2.7"/><circle cx="12" cy="12" r="9"/></svg>';
+          if (m.key === 'vlc') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f60" stroke-width="1.5"><polygon points="3,18 12,4 21,18"/></svg>';
+          if (m.key === 'recycle') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><path d="M16 3h5l-3 9H6L3 3h5l3 6 3-6z"/></svg>';
+          if (m.key === 'calc') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 8h8M8 12h2M8 16h2M12 12h4M12 16h4"/></svg>';
+          if (m.key && m.key.indexOf('file:') === 0) icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="1.5"><path d="M6 3h9l4 4v14a0.5 0.5 0 0 1-0.5 0.5h-13A0.5 0.5 0 0 1 5 21V3.5A0.5 0.5 0 0 1 5.5 3z"/></svg>';
+          if (m.key === 'notepad') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="1.5"><path d="M8 2v2M16 2v2"/><rect x="4" y="4" width="16" height="18" rx="2"/><path d="M8 10h8M8 14h8M8 18h5"/></svg>';
+          if (m.key === 'cam') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0078d4" stroke-width="1.5"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 10l5-3v10l-5-3"/></svg>';
+          if (m.key === 'cmd') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>';
+          html += '<div class="search-result-item" data-key="' + m.key + '" style="display:flex;align-items:center;gap:12px;padding:10px 12px;cursor:pointer;border-radius:4px;" onmouseover="this.style.background='#e5f3ff'" onmouseout="this.style.background='transparent'" onclick="searchResultClick('' + m.key + '')">' +
+            icon +
+            '<div><div style="font-size:13px;font-weight:500;">' + m.name + '</div><div style="font-size:11px;color:#888;">' + m.desc + '</div></div>' +
+          '</div>';
+        })(matches[i]);
+      }
+      results.innerHTML = html;
+    }
+  }
+
+  function searchResultClick(key) {
+    closeSearchPanel();
+    if (key.indexOf('file:') === 0) {
+      var fname = key.substring(5);
+      for (var i = 0; i < desktopFiles.length; i++) {
+        if (desktopFiles[i].name === fname) {
+          openNotepadWithFile(fname, desktopFiles[i].content);
+          return;
+        }
+      }
+    }
+    if (key === 'recycle') {
+      openWindow('recycle');
+      return;
+    }
+    if (key === 'cam') {
+      openWindow('cam');
+      return;
+    }
+    openWindow(key);
+  }
+
+  // ===== 任务视图 =====
+  function openTaskView() {
+    // 收集所有打开的窗口
+    var winIds = Object.keys(windows);
+    var overlay = document.createElement('div');
+    overlay.id = 'taskViewOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1499;';
+    overlay.addEventListener('click', function() { closeTaskView(); });
+
+    var panel = document.createElement('div');
+    panel.id = 'taskViewPanel';
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:1500;padding:40px 60px;overflow-y:auto;';
+
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+      '<div style="color:#fff;font-size:18px;font-weight:600;">任务视图</div>' +
+      '<span onclick="closeTaskView()" style="cursor:pointer;font-size:22px;color:#fff;padding:4px 8px;">✕</span>' +
+    '</div>';
+
+    if (winIds.length === 0) {
+      html += '<div style="text-align:center;padding:60px;color:rgba(255,255,255,0.6);font-size:15px;">没有打开的窗口</div>';
+    } else {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:20px;">';
+      for (var i = 0; i < winIds.length; i++) {
+        (function(id) {
+          var w = windows[id];
+          var title = w.title || '未命名窗口';
+          html += '<div class="tv-window" onclick="switchToWindow('' + id + '')" style="width:240px;background:rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;cursor:pointer;backdrop-filter:blur(10px);">' +
+            '<div style="height:140px;background:' + (w.content ? w.content.style.background || '#1f1f1f' : '#1f1f1f') + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,0.5);">' + title + '</div>' +
+            '<div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">' +
+              '<span style="color:#fff;font-size:13px;">' + title + '</span>' +
+              '<span onclick="event.stopPropagation();closeWindow('' + id + '');closeTaskView();" style="cursor:pointer;color:rgba(255,255,255,0.6);font-size:14px;padding:2px 6px;">✕</span>' +
+            '</div>' +
+          '</div>';
+        })(winIds[i]);
+      }
+      html += '</div>';
+    }
+
+    // 新建桌面按钮
+    html += '<div style="margin-top:30px;text-align:center;">' +
+      '<span onclick="closeTaskView()" style="display:inline-block;padding:8px 24px;background:rgba(255,255,255,0.15);color:#fff;border-radius:4px;cursor:pointer;font-size:13px;">+ 新建桌面</span>' +
+    '</div>';
+
+    panel.innerHTML = html;
+    document.body.appendChild(overlay);
+    document.body.appendChild(panel);
+  }
+
+  function closeTaskView() {
+    var p = document.getElementById('taskViewPanel');
+    var o = document.getElementById('taskViewOverlay');
+    if (p) p.remove();
+    if (o) o.remove();
+  }
+
+  function switchToWindow(id) {
+    closeTaskView();
+    bringToFront(id);
+  }
+
+  // ===== 显示桌面 =====
+  document.getElementById('showDesktop').addEventListener('click', function() {
+    for (var k in windows) {
+      if (!windows[k].minimized) minimizeWindow(k);
+    }
+  });
+
+  // ===== 关机 =====
+  function shutdown() {
+    document.body.innerHTML =
+      '<div style="width:100%;height:100%;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Segoe UI","Microsoft YaHei UI",sans-serif;">' +
+        // 转圈圆点动画
+        '<div style="position:relative;width:48px;height:48px;margin-bottom:28px;">' +
+          '<div style="position:absolute;inset:0;border-radius:50%;border:3px solid #333;border-top-color:#fff;animation:shutdownSpin 1s linear infinite;"></div>' +
+        '</div>' +
+        '<div style="font-size:16px;font-weight:300;">正在关机...</div>' +
+      '</div>' +
+      '<style>@keyframes shutdownSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>';
+    setTimeout(function() {
+      window.location.href = '/';
+    }, 3000);
+  }
+
+  // 默认打开"此电脑"
+  // setTimeout(function() { openWindow('thispc'); }, 300);
+
+
+function startRtmpStream(app, content, rtmpUrl) {
+      content.innerHTML =
+        '<div style="padding:10px 14px;background:#1a1a1a;border-bottom:1px solid #333;display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
+          '<div style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;">' +
+            '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;"><rect x="2" y="6" width="20" height="12" rx="2" fill="#00b294"/><path d="m10 9 5 3-5 3V9z" fill="#fff"/></svg>' +
+          '</div>' +
+          '<div style="font-size:13px;color:#ddd;font-weight:600;">CAM？ - RTMP 串流</div>' +
+          '<div id="rtmp-status-dot-' + app + '" style="width:6px;height:6px;border-radius:50%;background:#e81123;margin-left:8px;" title="未连接"></div>' +
+          '<div style="flex:1;"></div>' +
+          '<button id="rtmp-back-' + app + '" style="padding:2px 10px;background:#333;color:#ccc;border:1px solid #555;border-radius:2px;font-size:11px;cursor:pointer;">返回</button>' +
+        '</div>' +
+        '<div style="flex:1;background:#000;display:flex;align-items:center;justify-content:center;position:relative;">' +
+          '<video id="rtmpVideo-' + app + '" autoplay muted playsinline style="width:100%;height:100%;object-fit:contain;display:none;"></video>' +
+          '<div id="rtmpNoSignal-' + app + '" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#000;color:#aaa;">' +
+            '<div style="color:#e81123;font-size:40px;">✕</div>' +
+            '<div style="font-size:14px;color:#e81123;">无信号</div>' +
+            '<div style="font-size:12px;color:#888;">摄像头未连接或离线</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="padding:6px 12px;background:#1a1a1a;border-top:1px solid #333;display:flex;align-items:center;gap:10px;flex-shrink:0;">' +
+          '<button id="rtmp-retry-' + app + '" style="padding:4px 12px;background:#333;color:#ccc;border:1px solid #555;border-radius:2px;font-size:11px;cursor:pointer;">重新连接</button>' +
+          '<div style="flex:1;"></div>' +
+          '<div id="rtmp-status-' + app + '" style="font-size:11px;color:#888;">离线</div>' +
+        '</div>';
+      setTimeout(function() {
+        var ns = document.getElementById('rtmpNoSignal-' + app);
+        if (ns) ns.style.display = 'flex';
+      }, 800);
+
+      var retryBtn = document.getElementById('rtmp-retry-' + app);
+      if (retryBtn) {
+        retryBtn.addEventListener('click', function() {
+          var ns = document.getElementById('rtmpNoSignal-' + app);
+          var statusEl = document.getElementById('rtmp-status-' + app);
+          var dotEl = document.getElementById('rtmp-status-dot-' + app);
+          if (ns) ns.style.display = 'none';
+          if (statusEl) statusEl.textContent = '连接中...';
+          if (dotEl) { dotEl.style.background = '#ffb900'; dotEl.title = '连接中'; }
+          setTimeout(function() {
+            if (ns) ns.style.display = 'flex';
+            if (statusEl) statusEl.textContent = '离线';
+            if (dotEl) { dotEl.style.background = '#e81123'; dotEl.title = '未连接'; }
+          }, 1500);
+        });
+      }
+
+      setTimeout(function() {
+        var backBtn = document.getElementById('rtmp-back-' + app);
+        if (backBtn) {
+          backBtn.addEventListener('click', function() {
+            var win = windows[app] ? windows[app].el : null;
+            if (win) {
+              var contentArea = win.querySelector('.win-content');
+              if (contentArea) {
+                contentArea.innerHTML = '';
+                renderAppContent(app, 'rtmp');
+              }
+            }
+          });
+        }
+      }, 50);
+    }
+
+function startLocalCamera(app, content) {
+      content.innerHTML =
+        '<div style="padding:10px 14px;background:#1a1a1a;border-bottom:1px solid #333;display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
+          '<div style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;">' +
+            '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;"><rect x="2" y="6" width="20" height="12" rx="2" fill="#00b294"/><path d="m10 9 5 3-5 3V9z" fill="#fff"/></svg>' +
+          '</div>' +
+          '<div style="font-size:13px;color:#ddd;font-weight:600;">CAM？ - 本地摄像头</div>' +
+          '<div id="cam-local-dot-' + app + '" style="width:6px;height:6px;border-radius:50%;background:#e81123;margin-left:8px;" title="未连接"></div>' +
+          '<div style="flex:1;"></div>' +
+          '<button id="cam-back-' + app + '" style="padding:2px 10px;background:#333;color:#ccc;border:1px solid #555;border-radius:2px;font-size:11px;cursor:pointer;">返回</button>' +
+        '</div>' +
+        '<div id="cam-local-wrap-' + app + '" style="flex:1;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;">' +
+          '<video id="cam-local-video-' + app + '" autoplay playsinline style="width:100%;height:100%;object-fit:contain;display:none;"></video>' +
+          '<div id="cam-local-loading-' + app + '" style="text-align:center;color:#888;">' +
+            '<div style="font-size:14px;margin-bottom:8px;">正在请求摄像头权限...</div>' +
+            '<div style="font-size:12px;color:#666;">请允许浏览器使用摄像头</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="padding:6px 12px;background:#1a1a1a;border-top:1px solid #333;display:flex;align-items:center;flex-shrink:0;">' +
+          '<div style="flex:1;font-size:11px;color:#888;text-align:center;">画面仅在本地显示，不会上传到任何地方</div>' +
+        '</div>';
+
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(function(stream) {
+          var video = document.getElementById('cam-local-video-' + app);
+          var loading = document.getElementById('cam-local-loading-' + app);
+          var dot = document.getElementById('cam-local-dot-' + app);
+          if (video) {
+            video.srcObject = stream;
+            video.style.display = 'block';
+          }
+          if (loading) loading.style.display = 'none';
+          if (dot) { dot.style.background = '#00cc00'; dot.title = '已连接'; }
+        })
+        .catch(function(err) {
+          var loading = document.getElementById('cam-local-loading-' + app);
+          if (loading) {
+            loading.innerHTML = '<div style="color:#e81123;font-size:14px;margin-bottom:4px;">❌ 摄像头访问被拒绝</div>' +
+              '<div style="font-size:12px;color:#888;">请在浏览器设置中允许摄像头权限</div>';
+          }
+        });
+
+      setTimeout(function() {
+        var backBtn = document.getElementById('cam-back-' + app);
+        if (backBtn) {
+          backBtn.addEventListener('click', function() {
+            var video = document.getElementById('cam-local-video-' + app);
+            if (video && video.srcObject) {
+              video.srcObject.getTracks().forEach(function(t) { t.stop(); });
+              video.srcObject = null;
+            }
+            var win = windows[app] ? windows[app].el : null;
+            if (win) {
+              var contentArea = win.querySelector('.win-content');
+              if (contentArea) {
+                contentArea.innerHTML = '';
+                renderAppContent(app, 'rtmp');
+              }
+            }
+          });
+        }
+      }, 50);
+    }
+
+function showCamPicker(app, content, rtmpUrl) {
+      content.innerHTML =
+        '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#1a1a1a;gap:20px;padding:20px;">' +
+          '<div style="font-size:16px;color:#ccc;font-weight:600;margin-bottom:10px;">选择视频源</div>' +
+          '<div id="cam-opt-local" style="width:240px;padding:16px;background:#2a2a2a;border:1px solid #444;border-radius:6px;cursor:pointer;text-align:center;transition:all 0.15s;">' +
+            '<div style="font-size:32px;margin-bottom:8px;">📷</div>' +
+            '<div style="font-size:14px;color:#ddd;font-weight:600;">本地摄像头</div>' +
+            '<div style="font-size:11px;color:#888;margin-top:4px;">使用本机摄像头</div>' +
+          '</div>' +
+          '<div id="cam-opt-rtmp" style="width:240px;padding:16px;background:#2a2a2a;border:1px solid #444;border-radius:6px;cursor:pointer;text-align:center;transition:all 0.15s;">' +
+            '<div style="font-size:32px;margin-bottom:8px;">🔗</div>' +
+            '<div style="font-size:14px;color:#ddd;font-weight:600;">RTMP 串流</div>' +
+            '<div style="font-size:11px;color:#888;margin-top:4px;">连接远程摄像头</div>' +
+          '</div>' +
+        '</div>';
+
+      setTimeout(function() {
+        var optLocal = document.getElementById('cam-opt-local');
+        var optRtmp = document.getElementById('cam-opt-rtmp');
+        if (optLocal) {
+          optLocal.addEventListener('mouseenter', function() { optLocal.style.borderColor = '#00b294'; optLocal.style.background = '#333'; });
+          optLocal.addEventListener('mouseleave', function() { optLocal.style.borderColor = '#444'; optLocal.style.background = '#2a2a2a'; });
+          optLocal.addEventListener('click', function() { startLocalCamera(app, content); });
+        }
+        if (optRtmp) {
+          optRtmp.addEventListener('mouseenter', function() { optRtmp.style.borderColor = '#00b294'; optRtmp.style.background = '#333'; });
+          optRtmp.addEventListener('mouseleave', function() { optRtmp.style.borderColor = '#444'; optRtmp.style.background = '#2a2a2a'; });
+          optRtmp.addEventListener('click', function() { startRtmpStream(app, content, rtmpUrl); });
+        }
+      }, 50);
+    }
+
+function initSaveDialogDrag() {
+        var dlg = document.getElementById('saveDialog');
+        var inner = document.getElementById('saveDialogInner');
+        var titleBar = document.getElementById('saveDlgTitleBar');
+        if (!dlg || !inner || !titleBar) return;
+        var isDragging = false, offsetX = 0, offsetY = 0;
+        titleBar.addEventListener('mousedown', function(e) {
+          if (e.target.id === 'saveDlgClose') return;
+          isDragging = true;
+          var rect = inner.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+          inner.style.cursor = 'move';
+          e.preventDefault();
+        });
+        document.addEventListener('mousemove', function(e) {
+          if (!isDragging) return;
+          inner.style.left = (e.clientX - offsetX) + 'px';
+          inner.style.top = (e.clientY - offsetY) + 'px';
+          inner.style.position = 'fixed';
+          inner.style.margin = '0';
+        });
+        document.addEventListener('mouseup', function() {
+          isDragging = false;
+          if (inner) inner.style.cursor = '';
+        });
+      }
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+

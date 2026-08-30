@@ -16,27 +16,13 @@ let debounceTimer: ReturnType<typeof setTimeout>;
 let isExpanded = $state(false);
 let inputEl = $state<HTMLInputElement | null>(null);
 
-// --- Mocks for Dev Mode ---
-const fakeResult: SearchResult[] = [
-	{
-		url: formatUrl("/"),
-		meta: { title: "This Is a Fake Search Result" },
-		excerpt:
-			"Because Pagefind cannot work in the <mark>dev</mark> environment.",
-	},
-	{
-		url: formatUrl("/"),
-		meta: { title: "If You Want to Test the Search" },
-		excerpt: "Try running <mark>npm build && npm preview</mark> instead.",
-	},
-];
-
 // --- UI Logic ---
 const expand = (): void => {
 	isExpanded = true;
-	requestAnimationFrame(() => {
-		setTimeout(() => inputEl?.focus({ preventScroll: true } as FocusOptions), 120);
-	});
+	// 等展开动画差不多完成再聚焦
+	setTimeout(() => {
+		inputEl?.focus();
+	}, 250);
 };
 
 const collapse = (): void => {
@@ -48,8 +34,11 @@ const collapse = (): void => {
 
 const toggle = (e: MouseEvent): void => {
 	e.stopPropagation();
-	if (isExpanded) collapse();
-	else expand();
+	if (isExpanded) {
+		collapse();
+	} else {
+		expand();
+	}
 };
 
 const handleResultClick = (event: Event, url: string): void => {
@@ -83,8 +72,8 @@ const search = async (kw: string): Promise<void> => {
 					response.results.map((item) => item.data()),
 				);
 			} else if (import.meta.env.DEV) {
-				searchResults = fakeResult;
-			}
+					searchResults = [];
+				}
 
 			result = searchResults;
 		} catch (error) {
@@ -102,12 +91,8 @@ const handleKeydown = (e: KeyboardEvent): void => {
 };
 
 // --- Click outside ---
-const handleDocumentClick = (e: MouseEvent): void => {
-	if (!isExpanded) return;
-	const container = document.getElementById("dynamic-island-search");
-	if (container && !container.contains(e.target as Node)) {
-		collapse();
-	}
+const handleDocumentClick = (): void => {
+	if (isExpanded) collapse();
 };
 
 // --- Initialization ---
@@ -146,75 +131,67 @@ $effect(() => {
 });
 </script>
 
-<div id="dynamic-island-search" class="dis-root">
-	<!-- 搜索图标按钮（始终显示） -->
+<div id="dynamic-island-search" class="dis-root" class:open={isExpanded} on:click={stopPropagation}>
+	<!-- 搜索触发按钮（图标） -->
 	<button
 		on:click={toggle}
 		aria-label={i18n(I18nKey.search)}
-		class="dis-trigger btn-plain scale-animation rounded-lg w-9 h-9 md:w-11 md:h-11 active:scale-90 flex items-center justify-center shrink-0 relative z-10"
+		class="dis-search-btn btn-plain scale-animation rounded-lg active:scale-90 flex items-center justify-center shrink-0"
 	>
 		<Icon icon="material-symbols:search" class="text-[1.25rem]"></Icon>
 	</button>
 
-	<!-- 搜索面板 - 点击后从图标弹性展开 -->
-	<div class="dis-panel" class:open={isExpanded} class:has-results={isExpanded && keyword && (isSearching || result.length > 0 || (!isSearching && result.length === 0))} on:click={stopPropagation}>
-		<div class="dis-panel-content">
-			<!-- 搜索输入框 - 胶囊形与导航栏一致 -->
-			<div class="dis-input-row flex items-center h-11 rounded-full border border-black/8 dark:border-white/10">
-				<Icon icon="material-symbols:search" class="dis-input-icon text-[1.15rem] pointer-events-none ml-3 text-black/40 dark:text-white/40"></Icon>
-				<input
-					bind:this={inputEl}
-					bind:value={keyword}
-					on:keydown={handleKeydown}
-					placeholder={i18n(I18nKey.search)}
-					class="bg-transparent outline-none text-sm text-black/70 dark:text-white/70 w-full px-2 h-full"
-				/>
-				<button
-					on:click={collapse}
-					aria-label="Close"
-					class="btn-plain rounded-lg w-8 h-8 flex items-center justify-center mr-1 text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition shrink-0"
-				>
-					<Icon icon="material-symbols:close" class="text-[1.1rem]"></Icon>
-				</button>
-			</div>
+	<!-- 搜索输入框（展开后显示，横向扩展） -->
+	<div class="dis-input-container">
+		<input
+			bind:this={inputEl}
+			bind:value={keyword}
+			on:keydown={handleKeydown}
+			placeholder={i18n(I18nKey.search)}
+			class="dis-input"
+		/>
+		<button
+			on:click={toggle}
+			aria-label="Close"
+			class="dis-close-btn btn-plain rounded-lg flex items-center justify-center text-black/40 dark:text-white/40 hover:text-black/70 dark:hover:text-white/70 transition shrink-0"
+		>
+			<Icon icon="material-symbols:close" class="text-[1rem]"></Icon>
+		</button>
+	</div>
 
-			<!-- 搜索结果 -->
-			{#if keyword && (isSearching || result.length > 0 || (!isSearching && result.length === 0))}
-				<div class="dis-results mt-2 overflow-y-auto">
-					{#if isSearching}
-						<div class="block rounded-lg px-3 py-2 text-50 text-sm">{i18n(I18nKey.searchLoading)}</div>
-					{:else if result.length > 0}
-						{#each result.slice(0, 5) as item}
-							<a
-								href={item.url}
-								on:click={(e) => handleResultClick(e, item.url)}
-								class="group block rounded-lg px-3 py-2 hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) transition"
-							>
-								<div class="text-90 inline-flex font-bold group-hover:text-(--primary) text-sm">
+	<!-- 搜索结果下拉面板 -->
+		{#if isExpanded && keyword && (isSearching || result.length > 0 || !isSearching)}
+				<div class="dis-results-panel">
+					<div class="dis-results overflow-y-auto">
+						{#if isSearching}
+							<div class="block rounded-lg px-3 py-2 text-50 text-sm">{i18n(I18nKey.searchLoading)}</div>
+						{:else if result.length > 0}
+							{#each result.slice(0, 5) as item}
+								<a
+									href={item.url}
+									on:click={(e) => handleResultClick(e, item.url)}
+									class="block rounded-lg px-3 py-2 hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) transition font-bold text-sm"
+								>
 									{@html item.meta.title}
-									<Icon icon="fa7-solid:chevron-right" class="text-[0.7rem] translate-x-1 my-auto text-(--primary)"></Icon>
-								</div>
-								{#if item.excerpt.includes('<mark>')}
-									<div class="text-xs text-50 mt-1">{@html item.excerpt}</div>
-								{/if}
-							</a>
-						{/each}
+								</a>
+							{/each}
 						{#if result.length > 5}
-							<a
-								href={getSearchUrl(keyword)}
-								on:click={(e) => handleResultClick(e, getSearchUrl(keyword))}
-								class="block rounded-lg px-3 py-2 hover:bg-(--btn-plain-bg-hover) text-(--primary) font-bold text-center text-sm transition"
-							>
-								{i18n(I18nKey.searchViewMore).replace('{count}', (result.length - 5).toString())}
-							</a>
+								<a
+									href={getSearchUrl(keyword)}
+									on:click={(e) => handleResultClick(e, getSearchUrl(keyword))}
+									class="block rounded-lg px-3 py-2 hover:bg-(--btn-plain-bg-hover) text-(--primary) font-bold text-center text-sm transition"
+								>
+									{i18n(I18nKey.searchViewMore).replace('{count}', (result.length - 5).toString())}
+								</a>
+							{/if}
+						{:else}
+							<div class="block rounded-lg px-3 py-2 text-50 text-sm">
+								{import.meta.env.DEV ? "搜索功能需构建后使用 (pnpm build && pnpm preview)" : "未搜索到结果"}
+							</div>
 						{/if}
-					{:else}
-						<div class="block rounded-lg px-3 py-2 text-50 text-sm">{i18n(I18nKey.searchNoResults)}</div>
-					{/if}
+					</div>
 				</div>
 			{/if}
-		</div>
-	</div>
 </div>
 
 <style>
@@ -222,67 +199,145 @@ $effect(() => {
 	position: relative;
 	display: flex;
 	align-items: center;
+	height: 36px;
 }
 
-/* ====== iOS 灵动岛风格搜索面板 - 从中间挤出 ====== */
-.dis-panel {
+/* 搜索图标按钮 - 收起态 */
+.dis-search-btn {
+	width: 36px;
+	height: 36px;
+	position: absolute;
+	left: 0;
+	top: 0;
+	z-index: 2;
+	transition: opacity 0.2s ease;
+}
+
+.dis-root.open .dis-search-btn {
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* 输入框容器 - 横向展开 */
+.dis-input-container {
+	display: flex;
+	align-items: center;
+	height: 36px;
+	width: 36px;
+	padding: 0;
+	border-radius: 9999px;
+	background: rgba(0, 0, 0, 0.04);
+	border: 1px solid rgba(0, 0, 0, 0.06);
+	overflow: hidden;
+	opacity: 0;
+	transition:
+		width 0.35s cubic-bezier(0.32, 0.72, 0, 1),
+		opacity 0.2s ease,
+		padding 0.2s ease;
+	pointer-events: none;
+	gap: 0;
+}
+
+:global(.dark) .dis-input-container {
+	background: rgba(255, 255, 255, 0.06);
+	border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dis-root.open .dis-input-container {
+	width: 240px;
+	opacity: 1;
+	pointer-events: auto;
+	padding: 0 0.5rem 0 0.75rem;
+	gap: 0.35rem;
+}
+
+@media (min-width: 768px) {
+	.dis-root.open .dis-input-container {
+		width: 300px;
+	}
+}
+
+/* 输入框 */
+.dis-input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	background: transparent;
+	border: none;
+	outline: none;
+	font-size: 0.875rem;
+	color: rgba(0, 0, 0, 0.7);
+	caret-color: var(--primary, #ff6b6b);
+	opacity: 0;
+	transition: opacity 0.15s ease 0.1s;
+}
+
+:global(.dark) .dis-input {
+	color: rgba(255, 255, 255, 0.7);
+	caret-color: var(--primary, #ff6b6b);
+}
+
+.dis-root.open .dis-input {
+	opacity: 1;
+}
+
+.dis-input::placeholder {
+	color: rgba(0, 0, 0, 0.4);
+}
+
+:global(.dark) .dis-input::placeholder {
+	color: rgba(255, 255, 255, 0.4);
+}
+
+/* 关闭按钮 */
+.dis-close-btn {
+	width: 28px;
+	height: 28px;
+	flex-shrink: 0;
+	opacity: 0;
+	transition: opacity 0.15s ease 0.15s;
+}
+
+.dis-root.open .dis-close-btn {
+	opacity: 1;
+}
+
+/* 搜索结果下拉面板 */
+.dis-results-panel {
 	position: absolute;
 	top: calc(100% + 0.5rem);
-	left: 50%;
+	right: 0;
+	width: 320px;
+	max-width: calc(100vw - 2rem);
 	z-index: 60;
-	overflow: hidden;
 
-	/* 毛玻璃质感 */
-	background-color: rgba(255, 255, 255, 0.55);
+	background-color: rgba(255, 255, 255, 0.75);
 	backdrop-filter: blur(24px) saturate(180%);
 	-webkit-backdrop-filter: blur(24px) saturate(180%);
 	border: 1px solid rgba(255, 255, 255, 0.35);
+	border-radius: 1rem;
 	box-shadow:
 		0 8px 32px rgba(0, 0, 0, 0.12),
 		0 2px 8px rgba(0, 0, 0, 0.06),
 		inset 0 1px 0 rgba(255, 255, 255, 0.5);
 
-	/* 胶囊形圆角 */
-	border-radius: 9999px;
-
-	/* 收起态：压缩成窄条 */
-	width: 320px;
-	max-width: calc(100vw - 2rem);
-	opacity: 0;
-	transform: translateX(-50%) scaleX(0.05) scaleY(0.15);
-	transform-origin: top center;
-	pointer-events: none;
-
-	/* iOS 弹性挤出动画 - 分阶段弹性 */
-	transition:
-		opacity 0.25s ease-out,
-		transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
-		border-radius 0.4s cubic-bezier(0.32, 0.72, 0, 1),
-		background-color 0.3s ease,
-		box-shadow 0.3s ease;
+	animation: dis-results-in 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+	transform-origin: top right;
 }
 
-/* 展开态：从中间弹性挤出 */
-.dis-panel.open {
-	opacity: 1;
-	transform: translateX(-50%) scaleX(1) scaleY(1);
-	pointer-events: auto;
+@keyframes dis-results-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
 }
 
-/* 有搜索结果时切换为圆角矩形 */
-.dis-panel.open.has-results {
-	border-radius: 1.25rem;
-}
-
-/* 面板内容容器 */
-.dis-panel-content {
-	width: 100%;
-	padding: 0.5rem;
-}
-
-/* 暗色模式毛玻璃 */
-:global(.dark) .dis-panel {
-	background-color: rgba(30, 30, 35, 0.55);
+:global(.dark) .dis-results-panel {
+	background-color: rgba(30, 30, 35, 0.7);
 	border: 1px solid rgba(255, 255, 255, 0.12);
 	box-shadow:
 		0 8px 32px rgba(0, 0, 0, 0.4),
@@ -290,43 +345,11 @@ $effect(() => {
 		inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/* 小屏幕：右对齐避免溢出屏幕 */
-@media (max-width: 640px) {
-	.dis-panel {
-		left: auto;
-		right: 0;
-		transform: scaleX(0.05) scaleY(0.15);
-		transform-origin: top right;
-	}
-
-	.dis-panel.open {
-		transform: scaleX(1) scaleY(1);
-	}
-}
-
-/* 输入框行 - 毛玻璃内嵌 */
-.dis-input-row {
-	background: rgba(255, 255, 255, 0.35);
-	backdrop-filter: blur(8px);
-	-webkit-backdrop-filter: blur(8px);
-	border: 1px solid rgba(255, 255, 255, 0.25) !important;
-}
-
-:global(.dark) .dis-input-row {
-	background: rgba(255, 255, 255, 0.08);
-	border: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
-
-/* 搜索结果 */
 .dis-results {
 	max-height: 50vh;
+	padding: 0.35rem;
 }
 
-input:focus {
-	outline: 0;
-}
-
-/* 滚动条 */
 .dis-results::-webkit-scrollbar {
 	width: 4px;
 }
@@ -336,5 +359,17 @@ input:focus {
 .dis-results::-webkit-scrollbar-thumb {
 	background: rgba(128, 128, 128, 0.3);
 	border-radius: 9999px;
+}
+
+/* 小屏幕适配 */
+@media (max-width: 640px) {
+	.dis-root.open .dis-input-container {
+		width: 180px;
+	}
+
+	.dis-results-panel {
+		width: calc(100vw - 2rem);
+		right: -0.5rem;
+	}
 }
 </style>

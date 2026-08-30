@@ -802,7 +802,7 @@ const siteLang = lang.replace("_", "-");
             >
               带Π不老铁
             </p>
-            <p class="text-sm text-[var(--text-secondary)] mt-2 text-center opacity-60 easter-egg-hint">
+            <p class="text-sm text-[var(--text-secondary)] mt-2 text-center opacity-60 easter-egg-hint" style="cursor: pointer;">
               点击空白处关闭
             </p>
           </div>
@@ -1786,6 +1786,20 @@ const siteLang = lang.replace("_", "-");
     .easter-egg-sheet-open .easter-egg-hint {
       transform: translateY(0);
       opacity: 0.6;
+    }
+
+    .easter-egg-w10 {
+      transform: translateY(10px);
+      opacity: 0;
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1) 0.65s,
+                  opacity 0.3s ease 0.65s;
+    }
+    .easter-egg-sheet-open .easter-egg-w10 {
+      transform: translateY(0);
+      opacity: 0.85;
+    }
+    .easter-egg-w10:hover {
+      text-decoration: underline;
     }
 
     /* 彩蛋假加载覆盖层 */
@@ -3336,6 +3350,24 @@ function disableAnimation() {
       closeEasterEgg();
     }
   }, true);
+
+  // 点击"点击空白处关闭"文字跳转 Win10 桌面（事件委托，swup 切换后仍有效）
+  document.addEventListener("click", function(e) {
+    const hint = (e.target as Element)?.closest(".easter-egg-hint");
+    if (hint) {
+      e.stopPropagation();
+      window.location.href = "/w10/windows/index.html";
+    }
+  });
+
+  // 点击"Win10 桌面"跳转 Win10 模拟桌面
+  document.addEventListener("click", function(e) {
+    const w10 = (e.target as Element)?.closest(".easter-egg-w10");
+    if (w10) {
+      e.stopPropagation();
+      window.location.href = "/w10/windows/index.html";
+    }
+  });
 
   // Swup 页面切换后重新绑定
   if (window.swup?.hooks) {

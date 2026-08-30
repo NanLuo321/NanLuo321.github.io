@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../../../assets/bootstrap-icons.css">
+    <link rel="stylesheet" href="./cam.css">
+</head>
+<body>
+    <!-- 隐私声明 -->
+    <div class="privacy-mask" id="privacyMask">
+        <div class="privacy-box">
+            <div class="p-icon"><span class="bi bi-shield-lock-fill"></span></div>
+            <h2>摄像头使用声明</h2>
+            <p>本应用需要使用您的摄像头进行画面预览。<br>
+                我们承诺：<br>
+                · 摄像头画面仅在本地设备中处理，不会上传到任何服务器；<br>
+                · 不会保存、录制或分享您的影像；<br>
+                · 您可以随时关闭摄像头并停止使用。</p>
+            <div class="p-btns">
+                <button class="agree" id="privacyAgree">同意</button>
+                <button class="refuse" id="privacyRefuse">拒绝</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主页 -->
+    <div class="home" id="home">
+        <div class="cam-title">
+            <div class="logo"><span class="bi bi-camera-video-fill"></span></div>
+            <h1>相机 (CAM)</h1>
+        </div>
+        <div class="modes">
+            <div class="mode-card" id="cardLocal">
+                <div class="m-icon"><span class="bi bi-camera-fill"></span></div>
+                <div class="m-title">本地摄像头</div>
+                <div class="m-txt">使用设备自带的摄像头进行实时预览</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 本地摄像头页 -->
+    <div class="view" id="localView">
+        <div class="view-top">
+            <button class="back" id="backLocal"><span class="bi bi-arrow-left"></span></button>
+            <span>本地摄像头</span>
+            <button class="capture" id="btnCapture" title="拍照"><span class="bi bi-camera"></span></button>
+            <button class="close-cam" id="btnStopCam" title="关闭摄像头"><span class="bi bi-power"></span></button>
+        </div>
+        <div class="view-body">
+            <video id="localVideo" autoplay playsinline muted></video>
+            <div class="cam-off" id="camOff">
+                <div class="co-icon"><span class="bi bi-camera-video-off-fill"></span></div>
+                <p>摄像头未开启</p>
+                <button id="btnStartCam">开启摄像头</button>
+            </div>
+        </div>
+        <div class="view-foot" id="photoStrip"></div>
+    </div>
+
+    <!-- 拍照预览弹窗 -->
+    <div class="shot-mask" id="shotMask">
+        <div class="shot-box">
+            <img id="shotImg" alt="">
+            <div class="shot-btns">
+                <button class="agree" id="shotKeep">保存照片</button>
+                <button class="refuse" id="shotDiscard">关闭</button>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="../../appui.js"></script>
+<script src="./cam.js"></script>
+</html>

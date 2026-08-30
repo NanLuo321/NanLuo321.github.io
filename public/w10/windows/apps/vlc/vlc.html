@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../../../assets/bootstrap-icons.css">
+    <link rel="stylesheet" href="./vlc.css">
+</head>
+<body>
+    <div class="vlc-top">
+        <div class="app-title">
+            <div class="logo">▶</div>
+            <span>VLC 媒体播放器</span>
+        </div>
+        <div class="menu">
+            <a href="javascript:;" class="mi" id="btnOpenFile">打开文件</a>
+            <a href="javascript:;" class="mi" id="btnOpenStream">打开网络串流</a>
+            <a href="javascript:;" class="mi" id="btnPlaylist">播放列表</a>
+        </div>
+        <div class="right-info" id="statusText">就绪</div>
+    </div>
+
+    <div class="vlc-main">
+        <div class="video-area" id="videoArea">
+            <video id="player" controls playsinline></video>
+            <div class="video-placeholder" id="placeholder">
+                <div class="big-play">▶</div>
+                <p>打开一个视频文件或网络串流开始播放</p>
+                <div class="ph-btns">
+                    <button id="btnPhOpenFile">打开文件</button>
+                    <button id="btnPhOpenStream">打开网络串流</button>
+                </div>
+            </div>
+        </div>
+        <div class="playlist" id="playlistBox">
+            <div class="pl-title">播放列表</div>
+            <ul id="playlistUl"></ul>
+            <div class="stream-box">
+                <input type="text" id="streamInput" placeholder="粘贴网络串流地址 (m3u8 / mp4 / flv)…">
+                <button id="streamGo">播放</button>
+            </div>
+        </div>
+        <input type="file" id="fileInput" accept="video/*,audio/*" style="display:none;">
+    </div>
+
+    <div class="vlc-controls">
+        <div class="c-left">
+            <button class="cb" id="btnPrev" title="上一个"><span class="bi bi-skip-start-fill"></span></button>
+            <button class="cb play" id="btnPlay" title="播放/暂停"><span class="bi bi-play-fill"></span></button>
+            <button class="cb" id="btnStop" title="停止"><span class="bi bi-stop-fill"></span></button>
+            <button class="cb" id="btnNext" title="下一个"><span class="bi bi-skip-end-fill"></span></button>
+        </div>
+        <div class="c-mid">
+            <span class="time-cur" id="timeCur">00:00</span>
+            <div class="seek" id="seek">
+                <div class="seek-fill" id="seekFill"></div>
+                <div class="seek-dot" id="seekDot"></div>
+            </div>
+            <span class="time-total" id="timeTotal">00:00</span>
+        </div>
+        <div class="c-right">
+            <div class="vol-ic"><span class="bi bi-volume-up-fill"></span></div>
+            <div class="vol-seek" id="volSeek">
+                <div class="seek-fill" id="volFill"></div>
+                <div class="seek-dot" id="volDot"></div>
+            </div>
+            <span class="vol-num" id="volNum">80</span>
+            <button class="cb" id="btnFullscreen" title="全屏"><span class="bi bi-arrows-fullscreen"></span></button>
+        </div>
+    </div>
+</body>
+<script src="../../appui.js"></script>
+<script src="./vlc.js"></script>
+</html>

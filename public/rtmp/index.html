@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RTMP 播放器</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #0078D4;
+      overflow: hidden;
+      font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+      color: #1f1f1f;
+    }
+
+    .app-window {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      background: #f3f3f3;
+    }
+
+    /* ===== Windows 10 标题栏 ===== */
+    .win-titlebar {
+      height: 32px;
+      flex-shrink: 0;
+      background: #ffffff;
+      border-bottom: 1px solid #e1e1e1;
+      display: flex;
+      align-items: stretch;
+      user-select: none;
+    }
+
+    .win-title-icon {
+      display: flex;
+      align-items: center;
+      padding-left: 12px;
+      color: #0078D4;
+    }
+
+    .win-title-icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .win-title {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding-left: 8px;
+      font-size: 12px;
+      color: #1f1f1f;
+    }
+
+    .win-controls {
+      display: flex;
+      height: 100%;
+    }
+
+    .win-btn {
+      width: 46px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #1f1f1f;
+      font-size: 11px;
+      transition: background 0.12s ease, color 0.12s ease;
+      border: none;
+      background: transparent;
+    }
+
+    .win-btn:hover {
+      background: #e5e5e5;
+    }
+
+    .win-btn.close:hover {
+      background: #e81123;
+      color: #fff;
+    }
+
+    .win-btn svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    /* ===== 地址栏 ===== */
+    .win-urlbar {
+      flex-shrink: 0;
+      padding: 8px 12px;
+      background: #f3f3f3;
+      border-bottom: 1px solid #e1e1e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .win-url-label {
+      font-size: 12px;
+      color: #5a5a5a;
+      white-space: nowrap;
+    }
+
+    .win-url {
+      flex: 1;
+      background: #ffffff;
+      border: 1px solid #c4c4c4;
+      border-radius: 2px;
+      padding: 5px 10px;
+      font-size: 12px;
+      color: #333;
+      font-family: "Consolas", "Courier New", monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ===== 播放器区 ===== */
+    .win-player-wrap {
+      flex: 1;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      min-height: 0;
+      position: relative;
+    }
+
+    .win-player {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border: 1px solid #2a2a2a;
+      border-radius: 2px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .win-player video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      display: block;
+    }
+
+    .win-nosignal {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #000;
+      color: #aaa;
+      z-index: 6;
+    }
+
+    .win-nosignal.hide {
+      display: none;
+    }
+
+    .win-nosignal-icon {
+      color: #0078D4;
+      filter: drop-shadow(0 0 6px rgba(0, 120, 212, 0.5));
+      animation: win-spin 1.4s linear infinite;
+    }
+
+    .win-nosignal-icon.error {
+      animation: none;
+      color: #e81123;
+      filter: drop-shadow(0 0 6px rgba(232, 17, 35, 0.5));
+    }
+
+    .win-nosignal-icon svg {
+      width: 40px;
+      height: 40px;
+    }
+
+    @keyframes win-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .win-nosignal-title {
+      font-size: 14px;
+      color: #ccc;
+      letter-spacing: 0.05em;
+    }
+
+    .win-nosignal-text {
+      font-size: 12px;
+      color: #888;
+    }
+
+    /* ===== 状态栏 ===== */
+    .win-statusbar {
+      flex-shrink: 0;
+      height: 28px;
+      background: #f3f3f3;
+      border-top: 1px solid #e1e1e1;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 11px;
+      color: #5a5a5a;
+      gap: 16px;
+    }
+
+    .win-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #0078D4;
+      flex-shrink: 0;
+    }
+
+    .win-status-dot.error {
+      background: #e81123;
+    }
+
+    .win-status-dot.ok {
+      background: #107c10;
+    }
+
+    .win-status-text {
+      flex: 1;
+    }
+
+    .win-status-hint {
+      color: #888;
+    }
+
+    @media (max-width: 768px) {
+      .win-url-label {
+        display: none;
+      }
+      .win-url {
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-window" id="appWindow">
+    <!-- Windows 10 标题栏 -->
+    <div class="win-titlebar">
+      <div class="win-title-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 5h8v6H3V5zm0 8h8v6H3v-6zm10-8h8v6h-8V5zm0 8h8v6h-8v-6z"/>
+        </svg>
+      </div>
+      <div class="win-title">RTMP 播放器</div>
+      <div class="win-controls">
+        <button class="win-btn" title="最小化" id="btnMin">
+          <svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="4.5" width="8" height="1" fill="currentColor"/></svg>
+        </button>
+        <button class="win-btn" title="最大化" id="btnMax">
+          <svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><rect x="1.5" y="1.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+        </button>
+        <button class="win-btn close" title="关闭" id="btnClose">
+          <svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M1 1 L9 9 M9 1 L1 9" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 地址栏 -->
+    <div class="win-urlbar">
+      <span class="win-url-label">流地址</span>
+      <div class="win-url" id="urlDisplay">http://[240e:30b:1b07:400:716:8002:3c39:a1c4]:4321/</div>
+    </div>
+
+    <!-- 播放器 -->
+    <div class="win-player-wrap" id="playerWrap">
+      <div class="win-player" id="rtmpPlayer">
+        <video id="video" autoplay muted playsinline></video>
+        <div class="win-nosignal" id="noSignal">
+          <div class="win-nosignal-icon" id="noSignalIcon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2 a10 10 0 1 0 0 20 a10 10 0 1 0 0 -20" />
+              <path d="M12 6 a6 6 0 1 0 0 12 a6 6 0 1 0 0 -12" />
+            </svg>
+          </div>
+          <div class="win-nosignal-title" id="noSignalTitle">正在连接</div>
+          <div class="win-nosignal-text" id="rtmpStatus">正在尝试连接到流...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 状态栏 -->
+    <div class="win-statusbar">
+      <div class="win-status-dot" id="statusDot"></div>
+      <span class="win-status-text" id="statusText">连接中</span>
+      <span class="win-status-hint">点击空白处关闭</span>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/flv.js@latest/dist/flv.min.js"></script>
+  <script>
+    (function () {
+      var STREAM_URL = 'http://[240e:30b:1b07:400:716:8002:3c39:a1c4]:4321/';
+      var video = document.getElementById('video');
+      var noSignal = document.getElementById('noSignal');
+      var noSignalIcon = document.getElementById('noSignalIcon');
+      var noSignalTitle = document.getElementById('noSignalTitle');
+      var status = document.getElementById('rtmpStatus');
+      var statusText = document.getElementById('statusText');
+      var statusDot = document.getElementById('statusDot');
+      var flvPlayer = null;
+      var connected = false;
+
+      function setBlackScreen(title, msg, state) {
+        try { if (flvPlayer) flvPlayer.destroy(); } catch (e) {}
+        flvPlayer = null;
+        if (video) {
+          try { video.pause(); } catch (e) {}
+          video.removeAttribute('src');
+          try { video.load(); } catch (e) {}
+        }
+        if (noSignal) noSignal.classList.remove('hide');
+        if (noSignalTitle) noSignalTitle.textContent = title;
+        if (status) status.textContent = msg;
+        connected = false;
+
+        if (noSignalIcon) {
+          if (state === 'error') noSignalIcon.classList.add('error');
+          else noSignalIcon.classList.remove('error');
+        }
+        if (statusDot) {
+          statusDot.className = 'win-status-dot' + (state === 'error' ? ' error' : (state === 'ok' ? ' ok' : ''));
+        }
+        if (statusText) statusText.textContent = title;
+      }
+
+      function startPlay() {
+        if (typeof flvjs === 'undefined') {
+          setBlackScreen('连接失败', '无法加载播放组件', 'error');
+          return;
+        }
+        try {
+          if (!flvjs.isSupported()) {
+            setBlackScreen('连接失败', '当前浏览器不支持该播放方式', 'error');
+            return;
+          }
+          flvPlayer = flvjs.createPlayer({
+            type: 'flv',
+            isLive: true,
+            url: STREAM_URL
+          });
+          flvPlayer.attachMediaElement(video);
+          flvPlayer.load();
+
+          flvPlayer.on(flvjs.Events.ERROR, function () {
+            setBlackScreen('连接失败', '无法连接到流服务器', 'error');
+          });
+          flvPlayer.on(flvjs.Events.LOADING_COMPLETE, function () {
+            setBlackScreen('流已结束', '直播流已结束', 'error');
+          });
+
+          flvPlayer.play().then(function () {
+            connected = true;
+            if (noSignal) noSignal.classList.add('hide');
+            if (statusDot) statusDot.className = 'win-status-dot ok';
+            if (statusText) statusText.textContent = '已连接';
+          }).catch(function () {
+            setBlackScreen('连接失败', '无法连接到流服务器', 'error');
+          });
+
+          // 超时：8 秒仍无画面视为失败
+          setTimeout(function () {
+            if (!connected) setBlackScreen('连接失败', '连接超时，显示黑屏', 'error');
+          }, 8000);
+
+          video.addEventListener('playing', function () {
+            connected = true;
+            if (noSignal) noSignal.classList.add('hide');
+            if (statusDot) statusDot.className = 'win-status-dot ok';
+            if (statusText) statusText.textContent = '正在播放';
+          });
+          video.addEventListener('canplay', function () {
+            connected = true;
+            if (noSignal) noSignal.classList.add('hide');
+          });
+        } catch (e) {
+          setBlackScreen('连接失败', '发生意外错误', 'error');
+        }
+      }
+
+      // 等待 flv.js 加载
+      if (typeof flvjs !== 'undefined') {
+        startPlay();
+      } else {
+        var checkCount = 0;
+        var waitTimer = setInterval(function () {
+          checkCount++;
+          if (typeof flvjs !== 'undefined') {
+            clearInterval(waitTimer);
+            startPlay();
+          } else if (checkCount > 40) {
+            clearInterval(waitTimer);
+            setBlackScreen('连接失败', '无法加载播放组件', 'error');
+          }
+        }, 100);
+      }
+
+      // 关闭窗口（回首页，确保有反应）
+      function closeWindow() {
+        try { if (flvPlayer) flvPlayer.destroy(); } catch (e) {}
+        window.location.href = '/';
+      }
+
+      // 点击空白处关闭：黑屏时点击任意处关闭，播放中点击播放器外关闭
+      document.getElementById('appWindow').addEventListener('click', function (e) {
+        if (e.target.closest('.win-btn')) return;
+        var player = document.getElementById('rtmpPlayer');
+        if (player.contains(e.target) && connected) return;
+        closeWindow();
+      });
+
+      // 关闭按钮
+      document.getElementById('btnClose').addEventListener('click', function (e) {
+        e.stopPropagation();
+        closeWindow();
+      });
+
+      // 最小化 / 最大化（模拟，仅视觉）
+      document.getElementById('btnMin').addEventListener('click', function (e) {
+        e.stopPropagation();
+      });
+      document.getElementById('btnMax').addEventListener('click', function (e) {
+        e.stopPropagation();
+        var w = document.getElementById('appWindow');
+        if (w.style.position === 'fixed' && w.style.inset === '0') return;
+      });
+    })();
+  </script>
+</body>
+</html>

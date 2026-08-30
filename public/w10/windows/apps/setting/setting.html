@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="../../../assets/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="./setting.css">
+    <style>
+        /* 设置应用新增样式 */
+        .page-content {
+            padding: 24px 36px;
+            box-sizing: border-box;
+            height: 100%;
+            overflow-y: auto;
+        }
+        .page-content h1 {
+            font-weight: 400;
+            font-size: 26px;
+            margin-bottom: 24px;
+            color: #111;
+        }
+        .page-content .sec {
+            margin-bottom: 26px;
+        }
+        .page-content .sec .sec-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #222;
+        }
+        .theme-cards {
+            display: flex;
+            gap: 14px;
+        }
+        .theme-card {
+            flex: 1;
+            max-width: 160px;
+            padding: 18px 0;
+            border: 2px solid #e1e1e1;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: all .15s;
+            background: #fff;
+        }
+        .theme-card .em {
+            font-size: 34px;
+            margin-bottom: 8px;
+        }
+        .theme-card .tt {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+        .theme-card.on {
+            border-color: #0078d7;
+            box-shadow: 0 0 0 1px #0078d7;
+        }
+        .bg-colors {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .bg-color {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            box-sizing: border-box;
+            transition: all .15s;
+        }
+        .bg-color.on {
+            border-color: #0078d7;
+            box-shadow: 0 0 0 2px #fff inset, 0 0 0 3px #0078d7;
+        }
+        .res-select {
+            width: 280px;
+            padding: 8px 10px;
+            border: 1px solid #bbb;
+            border-radius: 3px;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+            color: #222;
+        }
+        .res-select:focus {
+            border-color: #0078d7;
+        }
+        .hint {
+            font-size: 11px;
+            color: #999;
+            margin-top: 6px;
+        }
+        .vol-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin: 14px 0;
+        }
+        .vol-row .icon {
+            font-size: 22px;
+            color: #333;
+        }
+        .vol-row .win-range {
+            flex: 1;
+            max-width: 320px;
+        }
+        .vol-val {
+            font-size: 15px;
+            color: #222;
+            min-width: 34px;
+        }
+        .net-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 1px solid #e4e4e4;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            background: #fafafa;
+        }
+        .net-item .ic {
+            font-size: 20px;
+            color: #0078d7;
+        }
+        .net-item .nm {
+            font-size: 14px;
+            font-weight: 600;
+            color: #222;
+        }
+        .net-item .st {
+            font-size: 12px;
+            color: #107c10;
+        }
+        .net-item .sub {
+            font-size: 12px;
+            color: #888;
+            margin-left: 8px;
+        }
+        .nav-list li {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .nav-list li.active {
+            background: #d6e9ff;
+        }
+        .nav-list li .ui-icon {
+            font-size: 16px;
+            color: #000;
+        }
+        .win-check2 {
+            width: 60px;
+            height: 24px;
+            border: #000 solid 2px;
+            border-radius: 30px;
+            transition: all .3s;
+            position: relative;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+        .win-check2 span {
+            background-color: #000;
+            width: 16px;
+            height: 16px;
+            margin: 4px;
+            border-radius: 50%;
+            display: block;
+            transition: all .3s;
+        }
+        .win-check2 .statu {
+            position: absolute;
+            top: 0;
+            right: -30px;
+            line-height: 24px;
+        }
+        .win-check2.checked {
+            border-color: #09f;
+        }
+        .win-check2.checked span {
+            background-color: #09f;
+            margin-left: 40px;
+        }
+        .scale-select {
+            width: 280px;
+            padding: 8px 10px;
+            border: 1px solid #bbb;
+            border-radius: 3px;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+            color: #222;
+        }
+        .scale-select:focus {
+            border-color: #0078d7;
+        }
+        .wp-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .wp-btn {
+            padding: 7px 18px;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            background: #fff;
+            font-size: 13px;
+            color: #222;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .wp-btn:hover {
+            border-color: #0078d7;
+            color: #0078d7;
+        }
+        .wp-btn.wp-remove {
+            border-color: #e4e4e4;
+            color: #888;
+        }
+        .wp-btn.wp-remove:hover {
+            border-color: #c0504d;
+            color: #c0504d;
+        }
+    </style>
+</head>
+<body>
+    <!-- 首页 -->
+    <div class="page" path="/index">
+      <div class="title">Windows 设置</div>
+      <div class="search">
+        <input type="text" placeholder="查找设置"/>
+        <button class="bi bi-search"></button>
+      </div>
+      <div class="setting-list">
+        <div class="setting-item" data-go="/display">
+          <div class="ui-icon">
+            <span class="si si-system"></span>
+          </div>
+          <div class="message">
+            <div class="title">系统</div>
+            <div class="txt">显示、声音、通知、电源</div>
+          </div>
+        </div>
+        <div class="setting-item" data-go="/personalize">
+          <div class="ui-icon">
+            <span class="si si-custom"></span>
+          </div>
+          <div class="message">
+            <div class="title">个性化</div>
+            <div class="txt">背景、主题、颜色</div>
+          </div>
+        </div>
+        <div class="setting-item" data-go="/network">
+          <div class="ui-icon">
+            <span class="si si-network"></span>
+          </div>
+          <div class="message">
+            <div class="title">网络和Internet</div>
+            <div class="txt">WLAN、以太网、VPN</div>
+          </div>
+        </div>
+        <div class="setting-item" data-go="/sound">
+          <div class="ui-icon">
+            <span class="si si-sound"></span>
+          </div>
+          <div class="message">
+            <div class="title">声音</div>
+            <div class="txt">输出、音量、设备</div>
+          </div>
+        </div>
+        <div class="setting-item" data-go="/about">
+          <div class="ui-icon">
+            <span class="si si-about"></span>
+          </div>
+          <div class="message">
+            <div class="title">关于</div>
+            <div class="txt">版本、设备信息</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 系统-显示页 -->
+    <div class="page" path="/display">
+      <div class="celan">
+        <div class="fh">
+          <span class="bi bi-arrow-left"></span>
+        </div>
+        <div class="home">
+          <div class="ui-icon">
+            <span class="bi bi-house-door"></span>
+          </div>
+          <div class="title">主页</div>
+        </div>
+        <ul class="list nav-list">
+          <li class="active" data-se="1">
+            <div class="ui-icon">
+              <span class="si si-system"></span>
+            </div>
+            <div class="title">显示</div>
+          </li>
+          <li data-se="2">
+            <div class="ui-icon">
+              <span class="si si-sound"></span>
+            </div>
+            <div class="title">声音</div>
+          </li>
+          <li data-se="3">
+            <div class="ui-icon">
+              <span class="si si-about"></span>
+            </div>
+            <div class="title">关于</div>
+          </li>
+        </ul>
+      </div>
+      <div class="contents">
+        <div class="se-content" data-id="1">
+          <h1>显示</h1>
+          <div class="sec">
+            <div class="sec-title">屏幕分辨率</div>
+            <select id="resSel" class="res-select">
+              <option value="3180x2160">3180 × 2160 (推荐)</option>
+              <option value="2560x1440">2560 × 1440</option>
+              <option value="1920x1080">1920 × 1080</option>
+              <option value="1680x1050">1680 × 1050</option>
+              <option value="1440x900">1440 × 900</option>
+              <option value="1366x768">1366 × 768</option>
+              <option value="1280x720">1280 × 720</option>
+              <option value="1024x768">1024 × 768</option>
+            </select>
+            <div class="hint">更改分辨率时屏幕会短暂黑屏并提示确认，可保留或恢复原来的显示</div>
+          </div>
+          <div class="sec">
+            <div class="sec-title">缩放与布局</div>
+            <div style="font-size:13px;color:#555;margin-bottom:8px;">更改文本、应用等项目的大小</div>
+            <select id="scaleSel" class="scale-select">
+              <option value="100">100% (推荐)</option>
+              <option value="125">125%</option>
+              <option value="150">150%</option>
+              <option value="175">175%</option>
+              <option value="200">200%</option>
+            </select>
+            <div class="hint">重新打开桌面后生效</div>
+          </div>
+          <div class="sec">
+            <div class="sec-title">夜间模式</div>
+            <div class="win-check2" id="nightMode" data-store="w10_nightmode" data-change="nightModeChange"><span></span><div class="statu"></div></div>
+            <div class="hint">降低屏幕亮光，减少夜间使用时的眼睛疲劳</div>
+          </div>
+        </div>
+        <div class="se-content" data-id="2">
+          <h1>显示 - 声音</h1>
+          <div class="sec">
+            <div class="sec-title">音量设置</div>
+            <div class="hint">管理输出设备、系统音量与通知声音。</div>
+            <a href="javascript:;" class="win-link" data-goto="/sound">打开声音设置 →</a>
+          </div>
+        </div>
+        <div class="se-content" data-id="3">
+          <h1>显示 - 关于</h1>
+          <div class="sec">
+            <div class="sec-title">Windows 10 网页版</div>
+            <div class="hint">版本 0.7.6</div>
+            <div class="hint">基于 HTML / CSS / JavaScript 的开源网页项目</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 个性化页 -->
+    <div class="page" path="/personalize">
+      <div class="celan">
+        <div class="fh">
+          <span class="bi bi-arrow-left"></span>
+        </div>
+        <div class="home">
+          <div class="ui-icon">
+            <span class="bi bi-house-door"></span>
+          </div>
+          <div class="title">主页</div>
+        </div>
+        <ul class="list nav-list">
+          <li class="active" data-se="1">
+            <div class="ui-icon">
+              <span class="si si-custom"></span>
+            </div>
+            <div class="title">主题</div>
+          </li>
+          <li data-se="2">
+            <div class="ui-icon">
+              <span class="si si-custom"></span>
+            </div>
+            <div class="title">背景</div>
+          </li>
+        </ul>
+      </div>
+      <div class="contents">
+        <div class="se-content" data-id="1">
+          <h1>个性化 - 主题</h1>
+          <div class="sec">
+            <div class="sec-title">选择主题</div>
+            <div class="theme-cards">
+              <div class="theme-card" data-theme="light">
+                <div class="em">☀️</div>
+                <div class="tt">浅色</div>
+              </div>
+              <div class="theme-card" data-theme="dark">
+                <div class="em">🌙</div>
+                <div class="tt">深色</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="se-content" data-id="2">
+          <h1>个性化 - 背景</h1>
+          <div class="sec">
+            <div class="sec-title">选择壁纸</div>
+            <div class="wp-row">
+              <button class="wp-btn" id="wpUploadBtn">上传图片</button>
+              <input type="file" id="wpFile" accept="image/*" style="display:none;">
+              <button class="wp-btn wp-remove" id="wpRemoveBtn">移除自定义壁纸</button>
+            </div>
+            <div class="hint" id="wpStatus">支持 JPG / PNG 等图片格式，上传后立即生效</div>
+          </div>
+          <div class="sec">
+            <div class="sec-title">背景颜色</div>
+            <div class="bg-colors" id="bgColors"></div>
+            <div class="hint">选择背景色后，桌面壁纸会替换为所选颜色</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 声音页 -->
+    <div class="page" path="/sound">
+      <div class="celan">
+        <div class="fh">
+          <span class="bi bi-arrow-left"></span>
+        </div>
+        <div class="home">
+          <div class="ui-icon">
+            <span class="bi bi-house-door"></span>
+          </div>
+          <div class="title">主页</div>
+        </div>
+        <ul class="list nav-list">
+          <li class="active" data-se="1">
+            <div class="ui-icon">
+              <span class="si si-sound"></span>
+            </div>
+            <div class="title">音量</div>
+          </li>
+          <li data-se="2">
+            <div class="ui-icon">
+              <span class="si si-sound"></span>
+            </div>
+            <div class="title">输出</div>
+          </li>
+        </ul>
+      </div>
+      <div class="contents">
+        <div class="se-content" data-id="1">
+          <h1>声音 - 音量</h1>
+          <div class="sec">
+            <div class="sec-title">系统音量</div>
+            <div class="vol-row">
+              <div class="icon">🔊</div>
+              <div class="win-range" id="volRange" data-min="0" data-max="100" data-value="70" data-change="volChange">
+                <span class="r1"></span><span class="r2"></span><span class="r3"></span>
+              </div>
+              <div class="vol-val" id="volVal">70</div>
+            </div>
+            <div class="win-check2" id="volMute" data-store="w10_volume_mute" data-change="volMuteChange"><span></span><div class="statu"></div></div>
+            <div class="hint">设置扬声器 (High Definition Audio Device) 的音量</div>
+          </div>
+        </div>
+        <div class="se-content" data-id="2">
+          <h1>声音 - 输出</h1>
+          <div class="sec">
+            <div class="sec-title">选择输出设备</div>
+            <div class="net-item">
+              <div class="ic">🔊</div>
+              <div style="flex:1;">
+                <div class="nm">扬声器 (High Definition Audio Device)</div>
+                <div class="st">默认设备</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 网络页 -->
+    <div class="page" path="/network">
+      <div class="celan">
+        <div class="fh">
+          <span class="bi bi-arrow-left"></span>
+        </div>
+        <div class="home">
+          <div class="ui-icon">
+            <span class="bi bi-house-door"></span>
+          </div>
+          <div class="title">主页</div>
+        </div>
+        <ul class="list nav-list">
+          <li class="active" data-se="1">
+            <div class="ui-icon">
+              <span class="si si-network"></span>
+            </div>
+            <div class="title">WLAN</div>
+          </li>
+          <li data-se="2">
+            <div class="ui-icon">
+              <span class="si si-network"></span>
+            </div>
+            <div class="title">以太网</div>
+          </li>
+        </ul>
+      </div>
+      <div class="contents">
+        <div class="se-content" data-id="1">
+          <h1>网络和 Internet - WLAN</h1>
+          <div class="sec">
+            <div class="win-check2 checked" id="wlanSwitch" data-store="w10_wlan" data-change="wlanChange"><span></span><div class="statu"></div></div>
+            <div class="sec-title" style="margin-top:14px;">可用网络</div>
+            <div id="wifiList"></div>
+          </div>
+        </div>
+        <div class="se-content" data-id="2">
+          <h1>网络和 Internet - 以太网</h1>
+          <div class="net-item">
+            <div class="ic">🌐</div>
+            <div style="flex:1;">
+              <div class="nm">以太网</div>
+              <div class="st">已连接 · Internet 访问</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 关于页 -->
+    <div class="page" path="/about">
+      <div class="page-content">
+        <h1>关于</h1>
+        <div class="sec">
+          <div class="sec-title">Windows 10 网页版</div>
+          <div class="hint">版本 0.7.6</div>
+          <div class="hint">基于 HTML / CSS / JavaScript 的开源网页项目</div>
+        </div>
+        <div class="sec">
+          <div class="sec-title">设备规格</div>
+          <div class="hint">处理器：模拟环境</div>
+          <div class="hint">已安装内存：模拟环境</div>
+        </div>
+      </div>
+    </div>
+</body>
+<script src="../../appui.js"></script>
+<script src="./setting.js"></script>
+</html>
