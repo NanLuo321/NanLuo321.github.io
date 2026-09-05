@@ -5,7 +5,11 @@ function r() {
 }
 r();
 document.onclick = function () {
-  self.frameElement.parentElement.parentElement.click();
+  try {
+    if (self.frameElement && self.frameElement.parentElement && self.frameElement.parentElement.parentElement) {
+      self.frameElement.parentElement.parentElement.click();
+    }
+  } catch (e) { /* 安全降级：直接访问时无父级 */ }
 }
 document.querySelectorAll('.win-range').forEach(function (e) {
   // 获取WinRange三要素：总长，已选，拖动

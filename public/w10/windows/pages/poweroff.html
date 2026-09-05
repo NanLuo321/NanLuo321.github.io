@@ -42,11 +42,11 @@
     if($_GET('mode')=='restart'){
         document.querySelector('.title').innerText='正在重启';
         setTimeout(() => {
-            parent.location.reload();
+            top.location.reload();
         }, 5000);
     }else{
         setTimeout(() => {
-            location.href='/'
+            top.location.href='/'
         }, 3000);
     }
 </script>

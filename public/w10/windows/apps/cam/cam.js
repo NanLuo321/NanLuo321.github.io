@@ -9,6 +9,15 @@ document.getElementById('privacyAgree').onclick = function () {
 };
 document.getElementById('privacyRefuse').onclick = function () {
   privacyMask.classList.add('hidden');
+  if (self.frameElement) {
+    try {
+      var win = self.frameElement.parentElement.parentElement;
+      if (win) {
+        var closeBtn = win.querySelector('.window-czbtns .window-close');
+        if (closeBtn) closeBtn.click();
+      }
+    } catch (e) { /* 降级：直接访问时无父级 */ }
+  }
 };
 
 // ===== 页面切换 =====

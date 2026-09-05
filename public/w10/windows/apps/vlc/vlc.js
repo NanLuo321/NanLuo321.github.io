@@ -7,7 +7,19 @@ var statusText = document.getElementById('statusText');
 var playlist = [];
 var current = -1;
 var volume = parseInt(localStorage.getItem('w10_volume')) || 80;
-player.volume = volume / 100;
+if (player) player.volume = volume / 100;
+
+var volFill = document.getElementById('volFill');
+var volDot = document.getElementById('volDot');
+var volNum = document.getElementById('volNum');
+
+function setVolUI(v) {
+  if (volFill) volFill.style.width = v + '%';
+  if (volDot) volDot.style.left = v + '%';
+  if (volNum) volNum.innerText = v;
+  var ic = document.querySelector('.vol-ic span');
+  if (ic) ic.className = v == 0 ? 'bi bi-volume-mute-fill' : v < 50 ? 'bi bi-volume-down-fill' : 'bi bi-volume-up-fill';
+}
 setVolUI(volume);
 
 // ===== 时间格式化 =====
@@ -175,16 +187,6 @@ seekDot.addEventListener('mousedown', function (e) {
 
 // ===== 音量 =====
 var volSeek = document.getElementById('volSeek');
-var volFill = document.getElementById('volFill');
-var volDot = document.getElementById('volDot');
-var volNum = document.getElementById('volNum');
-function setVolUI(v) {
-  volFill.style.width = v + '%';
-  volDot.style.left = v + '%';
-  volNum.innerText = v;
-  var ic = document.querySelector('.vol-ic span');
-  ic.className = v == 0 ? 'bi bi-volume-mute-fill' : v < 50 ? 'bi bi-volume-down-fill' : 'bi bi-volume-up-fill';
-}
 function volTo(e) {
   var rect = volSeek.getBoundingClientRect();
   var pct = (e.clientX - rect.left) / rect.width;

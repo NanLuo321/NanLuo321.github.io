@@ -8,6 +8,7 @@ import FancyboxManager from "@components/features/FancyboxManager.astro";
 import FontSetup from "@components/features/FontSetup.astro";
 import MusicManager from "@components/features/MusicManager.astro";
 import CustomCursor from "@components/features/CustomCursor.astro";
+import PageLoader from "@components/features/PageLoader.astro";
 import RainEffect from "@components/RainEffect.astro";
 import LeafEffect from "@components/LeafEffect.astro";
 import SakuraEffect from "@components/features/SakuraEffect.astro";
@@ -715,6 +716,8 @@ const siteLang = lang.replace("_", "-");
   >
 
     <div id="progress-bar"></div>
+
+    <PageLoader />
 
     <CustomCursor />
 
@@ -2336,13 +2339,15 @@ function disableAnimation() {
 
     });
     window.swup.hooks.on("visit:start", (visit: { to: { url: string } }) => {
-      // Start progress bar
-      const progressBar = document.getElementById("progress-bar");
-      if (progressBar) {
-        progressBar.classList.remove("finishing", "done");
-        // Force reflow so the animation restarts cleanly
-        void progressBar.offsetWidth;
-        progressBar.classList.add("loading");
+      // 仅在首次进入网站时显示顶部进度条，站内切换链接不再显示
+      if (!(window as any).__initialPageLoadDone) {
+        const progressBar = document.getElementById("progress-bar");
+        if (progressBar) {
+          progressBar.classList.remove("finishing", "done");
+          // Force reflow so the animation restarts cleanly
+          void progressBar.offsetWidth;
+          progressBar.classList.add("loading");
+        }
       }
 
       // change banner height immediately when a link is clicked
@@ -2653,18 +2658,22 @@ function disableAnimation() {
       }, 300);
     });
     window.swup.hooks.on("visit:end", (_visit: { to: { url: string } }) => {
-      // Finish progress bar
-      const progressBar = document.getElementById("progress-bar");
-      if (progressBar) {
-        progressBar.classList.remove("loading");
-        progressBar.classList.add("finishing");
-        setTimeout(() => {
-          progressBar.classList.remove("finishing");
-          progressBar.classList.add("done");
+      // Finish progress bar (only the first visit shows it)
+      if (!(window as any).__initialPageLoadDone) {
+        const progressBar = document.getElementById("progress-bar");
+        if (progressBar) {
+          progressBar.classList.remove("loading");
+          progressBar.classList.add("finishing");
           setTimeout(() => {
-            progressBar.classList.remove("done");
-          }, 300);
-        }, 200);
+            progressBar.classList.remove("finishing");
+            progressBar.classList.add("done");
+            setTimeout(() => {
+              progressBar.classList.remove("done");
+            }, 300);
+          }, 200);
+        }
+        // 首次加载完成标记：之后的站内切换不再显示进度条
+        (window as any).__initialPageLoadDone = true;
       }
 
       setTimeout(() => {
@@ -2803,6 +2812,30 @@ function disableAnimation() {
       `${offset}px`
     );
   };
+
+  // 首次进入网站：立即显示顶部加载进度条；后续站内切换链接不再显示
+  (function startInitialProgressBar() {
+    if ((window as any).__initialPageLoadDone) return;
+    const progressBar = document.getElementById("progress-bar");
+    if (!progressBar) return;
+    // 直接展示 loading 状态，让 swup 的 visit:end 来收尾
+    progressBar.classList.remove("finishing", "done");
+    void progressBar.offsetWidth;
+    progressBar.classList.add("loading");
+    // 3.5s 后强制收尾，避免任何异常路径导致进度条常驻
+    setTimeout(() => {
+      if (progressBar.classList.contains("loading") && !(window as any).__initialPageLoadDone) {
+        progressBar.classList.remove("loading");
+        progressBar.classList.add("finishing");
+        setTimeout(() => {
+          progressBar.classList.remove("finishing");
+          progressBar.classList.add("done");
+          setTimeout(() => progressBar.classList.remove("done"), 300);
+        }, 200);
+        (window as any).__initialPageLoadDone = true;
+      }
+    }, 3500);
+  })();
 
   // 页面加载完成后初始化banner和内容溢出容器
   if (document.readyState === "loading") {

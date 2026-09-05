@@ -1,0 +1,312 @@
+---
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { Icon } from "astro-icon/components";
+import { getCollection } from "astro:content";
+
+const allPosts = await getCollection("posts");
+const publishedPosts = allPosts.filter(
+	(p) => !p.data.draft && p.data.publish !== false
+);
+
+// 根据文章的分类或 tags 自动聚合系列
+// 优先用 categories，缺失则用 tags，最后 fallback "未分类"
+function deriveSeries(post: any): { name: string; icon: string } {
+	const cat: string | undefined = post.data.category;
+	const tags: string[] = post.data.tags || [];
+	const title: string = post.data.title || "";
+	const desc: string = post.data.description || "";
+
+	if (cat) {
+		return { name: cat, icon: iconForCategory(cat) };
+	}
+
+	const text = (title + desc).toLowerCase();
+	if (tags.length > 0) {
+		return { name: tags[0], icon: iconForCategory(tags[0]) };
+	}
+
+	// 关键词智能归类
+	if (/(astro|tailwind|svelte|vue|react|css|前端|frontend|html)/i.test(text))
+		return { name: "前端开发", icon: "material-symbols:web" };
+	if (/(node|python|java|go|api|后端|backend|database|sql|redis)/i.test(text))
+		return { name: "后端开发", icon: "material-symbols:storage" };
+	if (/(docker|kubernetes|nginx|ci|cd|devops|部署|deploy)/i.test(text))
+		return { name: "DevOps", icon: "material-symbols:rocket-launch" };
+	if (/(算法|algorithm|数据结构|leetcode|刷题|动规|排序|graph)/i.test(text))
+		return { name: "算法与数据结构", icon: "material-symbols:functions" };
+	if (/(随笔|日记|思考|生活|life|thoughts)/i.test(text))
+		return { name: "生活随笔", icon: "material-symbols:edit-note" };
+
+	return { name: "未分类", icon: "material-symbols:label" };
+}
+
+function iconForCategory(cat: string): string {
+	const map: Record<string, string> = {
+		前端: "material-symbols:web",
+		前端开发: "material-symbols:web",
+		后端: "material-symbols:storage",
+		后端开发: "material-symbols:storage",
+		devops: "material-symbols:rocket-launch",
+		DevOps: "material-symbols:rocket-launch",
+		算法: "material-symbols:functions",
+		随笔: "material-symbols:edit-note",
+		生活: "material-symbols:edit-note",
+	};
+	return map[cat] || "material-symbols:label";
+}
+
+// 聚合：按系列名分组
+const seriesMap = new Map<string, { icon: string; posts: any[] }>();
+for (const post of publishedPosts) {
+	const { name, icon } = deriveSeries(post);
+	if (!seriesMap.has(name)) {
+		seriesMap.set(name, { icon, posts: [] });
+	}
+	seriesMap.get(name)!.posts.push(post);
+}
+
+// 排序：按文章数倒序，再按系列名
+const seriesList = Array.from(seriesMap.entries())
+	.map(([name, info]) => ({
+		name,
+		icon: info.icon,
+		count: info.posts.length,
+		posts: info.posts.sort(
+			(a, b) =>
+				new Date(b.data.published || 0).getTime() -
+				new Date(a.data.published || 0).getTime()
+		),
+	}))
+	.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "zh"));
+---
+
+<MainGridLayout title="系列">
+	<div class="series-page">
+		<header class="series-header">
+			<h1 class="series-title">系列</h1>
+			<p class="series-subtitle">按专题组织的文章合集 · 共 {seriesList.length} 个系列 · {publishedPosts.length} 篇文章</p>
+		</header>
+
+		{seriesList.length === 0 ? (
+			<div class="series-empty">
+				<Icon is:inline name="material-symbols:inbox" class="text-5xl opacity-30" />
+				<p>暂无系列文章</p>
+			</div>
+		) : (
+			<div class="series-grid">
+				{seriesList.map((s) => (
+					<div class="series-card">
+						<div class="series-card-header">
+							<div class="series-card-icon">
+								<Icon is:inline name={s.icon} class="text-[1.4rem]" />
+							</div>
+							<div class="series-card-info">
+								<h2 class="series-card-name">{s.name}</h2>
+							</div>
+							<div class="series-card-count">{s.count}</div>
+						</div>
+						<ul class="series-card-list">
+							{s.posts.slice(0, 8).map((p) => (
+								<li class="series-card-item">
+									<a href={`/posts/${p.slug}/`} class="series-card-link">
+										<Icon is:inline name="material-symbols:article-outline" class="text-[1rem] opacity-60 flex-shrink-0" />
+										<span class="truncate">{p.data.title}</span>
+									</a>
+								</li>
+							))}
+							{s.count > 8 && (
+								<li class="series-card-more">还有 {s.count - 8} 篇…</li>
+							)}
+						</ul>
+					</div>
+				))}
+			</div>
+		)}
+	</div>
+</MainGridLayout>
+
+<style>
+	.series-page {
+		max-width: 1024px;
+		margin: 0 auto;
+		padding: 2rem 1rem;
+	}
+
+	.series-header {
+		margin-bottom: 2rem;
+	}
+
+	.series-title {
+		font-size: 2rem;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+	}
+
+	.series-subtitle {
+		font-size: 0.95rem;
+		opacity: 0.6;
+		margin-top: 0.25rem;
+	}
+
+	.series-empty {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 1rem;
+		padding: 4rem 1rem;
+		opacity: 0.6;
+	}
+
+	.series-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+		gap: 1.25rem;
+	}
+
+	.series-card {
+		background: rgba(255, 255, 255, 0.6);
+		border: 1px solid rgba(0, 0, 0, 0.08);
+		border-radius: 16px;
+		padding: 1.25rem;
+		transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+	}
+
+	:global(.dark) .series-card {
+		background: rgba(20, 20, 22, 0.5);
+		border-color: rgba(255, 255, 255, 0.1);
+	}
+
+	.series-card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.15);
+		border-color: rgba(59, 130, 246, 0.4);
+	}
+
+	.series-card-header {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+	}
+
+	:global(.dark) .series-card-header {
+		border-bottom-color: rgba(255, 255, 255, 0.1);
+	}
+
+	.series-card-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 42px;
+		height: 42px;
+		border-radius: 10px;
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.15));
+		color: rgb(59, 130, 246);
+		flex-shrink: 0;
+	}
+
+	:global(.dark) .series-card-icon {
+		background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(129, 140, 248, 0.2));
+		color: rgb(147, 197, 253);
+	}
+
+	.series-card-info {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.series-card-name {
+		font-size: 1rem;
+		font-weight: 800;
+		line-height: 1.3;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 5px 10px 5px 8px;
+		border-radius: 8px;
+		background: rgba(255, 255, 255, 0.55);
+		backdrop-filter: blur(8px) saturate(160%);
+		-webkit-backdrop-filter: blur(8px) saturate(160%);
+		border: 1px solid rgba(255, 255, 255, 0.4);
+		box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.08);
+		background-image: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(168, 85, 247, 0.08));
+		letter-spacing: 0.01em;
+	}
+
+	.series-card-name::before {
+		content: "";
+		display: inline-block;
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: linear-gradient(135deg, rgb(59, 130, 246), rgb(168, 85, 247));
+		box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+		flex-shrink: 0;
+	}
+
+	:global(.dark) .series-card-name {
+		background: rgba(255, 255, 255, 0.08);
+		border-color: rgba(255, 255, 255, 0.15);
+		box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.3);
+	}
+
+	:global(.dark) .series-card-name::before {
+		box-shadow: 0 0 10px rgba(96, 165, 250, 0.7);
+	}
+
+	.series-card-count {
+		font-size: 1.1rem;
+		font-weight: 800;
+		color: rgb(59, 130, 246);
+		background: rgba(59, 130, 246, 0.1);
+		padding: 4px 10px;
+		border-radius: 9999px;
+		flex-shrink: 0;
+	}
+
+	:global(.dark) .series-card-count {
+		color: rgb(147, 197, 253);
+		background: rgba(96, 165, 250, 0.15);
+	}
+
+	.series-card-list {
+		margin-top: 0.75rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	.series-card-item {
+		list-style: none;
+	}
+
+	.series-card-link {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.85rem;
+		padding: 4px 0;
+		opacity: 0.85;
+		text-decoration: none;
+		color: inherit;
+		transition: color 0.15s ease, opacity 0.15s ease;
+	}
+
+	.series-card-link:hover {
+		opacity: 1;
+		color: rgb(59, 130, 246);
+	}
+
+	:global(.dark) .series-card-link:hover {
+		color: rgb(147, 197, 253);
+	}
+
+	.series-card-more {
+		font-size: 0.75rem;
+		opacity: 0.45;
+		padding: 2px 0;
+		font-style: italic;
+	}
+</style>

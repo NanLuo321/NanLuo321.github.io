@@ -1,0 +1,157 @@
+---
+// 整站加载动画：仅在整页刷新时（首屏加载）显示；
+// 站内 swup 切页不再触发此动画。
+---
+
+<div id="page-loader" class="page-loader" aria-hidden="true">
+	<div class="page-loader-bg"></div>
+	<div class="page-loader-content">
+		<div class="page-loader-spinner">
+			<svg viewBox="0 0 100 100" width="64" height="64">
+				<defs>
+					<clipPath id="earthClip">
+						<circle cx="50" cy="50" r="32" />
+					</clipPath>
+				</defs>
+				<!-- 地球主体 -->
+				<circle cx="50" cy="50" r="32" fill="rgba(0, 122, 255, 0.12)" stroke="rgba(0, 122, 255, 0.6)" stroke-width="1.5" />
+				<!-- 大陆（简化色块） -->
+				<g clip-path="url(#earthClip)" class="earth-continents">
+					<path d="M30 38 Q40 32 50 38 Q58 42 66 36 L70 48 Q60 54 50 50 Q40 52 32 48 Z" fill="rgba(0, 122, 255, 0.55)" />
+					<path d="M28 58 Q38 54 48 60 Q56 64 64 58 L66 70 Q56 76 46 72 Q34 72 28 66 Z" fill="rgba(0, 122, 255, 0.45)" />
+					<path d="M52 28 Q60 26 68 32 L70 40 Q60 38 54 34 Z" fill="rgba(0, 122, 255, 0.5)" />
+				</g>
+				<!-- 经线（竖向，随地球旋转） -->
+				<g class="earth-meridians" stroke="rgba(0, 122, 255, 0.45)" stroke-width="0.8" fill="none">
+					<ellipse cx="50" cy="50" rx="12" ry="32" />
+					<ellipse cx="50" cy="50" rx="24" ry="32" />
+				</g>
+				<!-- 纬线（横向，固定不动） -->
+				<g class="earth-parallels" stroke="rgba(0, 122, 255, 0.35)" stroke-width="0.8" fill="none">
+					<line x1="18" y1="50" x2="82" y2="50" />
+					<ellipse cx="50" cy="38" rx="24" ry="4" />
+					<ellipse cx="50" cy="62" rx="24" ry="4" />
+				</g>
+				<!-- 外圈装饰 -->
+				<circle cx="50" cy="50" r="38" fill="none" stroke="rgba(0, 122, 255, 0.25)" stroke-width="0.8" stroke-dasharray="3 3" class="earth-orbit" />
+			</svg>
+		</div>
+		<div class="page-loader-text">Loading</div>
+	</div>
+</div>
+
+<style is:global>
+	.page-loader {
+		position: fixed;
+		inset: 0;
+		z-index: 99996;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		pointer-events: none;
+		opacity: 1;
+		transition: opacity 0.45s ease;
+	}
+
+	.page-loader.is-hidden {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.page-loader-bg {
+		position: absolute;
+		inset: 0;
+		background: rgba(255, 255, 255, 0.72);
+		backdrop-filter: blur(20px) saturate(180%);
+		-webkit-backdrop-filter: blur(20px) saturate(180%);
+	}
+
+	:global(.dark) .page-loader-bg {
+		background: rgba(20, 20, 25, 0.78);
+	}
+
+	.page-loader-content {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 14px;
+		color: rgb(60, 60, 67);
+	}
+
+	:global(.dark) .page-loader-content {
+		color: rgb(235, 235, 245);
+	}
+
+	.page-loader-spinner {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.page-loader-spinner svg {
+		filter: drop-shadow(0 4px 12px rgba(0, 122, 255, 0.18));
+	}
+
+	.earth-continents,
+	.earth-meridians {
+		transform-origin: 50px 50px;
+		animation: earth-rotate 4s linear infinite;
+	}
+
+	.earth-orbit {
+		transform-origin: 50px 50px;
+		animation: orbit-rotate 12s linear infinite;
+	}
+
+	@keyframes earth-rotate {
+		from { transform: rotateY(0deg); }
+		to { transform: rotateY(360deg); }
+	}
+
+	@keyframes orbit-rotate {
+		from { transform: rotate(0deg); }
+		to { transform: rotate(360deg); }
+	}
+
+	.page-loader-text {
+		font-size: 0.85rem;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		opacity: 0.7;
+		animation: page-loader-text-pulse 1.4s ease-in-out infinite;
+	}
+
+	@keyframes page-loader-text-pulse {
+		0%, 100% { opacity: 0.4; }
+		50% { opacity: 0.9; }
+	}
+</style>
+
+<script>
+	function showLoader() {
+		const loader = document.getElementById('page-loader');
+		if (!loader) return;
+		loader.classList.remove('is-hidden');
+	}
+
+	function hideLoader() {
+		const loader = document.getElementById('page-loader');
+		if (!loader) return;
+		loader.classList.add('is-hidden');
+	}
+
+	// 仅在整页刷新（首屏加载）时显示一次并淡出；
+	// 站内 swup 切页不触发——script 不会重新执行，且元素默认 is-hidden。
+	function playOnce() {
+		showLoader();
+		setTimeout(hideLoader, 600);
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', playOnce);
+	} else {
+		playOnce();
+	}
+</script>

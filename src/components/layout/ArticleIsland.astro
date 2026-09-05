@@ -1,0 +1,862 @@
+---
+import { Icon } from "astro-icon/components";
+import { url } from "@/utils/url-utils";
+
+interface ArticleLink {
+	name: string;
+	url: string;
+	icon: string;
+	desc?: string;
+}
+
+interface Props {
+	items: ArticleLink[];
+	triggerName: string;
+	triggerIcon: string;
+	triggerHref: string;
+}
+
+const { items, triggerName, triggerIcon, triggerHref } = Astro.props;
+const triggerFinalHref = url(triggerHref);
+---
+
+<div class="article-island" data-article-island>
+	<!-- 触发器 - 始终在原位 -->
+	<button
+		type="button"
+		class="ai-trigger btn-plain scale-animation rounded-lg h-10 font-bold px-4 active:scale-95 flex items-center gap-1.5 relative"
+		aria-label={triggerName}
+		title={triggerName}
+		data-ai-trigger
+	>
+		<Icon is:inline name={triggerIcon} class="text-[1.1rem] navbar-icon" />
+		<span class="ai-trigger-text">{triggerName}</span>
+		<Icon is:inline name="material-symbols:keyboard-arrow-down-rounded" class="ai-trigger-arrow text-[1.2rem] transition-transform duration-200" />
+	</button>
+
+	<!-- 子按钮容器 - 默认不可见 -->
+	<div class="ai-panel" data-ai-items>
+		<div class="ai-panel-inner">
+			{items.map((item) => (
+				<a
+					href={url(item.url)}
+					class="ai-card"
+					data-ai-item
+				>
+					<div class="ai-card-icon">
+						<Icon is:inline name={item.icon} class="text-[1.2rem]" />
+					</div>
+					<div class="ai-card-text">
+						<div class="ai-card-title">{item.name}</div>
+						{item.desc && <div class="ai-card-desc">{item.desc}</div>}
+					</div>
+					<Icon is:inline name="material-symbols:chevron-right-rounded" class="ai-card-arrow" />
+				</a>
+			))}
+			<button
+				type="button"
+				class="ai-close-card"
+				aria-label="关闭"
+				data-ai-close
+			>
+				<Icon is:inline name="material-symbols:close-rounded" class="text-[1rem]" />
+				<span>关闭</span>
+			</button>
+		</div>
+	</div>
+
+	<!-- 移动端提示 - 仅在手机端可见 -->
+	<div class="ai-mobile-hint" data-ai-mobile-hint>
+		<Icon is:inline name="material-symbols:desktop-windows-rounded" class="text-[1rem]" />
+		<span>建议使用 1080P 桌面端预览</span>
+	</div>
+
+	<!-- 移动端抽屉式菜单覆盖层 -->
+	<div class="ai-mobile-drawer" data-ai-mobile-drawer>
+		<div class="ai-mobile-drawer-header">
+			<span>{triggerName}</span>
+			<button type="button" class="ai-mobile-close" data-ai-close aria-label="关闭">
+				<Icon is:inline name="material-symbols:close-rounded" class="text-[1.2rem]" />
+			</button>
+		</div>
+		<div class="ai-mobile-drawer-list">
+			{items.map((item) => (
+				<a
+					href={url(item.url)}
+					class="ai-mobile-item"
+					data-ai-item
+				>
+					<div class="ai-card-icon">
+						<Icon is:inline name={item.icon} class="text-[1.2rem]" />
+					</div>
+					<div class="ai-card-text">
+						<div class="ai-card-title">{item.name}</div>
+					</div>
+					<Icon is:inline name="material-symbols:chevron-right-rounded" class="ai-mobile-arrow" />
+				</a>
+			))}
+		</div>
+	</div>
+</div>
+
+<style>
+	/* 主导航岛：默认就显示，由内部 panel 的 width 控制延展 */
+	.article-island {
+		display: inline-flex;
+		align-items: center;
+		flex-shrink: 0;
+		position: relative;
+		z-index: 1000;
+	}
+
+	.article-island.open {
+		z-index: 10000;
+	}
+
+	/* 移动端：直接显示 */
+	@media (max-width: 1023px) {
+		.article-island {
+			width: auto;
+		}
+	}
+
+	/* 触发器 - 始终可见，水平延展时只是位置变化 */
+	.ai-trigger {
+		position: relative;
+		display: inline-flex;
+		flex-shrink: 0;
+		transition:
+			opacity 0.4s ease,
+			transform 0.7s ease;
+		white-space: nowrap;
+	}
+
+	.article-island.open .ai-trigger {
+		opacity: 0.55;
+		transform: scale(0.96);
+	}
+
+	.article-island.open .ai-trigger:hover {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	.ai-trigger-arrow {
+		color: currentColor;
+		margin-left: 0.15rem;
+		transition: transform 0.3s ease;
+	}
+
+	.ai-trigger-text {
+		display: inline;
+		white-space: nowrap;
+	}
+
+	.article-island.open .ai-trigger-arrow {
+		transform: rotate(180deg);
+	}
+
+	/* iOS 通知中心式面板 - 岛内展开：触发器右侧自然延展 */
+	.ai-panel {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		height: 40px;
+		max-width: 0;
+		min-width: 0;
+		opacity: 0;
+		pointer-events: none;
+		overflow: hidden;
+		visibility: hidden;
+		padding: 0;
+		flex-shrink: 0;
+		transition:
+			max-width 0.7s ease,
+			opacity 0.5s ease 0.15s,
+			padding 0.7s ease,
+			visibility 0s linear 0.7s;
+	}
+
+	.article-island.open .ai-panel {
+		max-width: 800px;
+		opacity: 1;
+		pointer-events: auto;
+		visibility: visible;
+		padding: 0 0 0 8px;
+		transition:
+			max-width 0.7s ease,
+			opacity 0.5s ease 0.15s,
+			padding 0.7s ease,
+			visibility 0s linear 0s;
+	}
+
+	/* 关闭时缩回 - 水平收缩 */
+	.article-island:not(.open) .ai-panel {
+		max-width: 0;
+		transition:
+			max-width 0.7s ease,
+			opacity 0.4s ease,
+			padding 0.7s ease,
+			visibility 0s linear 0.7s;
+	}
+
+	.ai-panel-inner {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 4px;
+		height: 100%;
+		padding: 2px 6px;
+		background: rgba(255, 255, 255, 0.6);
+		backdrop-filter: blur(20px) saturate(180%);
+		-webkit-backdrop-filter: blur(20px) saturate(180%);
+		border: 1px solid rgba(0, 0, 0, 0.08);
+		border-radius: 9999px;
+		box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.18);
+		color: rgb(23, 23, 23);
+		white-space: nowrap;
+	}
+
+	:global(.dark) .ai-panel-inner {
+		background: rgba(30, 30, 35, 0.96);
+		border-color: rgba(255, 255, 255, 0.18);
+		box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.7);
+		color: rgb(245, 245, 245);
+	}
+
+	/* iOS 风格卡片按钮 - 横向小药丸 */
+	.ai-card {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 10px;
+		border-radius: 9999px;
+		text-decoration: none;
+		color: inherit;
+		background: transparent;
+		font-size: 0.75rem;
+		font-weight: 600;
+		flex-shrink: 0;
+		white-space: nowrap;
+		transition: background 0.15s ease, transform 0.1s ease, opacity 0.6s ease 0.2s;
+		opacity: 0;
+	}
+
+	.ai-card:hover {
+		background: rgba(0, 0, 0, 0.06);
+	}
+
+	:global(.dark) .ai-card:hover {
+		background: rgba(255, 255, 255, 0.08);
+	}
+
+	.ai-card:active {
+		transform: scale(0.92);
+	}
+
+	.ai-card-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.95rem;
+		flex-shrink: 0;
+	}
+
+	.ai-card-text {
+		flex: 0 1 auto;
+		min-width: 0;
+	}
+
+	.ai-card-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		line-height: 1.2;
+	}
+
+	.ai-card-desc {
+		display: none;
+	}
+
+	.ai-card-arrow {
+		display: none;
+	}
+
+	/* 关闭按钮 - 岛内小图标 */
+	.ai-close-card {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		padding: 0;
+		margin-left: 2px;
+		border-radius: 50%;
+		background: rgba(0, 0, 0, 0.06);
+		border: 0;
+		color: inherit;
+		cursor: pointer;
+		opacity: 0.55;
+		flex-shrink: 0;
+		transition: opacity 0.6s ease 0.3s, background 0.15s ease, transform 0.1s ease;
+		opacity: 0;
+	}
+
+	:global(.dark) .ai-close-card {
+		background: rgba(255, 255, 255, 0.08);
+	}
+
+	.ai-close-card:hover {
+		opacity: 1;
+		background: rgba(0, 0, 0, 0.12);
+	}
+
+	:global(.dark) .ai-close-card:hover {
+		background: rgba(255, 255, 255, 0.15);
+	}
+
+	.ai-close-card > span {
+		display: none;
+	}
+
+	/* 动画：依次淡入缩放 */
+	.ai-card:nth-child(1) { transition-delay: 0s, 0.15s, 0s, 0s, 0s, 0s; }
+	.ai-card:nth-child(2) { transition-delay: 0s, 0.18s, 0s, 0s, 0s, 0s; }
+	.ai-card:nth-child(3) { transition-delay: 0s, 0.21s, 0s, 0s, 0s, 0s; }
+	.ai-card:nth-child(4) { transition-delay: 0s, 0.24s, 0s, 0s, 0s, 0s; }
+	.ai-card:nth-child(5) { transition-delay: 0s, 0.27s, 0s, 0s, 0s, 0s; }
+
+	.article-island.open .ai-card {
+		opacity: 1;
+		transition: background 0.15s ease, transform 0.1s ease, opacity 0.6s ease 0.25s;
+	}
+
+	.article-island.open .ai-close-card {
+		opacity: 0.55;
+		transition: opacity 0.6s ease 0.35s, background 0.15s ease;
+	}
+
+	.ai-direct-link {
+		display: none;
+	}
+
+	/* 移动端提示 - 默认隐藏 */
+	.ai-mobile-hint {
+		display: none;
+	}
+
+	/* 移动端抽屉 - 默认隐藏 */
+	.ai-mobile-drawer {
+		display: none;
+	}
+
+	@media (max-width: 1023px) {
+		/* 移动端：岛内改为垂直布局 */
+		.article-island {
+			display: inline-flex;
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 4px;
+		}
+
+		.ai-trigger {
+			display: inline-flex;
+		}
+		.ai-panel {
+			display: none;
+		}
+
+		/* 移动端提示 - 桌面图标 + 文字，垂直排列时在按钮下方 */
+		.ai-mobile-hint {
+			display: inline-flex;
+			align-items: center;
+			gap: 4px;
+			margin-left: 0;
+			padding: 3px 8px;
+			border-radius: 9999px;
+			background: rgba(99, 102, 241, 0.12);
+			border: 1px solid rgba(99, 102, 241, 0.25);
+			color: rgb(99, 102, 241);
+			font-size: 0.65rem;
+			font-weight: 500;
+			white-space: nowrap;
+		}
+
+		:global(.dark) .ai-mobile-hint {
+			background: rgba(129, 140, 248, 0.18);
+			border-color: rgba(129, 140, 248, 0.35);
+			color: rgb(165, 180, 252);
+		}
+
+		/* 移动端抽屉 - 屏幕中部弹出的卡片 */
+		.article-island.open .ai-mobile-drawer {
+			display: flex;
+			position: fixed;
+			top: 70px;
+			left: 50%;
+			transform: translateX(-50%);
+			width: calc(100vw - 32px);
+			max-width: 360px;
+			max-height: calc(100vh - 100px);
+			flex-direction: column;
+			background: rgba(255, 255, 255, 0.95);
+			backdrop-filter: blur(20px) saturate(180%);
+			-webkit-backdrop-filter: blur(20px) saturate(180%);
+			border: 1px solid rgba(0, 0, 0, 0.08);
+			border-radius: 16px;
+			box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.3);
+			overflow: hidden;
+			z-index: 99999;
+			animation: ai-mobile-drawer-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+		}
+
+		:global(.dark) .article-island.open .ai-mobile-drawer {
+			background: rgba(30, 30, 35, 0.95);
+			border-color: rgba(255, 255, 255, 0.18);
+		}
+
+		@keyframes ai-mobile-drawer-in {
+			0% {
+				opacity: 0;
+				transform: translateX(-50%) scale(0.9) translateY(-10px);
+			}
+			100% {
+				opacity: 1;
+				transform: translateX(-50%) scale(1) translateY(0);
+			}
+		}
+
+		.ai-mobile-drawer-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 14px 16px;
+			border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+			font-weight: 700;
+			font-size: 0.95rem;
+		}
+
+		:global(.dark) .ai-mobile-drawer-header {
+			border-bottom-color: rgba(255, 255, 255, 0.12);
+		}
+
+		.ai-mobile-close {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 30px;
+			height: 30px;
+			padding: 0;
+			border: 0;
+			border-radius: 50%;
+			background: rgba(0, 0, 0, 0.05);
+			color: inherit;
+			cursor: pointer;
+		}
+
+		:global(.dark) .ai-mobile-close {
+			background: rgba(255, 255, 255, 0.08);
+		}
+
+		.ai-mobile-drawer-list {
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+			padding: 8px;
+			overflow-y: auto;
+		}
+
+		.ai-mobile-item {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 10px 12px;
+			border-radius: 10px;
+			text-decoration: none;
+			color: inherit;
+			transition: background 0.15s ease;
+		}
+
+		.ai-mobile-item:active {
+			background: rgba(0, 0, 0, 0.06);
+			transform: scale(0.98);
+		}
+
+		:global(.dark) .ai-mobile-item:active {
+			background: rgba(255, 255, 255, 0.08);
+		}
+
+		.ai-mobile-item .ai-card-icon {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 32px;
+			height: 32px;
+			border-radius: 8px;
+			background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.15));
+			color: rgb(59, 130, 246);
+		}
+
+		:global(.dark) .ai-mobile-item .ai-card-icon {
+			background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(129, 140, 248, 0.2));
+			color: rgb(147, 197, 253);
+		}
+
+		.ai-mobile-item .ai-card-text {
+			flex: 1;
+			min-width: 0;
+		}
+
+		.ai-mobile-item .ai-card-title {
+			font-size: 0.85rem;
+			font-weight: 600;
+		}
+
+		.ai-mobile-arrow {
+			opacity: 0.4;
+			font-size: 1.1rem;
+		}
+	}
+
+	/* === 全局响应式提示弹窗（:global 穿透 scoped CSS，iOS 玻璃风格）=== */
+		:global(.ai-hint-modal) {
+			position: fixed;
+			inset: 0;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			z-index: 99997;
+			padding: 16px;
+		}
+
+		:global(.ai-hint-modal.show) {
+			display: flex;
+		}
+
+		:global(.ai-hint-modal.leaving) {
+			animation: ai-hint-leave 0.25s ease forwards;
+		}
+
+		@keyframes ai-hint-leave {
+			from { opacity: 1; }
+			to { opacity: 0; }
+		}
+
+		:global(.ai-hint-backdrop) {
+			position: absolute;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.18);
+			backdrop-filter: blur(6px) saturate(160%);
+			-webkit-backdrop-filter: blur(6px) saturate(160%);
+			animation: ai-hint-fade 0.25s ease forwards;
+		}
+
+		:global(.ai-hint-card) {
+			position: relative;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 6px;
+			width: 100%;
+			max-width: 320px;
+			padding: 26px 24px 18px;
+			border-radius: 28px;
+			background: rgba(255, 255, 255, 0.72);
+			backdrop-filter: blur(40px) saturate(200%);
+			-webkit-backdrop-filter: blur(40px) saturate(200%);
+			border: 0.5px solid rgba(255, 255, 255, 0.55);
+			box-shadow:
+				0 1px 0 rgba(255, 255, 255, 0.6) inset,
+				0 20px 60px -10px rgba(0, 0, 0, 0.35),
+				0 0 0 0.5px rgba(0, 0, 0, 0.04);
+			text-align: center;
+			transform-origin: center bottom;
+			animation: ai-hint-pop 0.45s cubic-bezier(0.22, 1.2, 0.36, 1) forwards;
+		}
+
+		:global(.dark) :global(.ai-hint-card) {
+			background: rgba(28, 28, 30, 0.72);
+			border-color: rgba(255, 255, 255, 0.12);
+			box-shadow:
+				0 1px 0 rgba(255, 255, 255, 0.08) inset,
+				0 20px 60px -10px rgba(0, 0, 0, 0.6),
+				0 0 0 0.5px rgba(255, 255, 255, 0.06);
+		}
+
+		:global(.ai-hint-modal.leaving) :global(.ai-hint-backdrop) {
+			animation: ai-hint-fade-out 0.2s ease forwards;
+		}
+		:global(.ai-hint-modal.leaving) :global(.ai-hint-card) {
+			animation: ai-hint-pop-out 0.2s ease forwards;
+		}
+
+		@keyframes ai-hint-fade {
+			from { opacity: 0; }
+			to { opacity: 1; }
+		}
+		@keyframes ai-hint-fade-out {
+			from { opacity: 1; }
+			to { opacity: 0; }
+		}
+		@keyframes ai-hint-pop {
+			0% {
+				opacity: 0;
+				transform: scale(0.85) translateY(24px);
+			}
+			60% {
+				opacity: 1;
+				transform: scale(1.02) translateY(-2px);
+			}
+			100% {
+				opacity: 1;
+				transform: scale(1) translateY(0);
+			}
+		}
+		@keyframes ai-hint-pop-out {
+			from {
+				opacity: 1;
+				transform: scale(1);
+			}
+			to {
+				opacity: 0;
+				transform: scale(0.92) translateY(8px);
+			}
+		}
+
+		:global(.ai-hint-icon) {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 60px;
+			height: 60px;
+			margin-bottom: 4px;
+			border-radius: 50%;
+			background: linear-gradient(135deg, rgba(0, 122, 255, 0.18), rgba(90, 200, 255, 0.18));
+			color: rgb(0, 122, 255);
+			box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+		}
+
+		:global(.dark) :global(.ai-hint-icon) {
+			background: linear-gradient(135deg, rgba(10, 132, 255, 0.3), rgba(100, 210, 255, 0.25));
+			color: rgb(120, 200, 255);
+		}
+
+		:global(.ai-hint-title) {
+			font-size: 1.05rem;
+			font-weight: 600;
+			color: rgb(28, 28, 30);
+			letter-spacing: -0.01em;
+		}
+
+		:global(.dark) :global(.ai-hint-title) {
+			color: rgb(245, 245, 247);
+		}
+
+		:global(.ai-hint-desc) {
+			font-size: 0.82rem;
+			line-height: 1.45;
+			color: rgba(60, 60, 67, 0.78);
+			font-weight: 400;
+		}
+
+		:global(.dark) :global(.ai-hint-desc) {
+			color: rgba(235, 235, 245, 0.7);
+		}
+
+		:global(.ai-hint-sub) {
+			font-size: 0.7rem;
+			color: rgba(60, 60, 67, 0.45);
+			margin-top: 2px;
+		}
+
+		:global(.dark) :global(.ai-hint-sub) {
+			color: rgba(235, 235, 245, 0.4);
+		}
+
+		:global(.ai-hint-ok) {
+			margin-top: 12px;
+			padding: 8px 22px;
+			border: 0;
+			border-radius: 9999px;
+			background: rgb(0, 122, 255);
+			color: white;
+			font-size: 0.85rem;
+			font-weight: 500;
+			letter-spacing: -0.01em;
+			cursor: pointer;
+			box-shadow: 0 4px 14px rgba(0, 122, 255, 0.35);
+			transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+		}
+
+		:global(.ai-hint-ok):hover {
+			background: rgb(0, 110, 235);
+			box-shadow: 0 6px 18px rgba(0, 122, 255, 0.45);
+		}
+
+		:global(.ai-hint-ok):active {
+			transform: scale(0.96);
+			background: rgb(0, 100, 220);
+		}
+</style>
+
+<script>
+	const islandAborters = new WeakMap<Element, AbortController>();
+	const islandInited = new WeakSet<Element>();
+
+	function initArticleIsland() {
+		const islands = document.querySelectorAll('[data-article-island]');
+		islands.forEach((island) => {
+			// 重新初始化前先清理旧监听器（swup 切页时）
+			if (islandInited.has(island)) {
+				const old = islandAborters.get(island);
+				old?.abort();
+			}
+
+			// 每次初始化都重置为折叠状态（避免 swup 切页时保留 open）
+			island.classList.remove('open');
+
+			const trigger = island.querySelector('[data-ai-trigger]') as HTMLButtonElement | null;
+			const closeBtn = island.querySelector('[data-ai-close]') as HTMLButtonElement | null;
+			if (!trigger || !closeBtn) return;
+
+			const aborter = new AbortController();
+			const { signal } = aborter;
+			islandAborters.set(island, aborter);
+			islandInited.add(island);
+
+			const open = () => island.classList.add('open');
+			const close = () => island.classList.remove('open');
+
+			trigger.addEventListener(
+				'click',
+				(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					if (island.classList.contains('open')) {
+						close();
+					} else {
+						open();
+					}
+				},
+				{ signal },
+			);
+
+			closeBtn.addEventListener(
+				'click',
+				(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					close();
+				},
+				{ signal },
+			);
+
+			document.addEventListener(
+				'click',
+				(e) => {
+					if (!island.contains(e.target as Node)) {
+						close();
+					}
+				},
+				{ signal },
+			);
+
+			document.addEventListener(
+				'keydown',
+				(e) => {
+					if (e.key === 'Escape') {
+						close();
+					}
+				},
+				{ signal },
+			);
+
+			const items = island.querySelectorAll('[data-ai-item]');
+			items.forEach((item) => {
+				item.addEventListener(
+					'click',
+					() => {
+						setTimeout(close, 50);
+					},
+					{ signal },
+				);
+			});
+		});
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initArticleIsland);
+	} else {
+		initArticleIsland();
+	}
+	document.addEventListener('astro:page-load', initArticleIsland);
+	document.addEventListener('swup:contentReplaced', initArticleIsland);
+
+	// swup 切页前：强制重置所有岛的 open 状态
+	document.addEventListener('swup:beforeContentReplace', () => {
+		document.querySelectorAll('[data-article-island]').forEach((island) => {
+			island.classList.remove('open');
+		});
+	});
+
+	// === 全局响应式提示弹窗（仅窄屏触发，iOS 玻璃风格）===
+	let hintTimer: ReturnType<typeof setTimeout> | null = null;
+	let hintActive = false;
+
+	function showResponsiveHint() {
+		if (hintActive) return;
+
+		// 清理可能存在的旧 timer
+		if (hintTimer) {
+			clearTimeout(hintTimer);
+			hintTimer = null;
+		}
+
+		hintActive = true;
+		// 立即显示
+		// 动态创建 modal 元素
+		const modal = document.createElement('div');
+		modal.className = 'ai-hint-modal';
+		modal.setAttribute('role', 'dialog');
+		modal.setAttribute('aria-modal', 'true');
+		modal.innerHTML = `
+			<div class="ai-hint-backdrop"></div>
+			<div class="ai-hint-card">
+				<div class="ai-hint-icon">
+					<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+				</div>
+				<div class="ai-hint-title">更好的体验</div>
+				<div class="ai-hint-desc">建议使用 1080P 桌面端浏览器访问本页面<br>以获得最佳显示效果</div>
+				<div class="ai-hint-sub">此提示将在 10 秒后自动消失</div>
+				<button type="button" class="ai-hint-ok">我知道了</button>
+			</div>
+		`;
+
+		document.body.appendChild(modal);
+
+		const dismiss = () => {
+			if (modal.classList.contains('leaving')) return;
+			modal.classList.add('leaving');
+			setTimeout(() => {
+				modal.remove();
+				hintActive = false;
+			}, 250);
+		};
+
+		modal.querySelector('.ai-hint-ok')?.addEventListener('click', dismiss);
+		modal.querySelector('.ai-hint-backdrop')?.addEventListener('click', dismiss);
+
+		// 10 秒自动关闭
+		setTimeout(dismiss, 10000);
+
+		// 立即显示
+		requestAnimationFrame(() => {
+			modal.classList.add('show');
+		});
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', showResponsiveHint);
+	} else {
+		showResponsiveHint();
+	}
+</script>

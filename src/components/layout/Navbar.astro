@@ -17,6 +17,7 @@ import { getFallbackFormat, getImageFormats } from "@/utils/image-utils";
 import { isHomePage } from "@/utils/layout-utils";
 import { url } from "@/utils/url-utils";
 import DropdownMenu from "./DropdownMenu.astro";
+import ArticleIsland from "./ArticleIsland.astro";
 
 const className = Astro.props.class;
 
@@ -102,7 +103,8 @@ if (isLocalSrcLogo) {
         className,
         "overflow-visible! h-14 px-4 rounded-2xl"
     ]}>
-        <div class="mx-auto h-full flex items-center gap-3">
+        <div class="mx-auto h-full flex items-center gap-3 relative">
+            <div id="navbar-pill" class="navbar-pill" aria-hidden="true"></div>
             <button
                 onclick="openEasterEgg()"
                 class="btn-plain scale-animation rounded-lg h-10 px-3 md:px-5 font-bold active:scale-95 shrink-0 cursor-pointer"
@@ -141,6 +143,23 @@ if (isLocalSrcLogo) {
                     : "justify-start pl-2"
             ]}>
                 {links.map((l) => {
+                    // 文章按钮使用岛内展开的特殊组件
+                    if (l.name === "文章") {
+                        return (
+                            <ArticleIsland
+                                triggerName={l.name}
+                                triggerIcon={l.icon || "material-symbols:article"}
+                                triggerHref={l.url}
+                                items={[
+                                    { name: "文章", url: "/", icon: "material-symbols:article", desc: "返回主页" },
+                                    { name: "归档", url: "/archive/", icon: "material-symbols:archive", desc: "按时间归档" },
+                                    { name: "系列", url: "/series/", icon: "material-symbols:collections-bookmark", desc: "专题系列" },
+                                    { name: "分类", url: "/categories/", icon: "material-symbols:folder-open-rounded", desc: "按分类浏览" },
+                                    { name: "标签", url: "/tags/", icon: "material-symbols:tag-rounded", desc: "按标签浏览" },
+                                ]}
+                            />
+                        );
+                    }
                     return <DropdownMenu link={l} />;
                 })}
             </div>
@@ -191,15 +210,22 @@ if (isLocalSrcLogo) {
 <!-- 手机端独立浮空导航岛 - 显示在导航栏下方，居中于视口 -->
 <div id="mobile-nav-island" class="lg:hidden fixed z-50 pointer-events-auto">
     <div class="mobile-nav-island-inner flex items-center gap-0.5 px-2 py-1.5 rounded-full">
-        {links.map((l) => (
-            <a
-                href={l.external ? l.url : url(l.url)}
-                class="shrink-0 px-2.5 py-1 text-xs font-medium text-black/60 dark:text-white/60 rounded-full hover:bg-(--btn-plain-bg-hover) hover:text-(--primary) active:text-(--primary) transition"
-                target={l.external ? "_blank" : null}
-            >
-                {l.name}
-            </a>
-        ))}
+        <span class="mobile-pill" aria-hidden="true"></span>
+        {links.map((l) => {
+            const linkUrl = l.children && l.children.length > 0
+                ? (l.children[0].external ? l.children[0].url : url(l.children[0].url))
+                : (l.external ? l.url : url(l.url));
+            return (
+                <a
+                    href={linkUrl}
+                    data-mobile-pill
+                    class="mobile-pill-link shrink-0 px-2.5 py-1 text-xs font-medium text-black/60 dark:text-white/60 rounded-full active:scale-95 transition"
+                    target={l.external ? "_blank" : null}
+                >
+                    {l.name}
+                </a>
+            );
+        })}
     </div>
 </div>
 
@@ -324,6 +350,125 @@ if (document.readyState === 'loading') {
 }
 document.addEventListener('astro:page-load', initMobileNavIsland);
 document.addEventListener('swup:contentReplaced', initMobileNavIsland);
+
+// 手机浮空岛：iOS 风格滑动玻璃高亮
+function initMobilePill() {
+    const inner = document.querySelector('#mobile-nav-island .mobile-nav-island-inner') as HTMLElement | null;
+    const pill = document.querySelector('#mobile-nav-island .mobile-pill') as HTMLElement | null;
+    if (!inner || !pill) return;
+    const links = Array.from(inner.querySelectorAll<HTMLAnchorElement>('a[data-mobile-pill]'));
+    if (links.length === 0) return;
+
+    function moveTo(el: HTMLElement | null) {
+        if (!el || !inner || !pill) {
+            pill.classList.remove('is-active');
+            return;
+        }
+        const innerRect = inner.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        const x = r.left - innerRect.left;
+        // pill 高度 24px == 链接高度 24px，直接用 link 的 top 作为 pill top，再向上 2px 微调
+        const yTop = r.top - innerRect.top - 2;
+        pill.style.width = r.width + 'px';
+        pill.style.transform = `translate(${x}px, ${yTop}px)`;
+        pill.classList.add('is-active');
+
+        inner.querySelectorAll('[data-mobile-active]').forEach((n) => n.removeAttribute('data-mobile-active'));
+        el.setAttribute('data-mobile-active', '');
+    }
+
+    function findActive(): HTMLElement | null {
+        const path = window.location.pathname.replace(/\/+$/, '') || '/';
+        for (const el of links) {
+            const href = el.getAttribute('href');
+            if (!href) continue;
+            try {
+                const u = new URL(href, window.location.origin);
+                const hp = u.pathname.replace(/\/+$/, '') || '/';
+                if (hp === path) return el;
+            } catch { /* ignore */ }
+        }
+        return null;
+    }
+
+    // 点击锁定：点击后 swup 切页期间不重新定位
+    let clickLock: HTMLElement | null = null;
+    let clickLockTimer: ReturnType<typeof setTimeout> | null = null;
+    function lockTo(el: HTMLElement) {
+        clickLock = el;
+        if (clickLockTimer) clearTimeout(clickLockTimer);
+        clickLockTimer = setTimeout(() => { clickLock = null; }, 1500);
+    }
+
+    // 用事件委托替换逐个绑定
+    if (!(inner as any).__mobilePillClickBound) {
+        inner.addEventListener('click', (e) => {
+            const t = (e.target as HTMLElement)?.closest('a[data-mobile-pill]') as HTMLElement | null;
+            if (!t) return;
+            lockTo(t);
+            requestAnimationFrame(() => moveTo(t));
+        });
+        (inner as any).__mobilePillClickBound = true;
+    }
+
+    function refresh() {
+        if (clickLock) {
+            moveTo(clickLock);
+            return;
+        }
+        moveTo(findActive());
+    }
+
+    // 初始定位（双 rAF，等布局/字体/可见性稳定）
+    requestAnimationFrame(() => requestAnimationFrame(refresh));
+
+    // 当 island 从隐藏变为可见（或尺寸变化）时，重新定位
+    if (typeof ResizeObserver !== 'undefined' && inner) {
+        const ro = new ResizeObserver(() => {
+            if (inner && inner.offsetWidth > 0) refresh();
+        });
+        ro.observe(inner);
+    }
+    // 监听 island 自身的 display 变化
+    if (inner) {
+        const island = inner.closest('#mobile-nav-island') as HTMLElement | null;
+        if (island && (window as any).MutationObserver) {
+            const mo = new MutationObserver(() => {
+                if (island.offsetWidth > 0 || getComputedStyle(island).display !== 'none') {
+                    requestAnimationFrame(refresh);
+                }
+            });
+            mo.observe(island, { attributes: true, attributeFilter: ['style', 'class'] });
+        }
+    }
+
+    // 横向滚动 island 时，让 pill 也跟着水平移动
+    inner.addEventListener('scroll', () => {
+        const active = inner.querySelector('[data-mobile-active]') as HTMLElement | null;
+        if (active) moveTo(active);
+    });
+
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    window.addEventListener('resize', () => {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(refresh, 80);
+    });
+    document.addEventListener('astro:page-load', () => {
+        clickLock = null;
+        setTimeout(refresh, 50);
+    });
+    document.addEventListener('swup:contentReplaced', () => {
+        setTimeout(refresh, 50);
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMobilePill);
+} else {
+    initMobilePill();
+}
+document.addEventListener('astro:page-load', initMobilePill);
+document.addEventListener('swup:contentReplaced', () => setTimeout(initMobilePill, 30));
 
 function loadButtonScript() {
     // 背景视频播放器控制按钮
@@ -483,3 +628,270 @@ if (document.readyState === 'loading') {
         </script>
     )
 }
+
+<style is:global>
+	/* 桌面导航栏：iOS 灵动岛玻璃椭圆高亮 */
+	.navbar-pill {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 0;
+		/* 比按钮 (40px) 略大，呈现 iOS 灵动岛扩张感 */
+		height: 42px;
+		border-radius: 9999px;
+		background: linear-gradient(
+			135deg,
+			rgba(125, 211, 252, 0.55) 0%,
+			rgba(186, 230, 253, 0.45) 50%,
+			rgba(125, 211, 252, 0.55) 100%
+		);
+		box-shadow:
+			0 4px 14px -4px rgba(56, 189, 248, 0.35),
+			inset 0 1px 0 rgba(255, 255, 255, 0.5),
+			inset 0 -1px 0 rgba(56, 189, 248, 0.18);
+		backdrop-filter: blur(20px) saturate(180%);
+		-webkit-backdrop-filter: blur(20px) saturate(180%);
+		border: 1px solid rgba(255, 255, 255, 0.4);
+		transform: translate(-9999px, 0);
+		opacity: 0;
+		pointer-events: none;
+		z-index: 0;
+		transition:
+			transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+			width 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+			opacity 0.3s ease;
+		will-change: transform, width;
+	}
+
+	.navbar-pill.is-active {
+		opacity: 1;
+	}
+
+	/* 暗色模式：更通透的玻璃 */
+	.dark .navbar-pill {
+		background: linear-gradient(
+			135deg,
+			rgba(56, 189, 248, 0.4) 0%,
+			rgba(125, 211, 252, 0.3) 50%,
+			rgba(56, 189, 248, 0.4) 100%
+		);
+		box-shadow:
+			0 4px 14px -4px rgba(56, 189, 248, 0.5),
+			inset 0 1px 0 rgba(255, 255, 255, 0.15),
+			inset 0 -1px 0 rgba(56, 189, 248, 0.3);
+		border: 1px solid rgba(125, 211, 252, 0.35);
+	}
+
+	/* 当 pill 在按钮后面时，按钮文字加粗并提亮 */
+	[data-navbar-active] {
+		position: relative;
+		z-index: 1;
+	}
+
+	[data-navbar-active] :global(.navbar-icon),
+	[data-navbar-active] :global(svg) {
+		color: var(--primary) !important;
+	}
+
+	[data-navbar-active] {
+		color: var(--primary) !important;
+	}
+	:root.dark [data-navbar-active] {
+		color: rgb(186, 230, 253) !important;
+	}
+
+	/* 桌面端导航按钮：hover 时文字 iOS 玻璃风格放大 */
+	@media (min-width: 1024px) {
+		#navbar a[href],
+		#navbar button[data-ai-trigger] {
+			transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+						color 0.3s ease;
+			transform-origin: center center;
+		}
+		#navbar a[href]:hover,
+		#navbar button[data-ai-trigger]:hover {
+			transform: scale(1.15);
+		}
+		#navbar a[href]:hover > *,
+		#navbar button[data-ai-trigger]:hover > * {
+			color: var(--primary);
+		}
+		:root.dark #navbar a[href]:hover > *,
+		:root.dark #navbar button[data-ai-trigger]:hover > * {
+			color: rgb(186, 230, 253);
+		}
+	}
+</style>
+
+<script>
+	// 同步所有导航按钮的 is-current / aria-current，匹配当前 URL
+	function syncNavbarActiveState() {
+		const path = window.location.pathname.replace(/\/+$/, '') || '/';
+		const root = document.getElementById('navbar');
+		if (!root) return;
+		const elements: HTMLElement[] = Array.from(
+			root.querySelectorAll<HTMLElement>('a[href], button[data-ai-trigger]')
+		);
+		for (const el of elements) {
+			const href =
+				el.tagName === 'A'
+					? (el as HTMLAnchorElement).getAttribute('href')
+					: el.getAttribute('data-ai-trigger-href') || el.getAttribute('href');
+			if (!href) continue;
+			try {
+				const u = new URL(href, window.location.origin);
+				const hp = u.pathname.replace(/\/+$/, '') || '/';
+				if (hp === path || (hp === '/' && (path === '/' || path === '/index.html'))) {
+					el.classList.add('is-current');
+					if (el.tagName === 'A') el.setAttribute('aria-current', 'page');
+				} else {
+					el.classList.remove('is-current');
+					if (el.tagName === 'A') el.removeAttribute('aria-current');
+				}
+			} catch { /* ignore */ }
+		}
+	}
+
+	function initNavbarPill() {
+		const pill = document.getElementById('navbar-pill');
+		if (!pill) return;
+
+		// 收集可作为高亮目标的元素
+		function collectTargets(): HTMLElement[] {
+			const root = pill?.parentElement;
+			if (!root) return [];
+			return Array.from(root.querySelectorAll<HTMLElement>('button, a[href]')).filter((n) => {
+				if (n.closest('#navbar-actions')) return false;
+				if (n.closest('button[data-ai-close]')) return false;
+				return true;
+			});
+		}
+
+		// 移动 pill 到指定元素
+		function moveTo(el: HTMLElement | null) {
+			if (!el) {
+				pill?.classList.remove('is-active');
+				return;
+			}
+			const parent = pill?.parentElement;
+			if (!parent) return;
+			const parentRect = parent.getBoundingClientRect();
+			const r = el.getBoundingClientRect();
+			// 玻璃椭圆比按钮左右各扩 8px、上 1px (iOS 灵动岛扩张感)
+			const x = r.left - parentRect.left - 8;
+			const yTop = r.top - parentRect.top - 1;
+			pill.style.width = r.width + 16 + 'px';
+			pill.style.transform = `translate(${x}px, ${yTop}px)`;
+			pill.classList.add('is-active');
+			document.querySelectorAll('[data-navbar-active]').forEach((n) => n.removeAttribute('data-navbar-active'));
+			el.setAttribute('data-navbar-active', '');
+		}
+
+		// 找当前 URL 对应的目标元素
+		function findActive(): HTMLElement | null {
+			const path = window.location.pathname.replace(/\/+$/, '') || '/';
+			const targets = collectTargets();
+			// 1) aria-current
+			for (const el of targets) {
+				if (el.getAttribute('aria-current') === 'page') return el;
+			}
+			// 2) is-current 类
+			for (const el of targets) {
+				if (el.classList.contains('is-current')) return el;
+			}
+			// 3) href 精确匹配
+			for (const el of targets) {
+				const href = (el as HTMLAnchorElement).getAttribute('href');
+				if (!href) continue;
+				try {
+					const u = new URL(href, window.location.origin);
+					const hp = u.pathname.replace(/\/+$/, '') || '/';
+					if (hp === path) return el;
+				} catch { /* ignore */ }
+			}
+			// 4) 根路径兜底
+			if (path === '/' || path === '/index.html') {
+				for (const el of targets) {
+					const href = (el as HTMLAnchorElement).getAttribute('href');
+					if (!href) continue;
+					try {
+						const u = new URL(href, window.location.origin);
+						if ((u.pathname.replace(/\/+$/, '') || '/') === '/') return el;
+					} catch { /* ignore */ }
+				}
+			}
+			return null;
+		}
+
+		// 临时锁定：点击后 swup 完成前，强制 pill 跟随点击元素，避免被旧 URL 拉回去
+		let clickLock: HTMLElement | null = null;
+		let clickLockTimer: ReturnType<typeof setTimeout> | null = null;
+
+		function lockTo(el: HTMLElement) {
+			clickLock = el;
+			if (clickLockTimer) clearTimeout(clickLockTimer);
+			// 给 swup 切页一个宽限窗口，期间不重新定位
+			clickLockTimer = setTimeout(() => {
+				clickLock = null;
+			}, 1500);
+		}
+
+		// 事件委托：点击导航栏内任意按钮/链接，立即滑动到该元素
+		const root = pill.parentElement;
+		if (root && !(root as any).__navbarPillClickBound) {
+			root.addEventListener('click', (e) => {
+				const t = (e.target as HTMLElement)?.closest('button, a[href]') as HTMLElement | null;
+				if (!t) return;
+				if (t.closest('#navbar-actions')) return;
+				if (t.closest('button[data-ai-close]')) return;
+				if (t.closest('.dropdown-menu')) return;
+				lockTo(t);
+				requestAnimationFrame(() => moveTo(t));
+			});
+			(root as any).__navbarPillClickBound = true;
+		}
+
+		function refresh() {
+			if (clickLock) {
+				moveTo(clickLock);
+				return;
+			}
+			syncNavbarActiveState();
+			moveTo(findActive());
+		}
+
+		// 初始定位
+		requestAnimationFrame(refresh);
+
+		let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+		window.addEventListener('resize', () => {
+			if (resizeTimer) clearTimeout(resizeTimer);
+			resizeTimer = setTimeout(refresh, 80);
+		});
+		document.addEventListener('astro:page-load', () => {
+			clickLock = null;
+			setTimeout(refresh, 50);
+		});
+		// swup 切页：尊重点击锁定，等锁定释放再跟随 URL
+		document.addEventListener('swup:contentReplaced', () => {
+			setTimeout(refresh, 50);
+		});
+		if ((window as any).swup?.hooks) {
+			(window as any).swup.hooks.on('page:view', () => {
+				setTimeout(refresh, 30);
+			});
+		}
+
+		(window as any).__navbarPillMove = moveTo;
+		(window as any).__syncNavbarActiveState = syncNavbarActiveState;
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initNavbarPill);
+	} else {
+		initNavbarPill();
+	}
+	document.addEventListener('astro:page-load', initNavbarPill);
+	document.addEventListener('swup:contentReplaced', () => setTimeout(initNavbarPill, 30));
+</script>
+</style>

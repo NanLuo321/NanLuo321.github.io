@@ -36,13 +36,8 @@
     z-index: -10;
     transition: all 0.15s ease-out;
   }
-  &:hover::before {
-    background-color: var(--btn-plain-bg-hover);
-    scale: 1;
-  }
-  &:active::before {
-    background-color: var(--btn-plain-bg-active);
-  }
+  /* 移除了 &:hover::before / &:active::before 的填色，避免产生绿色高亮；
+     如需给特定按钮加 hover 高亮，请显式给该元素加 .expand-fill 类。 */
   &:active {
     background: none;
   }
@@ -321,6 +316,10 @@ html {
         }
         &.scale-animation {
             @apply expand-animation;
+            /* 桌面端 / 移动端导航按钮：禁用 hover 背景色（玻璃椭圆高亮负责） */
+            &:hover {
+                background-color: transparent !important;
+            }
         }
     }
     .current-theme-btn {

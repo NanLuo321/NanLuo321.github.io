@@ -53,37 +53,35 @@ const stopPropagation = (e: MouseEvent): void => {
 
 // --- Core Search Logic ---
 const search = async (kw: string): Promise<void> => {
-	if (!kw) {
-		result = [];
-		return;
-	}
-	if (!initialized) return;
+		if (!kw) {
+			result = [];
+			return;
+		}
+		if (!initialized) return;
 
-	isSearching = true;
+		isSearching = true;
 
-	clearTimeout(debounceTimer);
-	debounceTimer = setTimeout(async () => {
-		try {
-			let searchResults: SearchResult[] = [];
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(async () => {
+			try {
+				let searchResults: SearchResult[] = [];
 
-			if (import.meta.env.PROD && window.pagefind) {
-				const response = await window.pagefind.search(kw);
-				searchResults = await Promise.all(
-					response.results.map((item) => item.data()),
-				);
-			} else if (import.meta.env.DEV) {
-					searchResults = [];
+				if (window.pagefind) {
+					const response = await window.pagefind.search(kw);
+					searchResults = await Promise.all(
+						response.results.map((item) => item.data()),
+					);
 				}
 
-			result = searchResults;
-		} catch (error) {
-			console.error("Search error:", error);
-			result = [];
-		} finally {
-			isSearching = false;
-		}
-	}, 300);
-};
+				result = searchResults;
+			} catch (error) {
+				console.error("Search error:", error);
+				result = [];
+			} finally {
+				isSearching = false;
+			}
+		}, 300);
+	};
 
 // --- Keyboard ---
 const handleKeydown = (e: KeyboardEvent): void => {
@@ -97,14 +95,11 @@ const handleDocumentClick = (): void => {
 
 // --- Initialization ---
 onMount(() => {
-	const initializePagefind = () => {
-		initialized = true;
-		if (keyword) search(keyword);
-	};
+		const initializePagefind = () => {
+			initialized = true;
+			if (keyword) search(keyword);
+		};
 
-	if (import.meta.env.DEV) {
-		initializePagefind();
-	} else {
 		if (window.pagefind) {
 			initializePagefind();
 		} else {
@@ -115,11 +110,10 @@ onMount(() => {
 				once: true,
 			});
 		}
-	}
 
-	document.addEventListener("click", handleDocumentClick);
-	return () => document.removeEventListener("click", handleDocumentClick);
-});
+		document.addEventListener("click", handleDocumentClick);
+		return () => document.removeEventListener("click", handleDocumentClick);
+	});
 
 // --- Reactive ---
 let lastKeyword = "";
@@ -186,7 +180,7 @@ $effect(() => {
 							{/if}
 						{:else}
 							<div class="block rounded-lg px-3 py-2 text-50 text-sm">
-								{import.meta.env.DEV ? "搜索功能需构建后使用 (pnpm build && pnpm preview)" : "未搜索到结果"}
+								{!window.pagefind ? "搜索功能需构建后使用 (pnpm build && pnpm preview)" : "未搜索到结果"}
 							</div>
 						{/if}
 					</div>

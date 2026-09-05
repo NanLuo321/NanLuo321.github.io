@@ -16,7 +16,7 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 	// 主页
 	links.push(LinkPresets.Home);
 
-	// 文章 - 直接导航到归档页
+	// 文章 - 下拉菜单包含文章、分类、标签页
 	links.push(LinkPresets.Archive);
 
 	// 音乐播放器
@@ -68,10 +68,10 @@ export const LinkPresets: Record<string, NavBarLink> = {
 		pageKey: "dynamic",
 	},
 	Archive: {
-		name: "归档",
-		url: "/archive/",
-		icon: "material-symbols:archive",
-	},
+			name: "文章",
+			url: "/archive/",
+			icon: "material-symbols:article",
+		},
 	Categories: {
 		name: "分类",
 		url: "/categories/",
