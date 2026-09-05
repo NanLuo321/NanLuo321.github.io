@@ -133,25 +133,50 @@
 	function showLoader() {
 		const loader = document.getElementById('page-loader');
 		if (!loader) return;
+		loader.classList.add('is-shown');
 		loader.classList.remove('is-hidden');
 	}
 
 	function hideLoader() {
 		const loader = document.getElementById('page-loader');
 		if (!loader) return;
+		loader.classList.remove('is-shown');
 		loader.classList.add('is-hidden');
 	}
 
-	// 仅在整页刷新（首屏加载）时显示一次并淡出；
-	// 站内 swup 切页不触发——script 不会重新执行，且元素默认 is-hidden。
+	// 仅在整页刷新（首屏加载）显示一次并淡出；
+	// 站内 swup 切页不触发此动画（脚本不会重新执行，且元素默认 is-hidden）。
 	function playOnce() {
 		showLoader();
 		setTimeout(hideLoader, 600);
 	}
 
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', playOnce);
-	} else {
-		playOnce();
+	// 用 sessionStorage 标记本次会话已经播过一次：
+	// - 避免 Astro 把 <script> 重新内联到 prefetch / swup 切页的 HTML 中时再次播放
+	// - 关闭标签页后会重置，所以下次整页刷新仍会播放一次
+	try {
+		if (sessionStorage.getItem('__pageLoaderPlayed') === '1') {
+			// 已被播放过：立刻保持 hidden，不再展示
+			hideLoader();
+		} else {
+			sessionStorage.setItem('__pageLoaderPlayed', '1');
+			if (document.readyState === 'loading') {
+				document.addEventListener('DOMContentLoaded', playOnce);
+			} else {
+				playOnce();
+			}
+		}
+	} catch (_e) {
+		// sessionStorage 不可用时退回仅整页播放一次
+		if (!(window as any).__pageLoaderPlayed) {
+			(window as any).__pageLoaderPlayed = true;
+			if (document.readyState === 'loading') {
+				document.addEventListener('DOMContentLoaded', playOnce);
+			} else {
+				playOnce();
+			}
+		} else {
+			hideLoader();
+		}
 	}
 </script>
