@@ -626,17 +626,25 @@ const triggerFinalHref = url(triggerHref);
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			width: 60px;
-			height: 60px;
+			width: 84px;
+			height: 84px;
 			margin-bottom: 4px;
 			border-radius: 50%;
-			background: linear-gradient(135deg, rgba(0, 122, 255, 0.18), rgba(90, 200, 255, 0.18));
+			overflow: hidden;
+			background: transparent;
 			color: rgb(0, 122, 255);
-			box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+			box-shadow: none;
+		}
+
+		:global(.ai-hint-icon) img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+			border-radius: 50%;
 		}
 
 		:global(.dark) :global(.ai-hint-icon) {
-			background: linear-gradient(135deg, rgba(10, 132, 255, 0.3), rgba(100, 210, 255, 0.25));
+			background: transparent;
 			color: rgb(120, 200, 255);
 		}
 
@@ -805,6 +813,42 @@ const triggerFinalHref = url(triggerHref);
 	function showResponsiveHint() {
 		if (hintActive) return;
 
+		// 检测本次页面加载是否是浏览器刷新：
+		// - navigation type === 'reload' 表示 F5 / Ctrl+R / 浏览器刷新按钮
+		// - navigation type === 'navigate' 表示首次打开或地址栏回车 / 链接打开
+		// - swup 站内切页不会触发 DOMContentLoaded，所以不会重新弹出
+		let isReload = false;
+		try {
+			const navEntries = performance.getEntriesByType('navigation');
+			if (navEntries && navEntries[0] && navEntries[0].type === 'reload') {
+				isReload = true;
+			}
+		} catch (_e) {
+			// 旧浏览器没有 performance.getEntriesByType：退回用 performance.navigation
+			try {
+				if ((performance as any).navigation && (performance as any).navigation.type === 1) {
+					isReload = true;
+				}
+			} catch (_e2) {
+				/* ignore */
+			}
+		}
+
+		// 仅在浏览器刷新 / 首次进入时显示；站内 swup 切页不显示
+		// 用 sessionStorage 做兜底（防止 swup 重新执行 script 时也弹）
+		if (!isReload) {
+			try {
+				if (sessionStorage.getItem('__responsiveHintShown') === '1') {
+					return;
+				}
+				sessionStorage.setItem('__responsiveHintShown', '1');
+			} catch (_e) {
+				// sessionStorage 不可用时回退到页面级标志
+				if ((window as any).__responsiveHintShown) return;
+				(window as any).__responsiveHintShown = true;
+			}
+		}
+
 		// 清理可能存在的旧 timer
 		if (hintTimer) {
 			clearTimeout(hintTimer);
@@ -822,7 +866,7 @@ const triggerFinalHref = url(triggerHref);
 			<div class="ai-hint-backdrop"></div>
 			<div class="ai-hint-card">
 				<div class="ai-hint-icon">
-					<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+					<img src="/assets/hint-icon.png" alt="" width="96" height="96" />
 				</div>
 				<div class="ai-hint-title">更好的体验</div>
 				<div class="ai-hint-desc">建议使用 1080P 桌面端浏览器访问本页面<br>以获得最佳显示效果</div>

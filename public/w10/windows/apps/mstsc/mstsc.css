@@ -1,0 +1,419 @@
+/* 远程桌面连接 mstsc 风格样式 */
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #f3f3f3;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 12px;
+    color: #1f1f1f;
+    user-select: none;
+    overflow: hidden;
+}
+
+.mstsc-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #f3f3f3;
+}
+
+/* ---------- 标题栏 ---------- */
+.mstsc-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 30px;
+    padding: 0 6px 0 10px;
+    background: linear-gradient(to bottom, #4a8ad4 0%, #2566b3 50%, #194ea2 100%);
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.mstsc-titlebar-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.2px;
+}
+
+.mstsc-titlebar-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    color: #fff;
+    opacity: 0.95;
+}
+
+.mstsc-titlebar-right {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.mstsc-tb-btn {
+    width: 28px;
+    height: 22px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+}
+
+.mstsc-tb-btn:hover { background: rgba(255, 255, 255, 0.18); }
+.mstsc-tb-q { font-size: 12px; font-weight: 700; }
+
+/* ---------- 主体 ---------- */
+.mstsc-main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    background: #f3f3f3;
+}
+
+.mstsc-nav {
+    width: 160px;
+    background: #fafafa;
+    border-right: 1px solid #d8d8d8;
+    padding: 6px 0;
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+.mstsc-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.mstsc-nav li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 14px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #1f1f1f;
+    border-left: 3px solid transparent;
+    transition: background-color 0.15s;
+}
+
+.mstsc-nav li:hover {
+    background: #e8e8e8;
+}
+
+.mstsc-nav li.active {
+    background: #e5f1fb;
+    border-left-color: #2566b3;
+    color: #0a3d77;
+    font-weight: 600;
+}
+
+.mstsc-nav-ico {
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+    font-size: 13px;
+    filter: grayscale(0.4);
+}
+
+.mstsc-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 22px;
+    background: #f3f3f3;
+}
+
+.mstsc-tab { display: none; }
+.mstsc-tab[data-active="true"] { display: block; }
+
+.mstsc-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.mstsc-row > label {
+    width: 130px;
+    flex-shrink: 0;
+    color: #1f1f1f;
+    font-size: 12px;
+}
+
+.mstsc-row > input[type="text"],
+.mstsc-row > input[type="password"],
+.mstsc-row > input[type="number"],
+.mstsc-row > select {
+    flex: 1;
+    height: 24px;
+    border: 1px solid #a0a0a0;
+    background: #fff;
+    padding: 2px 6px;
+    font-size: 12px;
+    font-family: inherit;
+    color: #1f1f1f;
+    border-radius: 2px;
+    outline: none;
+}
+
+.mstsc-row > input:focus,
+.mstsc-row > select:focus {
+    border-color: #2566b3;
+    box-shadow: 0 0 0 1px #2566b3 inset;
+}
+
+.mstsc-row > select {
+    height: 26px;
+    padding-right: 20px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path fill='%23333' d='M0 0l5 6 5-6z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    background-size: 8px;
+}
+
+.mstsc-row-sub { padding-left: 140px; }
+.mstsc-row-check { gap: 6px; }
+.mstsc-row-check > label { width: auto; flex: 1; }
+
+/* ===== 主 IP 输入框 (像 mstsc 顶部那个大输入) ===== */
+.mstsc-ipbox {
+    margin: 4px 0 16px;
+    padding: 10px 12px 12px;
+    border: 1px solid #c8c8c8;
+    border-radius: 4px;
+    background: linear-gradient(to bottom, #fafafa 0%, #ededed 100%);
+}
+
+.mstsc-ipbox:focus-within {
+    border-color: #2566b3;
+    box-shadow: 0 0 0 1px #2566b3 inset;
+    background: #fff;
+}
+
+.mstsc-ipbox-label {
+    display: block;
+    font-size: 11px;
+    color: #555;
+    margin-bottom: 6px;
+    letter-spacing: 0.2px;
+}
+
+.mstsc-ipbox-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+}
+
+.mstsc-ipbox-input {
+    flex: 1;
+    height: 32px;
+    border: 1px solid #a0a0a0;
+    border-right: 0;
+    border-radius: 3px 0 0 3px;
+    padding: 0 10px;
+    font-size: 14px;
+    font-family: "Segoe UI", "Consolas", monospace;
+    background: #fff;
+    color: #1f1f1f;
+    outline: none;
+}
+
+.mstsc-ipbox-input:focus { border-color: #2566b3; }
+
+.mstsc-ipbox-sep {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    border-top: 1px solid #a0a0a0;
+    border-bottom: 1px solid #a0a0a0;
+    background: #f3f3f3;
+    color: #555;
+    font-family: "Consolas", monospace;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.mstsc-ipbox-port {
+    width: 76px;
+    height: 32px;
+    border: 1px solid #a0a0a0;
+    border-radius: 0 3px 3px 0;
+    padding: 0 8px;
+    font-size: 14px;
+    font-family: "Consolas", monospace;
+    background: #fff;
+    color: #1f1f1f;
+    outline: none;
+    text-align: center;
+}
+
+.mstsc-ipbox-port:focus { border-color: #2566b3; }
+
+.mstsc-hint {
+    flex-basis: 100%;
+    color: #666;
+    font-size: 11px;
+    line-height: 1.4;
+    margin-top: 2px;
+}
+
+.mstsc-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+    padding-left: 140px;
+}
+
+.mstsc-btn {
+    height: 26px;
+    min-width: 80px;
+    padding: 0 16px;
+    border: 1px solid #a0a0a0;
+    background: linear-gradient(to bottom, #fafafa 0%, #e0e0e0 100%);
+    color: #1f1f1f;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.mstsc-btn:hover { background: linear-gradient(to bottom, #fff 0%, #ececec 100%); }
+.mstsc-btn:active { background: linear-gradient(to bottom, #d8d8d8 0%, #f0f0f0 100%); }
+
+.mstsc-btn-primary {
+    background: linear-gradient(to bottom, #4a8ad4 0%, #2566b3 50%, #194ea2 100%);
+    color: #fff;
+    border-color: #194ea2;
+    font-weight: 600;
+}
+.mstsc-btn-primary:hover { background: linear-gradient(to bottom, #5a9ae4 0%, #3676c3 50%, #1a5ab2 100%); }
+
+.mstsc-btn-danger {
+    background: linear-gradient(to bottom, #e57373 0%, #c83e3e 100%);
+    color: #fff;
+    border-color: #a02020;
+}
+.mstsc-btn-danger:hover { background: linear-gradient(to bottom, #f58383 0%, #d84e4e 100%); }
+
+.mstsc-btn-sm {
+    height: 24px;
+    min-width: 0;
+    padding: 0 10px;
+    font-size: 11px;
+}
+
+/* ---------- 状态栏 ---------- */
+.mstsc-status {
+    height: 22px;
+    line-height: 22px;
+    padding: 0 10px;
+    background: linear-gradient(to bottom, #f0f0f0 0%, #dcdcdc 100%);
+    border-top: 1px solid #b8b8b8;
+    font-size: 11px;
+    color: #333;
+    flex-shrink: 0;
+}
+
+.mstsc-status.error { color: #b00; }
+.mstsc-status.ok { color: #080; }
+
+/* ---------- 桌面 / Canvas ---------- */
+.mstsc-screen {
+    position: absolute;
+    inset: 30px 0 0 0;
+    background: #1e1e1e;
+    display: flex;
+    flex-direction: column;
+    z-index: 5;
+}
+
+.mstsc-screen-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 32px;
+    padding: 0 8px;
+    background: linear-gradient(to bottom, #3a3a3a 0%, #1e1e1e 100%);
+    color: #fff;
+    border-bottom: 1px solid #000;
+    flex-shrink: 0;
+}
+
+.mstsc-screen-title {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mstsc-screen-btns {
+    display: flex;
+    gap: 6px;
+}
+
+.mstsc-canvas-wrap {
+    flex: 1;
+    position: relative;
+    background:
+        repeating-linear-gradient(45deg, #1a1a1a 0 10px, #222 10px 20px);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+}
+
+#mstsc-canvas {
+    display: block;
+    background: #000;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    max-width: 100%;
+    max-height: 100%;
+    outline: none;
+}
+
+#mstsc-canvas:focus {
+    box-shadow: 0 0 0 2px #4a8ad4, 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.mstsc-loading {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 10;
+    font-size: 13px;
+}
+
+.mstsc-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #4a8ad4;
+    border-radius: 50%;
+    animation: mstsc-spin 0.9s linear infinite;
+}
+
+@keyframes mstsc-spin {
+    to { transform: rotate(360deg); }
+}

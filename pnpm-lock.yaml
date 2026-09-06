@@ -74,6 +74,9 @@ importers:
       '@napi-rs/wasm-runtime':
         specifier: ^1.1.6
         version: 1.1.6(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
+      '@novnc/novnc':
+        specifier: ^1.7.0
+        version: 1.7.0
       '@swup/astro':
         specifier: ^1.8.0
         version: 1.8.0(rolldown@1.1.5)
@@ -1725,6 +1728,9 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
+
+  '@novnc/novnc@1.7.0':
+    resolution: {integrity: sha512-ucEJOx4T2avIRCleodk7YobZj5O2Ga2AeLfQ69A/yjG9HHba2+PDgwSkN3FttrmG+70ZGx21sElNFouK13RzyA==}
 
   '@oslojs/encoding@1.1.0':
     resolution: {integrity: sha512-70wQhgYmndg4GCPxPPxPGevRKqTIJ2Nh4OkiMWmDAVYsTQ+Ta7Sq+rPevXyXGdzr30/qZBnyOalCszoMxlyldQ==}
@@ -7691,6 +7697,8 @@ snapshots:
       '@emnapi/core': 1.11.1
       '@emnapi/runtime': 1.11.1
       '@tybys/wasm-util': 0.10.3
+
+  '@novnc/novnc@1.7.0': {}
 
   '@oslojs/encoding@1.1.0': {}
 

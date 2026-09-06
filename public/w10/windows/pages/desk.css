@@ -207,6 +207,7 @@ li {
   left: 0;
   width: 600px;
   height: 600px;
+  z-index: 200;
 }
 
 .other-run-frame {
@@ -402,6 +403,8 @@ li {
   line-height: 30px;
   text-indent: 1em;
   font-size: 12px;
+  pointer-events: none;
+  cursor: default;
 }
 
 .win-frame .applist p.mini {
@@ -412,14 +415,20 @@ li {
   padding-left: 2em;
 }
 
-.win-frame .applist ul li:hover,
-.win-frame .applist ul .zm:hover {
+/* 开始菜单 - 应用列表项:只对单个 li hover 才高亮 (真 Win10 行为)
+   zm (分组字母) 永远不高亮 */
+.win-frame .applist ul li:not(.zm):hover {
   background-color: #fff3;
 }
 
-.win-frame .applist ul li:active,
-.win-frame .applist ul .zm:active {
+.win-frame .applist ul li:not(.zm):active {
   background-color: #fff6;
+}
+
+/* 应用列表 hover 时不要让父链误触发 (避免一开菜单整片高亮) */
+.win-frame .applist:hover,
+.win-frame .applist ul:hover {
+  background-color: transparent;
 }
 
 .win-frame .applist ul li img {
@@ -1337,7 +1346,17 @@ a.win-link:hover {
   color: #ccc;
 }
 
-.wifi-frame .wifi-empty {
+/* Wi-Fi 列表项:已连接高亮 (像真 Win10) */
+.wifi-frame .wifi-list li.is-connected {
+  background-color: #ffffff1c;
+  border-left: 3px solid #6cc;
+  padding-left: 13px;
+}
+.wifi-frame .wifi-list li.is-connected:hover {
+  background-color: #ffffff2a;
+}
+
+.wifi-empty {
   color: #aaa;
   text-align: center;
   padding: 30px 0;

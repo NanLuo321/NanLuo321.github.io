@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>远程桌面连接</title>
+    <link rel="stylesheet" href="mstsc.css">
+</head>
+
+<body>
+    <div class="mstsc-shell">
+        <!-- 顶部蓝色标题栏 -->
+        <header class="mstsc-titlebar">
+            <div class="mstsc-titlebar-left">
+                <span class="mstsc-titlebar-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="4" width="20" height="13" rx="1.5"></rect>
+                        <path d="M8 21h8"></path>
+                        <path d="M12 17v4"></path>
+                    </svg>
+                </span>
+                <span class="mstsc-titlebar-text">远程桌面连接</span>
+            </div>
+            <div class="mstsc-titlebar-right">
+                <button class="mstsc-tb-btn" type="button" data-action="min" aria-label="最小化">
+                    <svg viewBox="0 0 10 10" width="10" height="10"><line x1="1" y1="5" x2="9" y2="5"
+                        stroke="currentColor" stroke-width="1.2"></line></svg>
+                </button>
+                <button class="mstsc-tb-btn" type="button" data-action="help" aria-label="帮助">
+                    <span class="mstsc-tb-q">?</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 主体: 左侧导航 + 右侧内容 -->
+        <main class="mstsc-main">
+            <nav class="mstsc-nav" aria-label="设置类别">
+                <ul>
+                    <li class="active" data-tab="general"><span class="mstsc-nav-ico">⚙</span>常规</li>
+                    <li data-tab="display"><span class="mstsc-nav-ico">🖥</span>显示</li>
+                    <li data-tab="experience"><span class="mstsc-nav-ico">⚡</span>体验</li>
+                    <li data-tab="advanced"><span class="mstsc-nav-ico">🛠</span>高级</li>
+                </ul>
+            </nav>
+
+            <section class="mstsc-content">
+                <!-- 常规 -->
+                <div class="mstsc-tab" data-tab="general" data-active="true">
+                    <!-- 主 IP / 主机 输入栏 (像 mstsc 顶部那个大输入框) -->
+                    <div class="mstsc-ipbox">
+                        <label class="mstsc-ipbox-label" for="mstsc-host">远程主机 (IP 或域名)</label>
+                        <div class="mstsc-ipbox-row">
+                            <input
+                                id="mstsc-host"
+                                type="text"
+                                class="mstsc-ipbox-input"
+                                placeholder="例如: 192.168.1.10  或  remote.example.com"
+                                autocomplete="off"
+                                spellcheck="false"
+                            />
+                            <span class="mstsc-ipbox-sep">:</span>
+                            <input
+                                id="mstsc-port"
+                                type="number"
+                                min="1"
+                                max="65535"
+                                value="3389"
+                                class="mstsc-ipbox-port"
+                                title="端口"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="mstsc-row">
+                        <label for="mstsc-ws">WebSocket 网关 (WSS/HTTPS)</label>
+                        <input id="mstsc-ws" type="text" placeholder="例如: wss://novnc.example.com:6080/websockify" />
+                        <small class="mstsc-hint">
+                            浏览器 VNC 需要经过 WebSocket 代理 (如 websockify) 转发到远端 VNC 服务器。留空则按 主机:端口 自动拼 ws://&lt;host&gt;:6080/websockify。
+                        </small>
+                    </div>
+                    <div class="mstsc-row">
+                        <label for="mstsc-user">用户名</label>
+                        <input id="mstsc-user" type="text" placeholder="可选" autocomplete="off" />
+                    </div>
+                    <div class="mstsc-row">
+                        <label for="mstsc-pass">密码</label>
+                        <input id="mstsc-pass" type="password" placeholder="可选" autocomplete="off" />
+                    </div>
+                    <div class="mstsc-row mstsc-row-check">
+                        <input id="mstsc-save" type="checkbox" />
+                        <label for="mstsc-save">记住此连接</label>
+                    </div>
+
+                    <div class="mstsc-actions">
+                        <button class="mstsc-btn mstsc-btn-primary" type="button" id="mstsc-connect">连接</button>
+                        <button class="mstsc-btn" type="button" id="mstsc-save-btn">保存</button>
+                        <button class="mstsc-btn" type="button" id="mstsc-open">打开</button>
+                    </div>
+                </div>
+
+                <!-- 显示 -->
+                <div class="mstsc-tab" data-tab="display">
+                    <div class="mstsc-row">
+                        <label>颜色</label>
+                        <select id="mstsc-quality">
+                            <option value="0">真彩色 (32 位)</option>
+                            <option value="1" selected>高质量 (24 位)</option>
+                            <option value="2">低质量 (16 位)</option>
+                        </select>
+                    </div>
+                    <div class="mstsc-row">
+                        <label>缩放</label>
+                        <select id="mstsc-scale">
+                            <option value="100">100%</option>
+                            <option value="75">75%</option>
+                            <option value="50">50%</option>
+                            <option value="fit" selected>适应窗口</option>
+                        </select>
+                    </div>
+                    <div class="mstsc-row">
+                        <label>光标</label>
+                        <select id="mstsc-cursor">
+                            <option value="local" selected>本地显示</option>
+                            <option value="server">服务器显示</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 体验 -->
+                <div class="mstsc-tab" data-tab="experience">
+                    <div class="mstsc-row mstsc-row-check">
+                        <input id="mstsc-clip" type="checkbox" checked />
+                        <label for="mstsc-clip">允许剪贴板 (双向)</label>
+                    </div>
+                    <div class="mstsc-row mstsc-row-check">
+                        <input id="mstsc-bell" type="checkbox" />
+                        <label for="mstsc-bell">播放提示音</label>
+                    </div>
+                    <div class="mstsc-row mstsc-row-check">
+                        <input id="mstsc-viewonly" type="checkbox" />
+                        <label for="mstsc-viewonly">仅查看 (禁止键盘/鼠标输入)</label>
+                    </div>
+                    <div class="mstsc-row mstsc-row-check">
+                        <input id="mstsc-resize" type="checkbox" checked />
+                        <label for="mstsc-resize">远程桌面尺寸自适应</label>
+                    </div>
+                </div>
+
+                <!-- 高级 -->
+                <div class="mstsc-tab" data-tab="advanced">
+                    <div class="mstsc-row">
+                        <label>连接超时 (秒)</label>
+                        <input id="mstsc-timeout" type="number" min="1" max="120" value="15" />
+                    </div>
+                    <div class="mstsc-row">
+                        <label>重试次数</label>
+                        <input id="mstsc-retry" type="number" min="0" max="10" value="1" />
+                    </div>
+                    <div class="mstsc-row">
+                        <label>压缩等级</label>
+                        <select id="mstsc-comp">
+                            <option value="0">关闭</option>
+                            <option value="2">低</option>
+                            <option value="6" selected>中</option>
+                            <option value="9">高</option>
+                        </select>
+                    </div>
+                    <div class="mstsc-row mstsc-row-check">
+                        <input id="mstsc-debug" type="checkbox" />
+                        <label for="mstsc-debug">调试模式 (在控制台输出 VNC 协议日志)</label>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 状态栏 -->
+        <footer class="mstsc-status" id="mstsc-status">就绪</footer>
+
+        <!-- 桌面 / Canvas 区域:连接后显示 -->
+        <div class="mstsc-screen" id="mstsc-screen" hidden>
+            <div class="mstsc-screen-bar">
+                <span class="mstsc-screen-title" id="mstsc-screen-title">远程会话</span>
+                <div class="mstsc-screen-btns">
+                    <button class="mstsc-btn mstsc-btn-sm" type="button" id="mstsc-send-ctrl-alt-del">发送 Ctrl+Alt+Del</button>
+                    <button class="mstsc-btn mstsc-btn-sm" type="button" id="mstsc-fullscreen">全屏</button>
+                    <button class="mstsc-btn mstsc-btn-sm mstsc-btn-danger" type="button" id="mstsc-disconnect">断开</button>
+                </div>
+            </div>
+            <div class="mstsc-canvas-wrap" id="mstsc-canvas-wrap">
+                <div class="mstsc-loading" id="mstsc-loading" hidden>
+                    <div class="mstsc-spinner"></div>
+                    <div class="mstsc-loading-text" id="mstsc-loading-text">正在连接...</div>
+                </div>
+                <canvas id="mstsc-canvas" width="800" height="600" tabindex="0"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="mstsc.js"></script>
+</body>
+
+</html>

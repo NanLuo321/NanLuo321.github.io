@@ -56,6 +56,14 @@ function quickframeToggler(t) {
     }
     // 让目标显示
     document.querySelector('.' + t + '-frame').style.display = "block";
+    // 开始菜单: 强制提到所有 Popup 窗口之上
+    if (t == 'win') {
+      var z = ZINDEX + 10;
+      var winFrame = document.querySelector('.win-frame');
+      if (winFrame) {
+        winFrame.style.zIndex = z.toString();
+      }
+    }
     // 200ms动画完成后，隐藏其它的QuickFrame
     animateTimeout1 = setTimeout(function () {
       document.querySelectorAll('.quick-frame').forEach(function (e) {
@@ -82,6 +90,13 @@ function quickframeToggler(t) {
         e.style.display = 'none';
       })
     }, 200);
+    // 开始菜单关闭:清理 z-index
+    if (t == 'win') {
+      var winFrame = document.querySelector('.win-frame');
+      if (winFrame) {
+        winFrame.style.zIndex = '';
+      }
+    }
     // 修改_q
     for (var key in _q) {
       _q[key] = false;
@@ -1484,48 +1499,139 @@ applySettings();
 
 // ===== 系统托盘 WiFi 面板 =====
 var trayWifiNames = ['CMCC-5G', 'ChinaNet-x7W2', 'TP-LINK_9F3A', 'Xiaomi_Home_2.4G', 'TP-LINK_5G_ABCD', 'Room-704-5G', 'HUAWEI-B311-8K2', 'Tenda_Home_4E77', 'WiFi-ZB3Q', 'OPPO_A53_5G'];
-function buildTrayWifiList() {
-  var list = document.getElementById('wifiPanelList');
-  if (!list) return;
-  var names = trayWifiNames.slice();
-  for (var i = names.length - 1; i > 0; i--) {
-    var j = Math.floor(Math.random() * (i + 1));
-    var t = names[i]; names[i] = names[j]; names[j] = t;
-  }
-  list.innerHTML = '';
-  names.forEach(function (name, idx) {
-    var connected = idx == 0;
-    var li = document.createElement('li');
-    li.innerHTML = '<div class="ic"><span class="bi bi-wifi"></span></div>' +
-      '<div class="wifi-info">' +
-      '<div class="nm">' + name + '</div>' +
-      (connected ? '<div class="st">已连接，安全</div>' : '<div class="st">安全</div>') +
-      '</div>' +
-      '<div class="lock"><span class="bi bi-lock-fill"></span></div>';
-    if (connected) {
-      li.innerHTML += '<span class="bi bi-check2" style="color:#7fffa0;font-size:16px;"></span>';
-      li.querySelector('.lock').style.display = 'none';
+var NET_STATE_KEY = 'w10_net_state';
+
+function readNetState() {
+    try {
+        var raw = localStorage.getItem(NET_STATE_KEY);
+        if (!raw) return { connected: true, ssid: trayWifiNames[0], enabled: true };
+        var s = JSON.parse(raw);
+        if (typeof s.connected !== 'boolean') s.connected = true;
+        if (typeof s.enabled !== 'boolean') s.enabled = true;
+        if (!s.ssid) s.ssid = trayWifiNames[0];
+        return s;
+    } catch (e) {
+        return { connected: true, ssid: trayWifiNames[0], enabled: true };
     }
-    list.append(li);
-  });
+}
+
+function writeNetState(s) {
+    try { localStorage.setItem(NET_STATE_KEY, JSON.stringify(s)); } catch (e) { /* ignore */ }
+}
+
+function renderWifiIcon() {
+    var state = readNetState();
+    var wifiBar = document.querySelector('.bar .right .wifi');
+    if (!wifiBar) return;
+    // 关闭 wifi: 显示禁用样式
+    if (!state.enabled) {
+        wifiBar.classList.add('offline');
+        wifiBar.title = 'Wi-Fi 已关闭';
+    } else if (!state.connected) {
+        wifiBar.classList.add('offline');
+        wifiBar.title = '未连接 — 当前: ' + state.ssid;
+    } else {
+        wifiBar.classList.remove('offline');
+        wifiBar.title = '已连接: ' + state.ssid;
+    }
+}
+
+function renderEdgeState() {
+    var state = readNetState();
+    // Edge 图标在桌面和开始菜单中各有一个 li, 通过 data-options.title 识别
+    var online = state.enabled && state.connected;
+    document.querySelectorAll('li.desk-icon').forEach(function (li) {
+        try {
+            var opt = JSON.parse(li.getAttribute('data-options') || '{}');
+            if (opt.url && /edge\/edge\.html/.test(opt.url)) {
+                li.classList.toggle('app-offline', !online);
+                var p = li.querySelector('p');
+                if (p) p.textContent = online ? 'Microsoft Edge' : 'Edge (离线)';
+            }
+        } catch (e) { /* ignore */ }
+    });
+    document.querySelectorAll('.win-frame .applist li').forEach(function (li) {
+        try {
+            var opt = JSON.parse(li.getAttribute('data-options') || '{}');
+            if (opt.url && /edge\/edge\.html/.test(opt.url)) {
+                li.classList.toggle('app-offline', !online);
+                var p = li.querySelector('p');
+                if (p) p.textContent = online ? 'Microsoft Edge' : 'Edge (离线)';
+            }
+        } catch (e) { /* ignore */ }
+    });
+}
+
+function updateNetState(patch) {
+    var s = readNetState();
+    Object.keys(patch).forEach(function (k) { s[k] = patch[k]; });
+    writeNetState(s);
+    renderWifiIcon();
+    renderEdgeState();
+    buildTrayWifiList();
+}
+
+function buildTrayWifiList() {
+    var list = document.getElementById('wifiPanelList');
+    if (!list) return;
+    var state = readNetState();
+    var names = trayWifiNames.slice();
+    for (var i = names.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = names[i]; names[i] = names[j]; names[j] = t;
+    }
+    list.innerHTML = '';
+    names.forEach(function (name) {
+        var connected = state.enabled && state.connected && name === state.ssid;
+        var li = document.createElement('li');
+        li.setAttribute('data-ssid', name);
+        li.innerHTML = '<div class="ic"><span class="bi bi-wifi"></span></div>' +
+            '<div class="wifi-info">' +
+            '<div class="nm">' + name + '</div>' +
+            (connected ? '<div class="st">已连接，安全</div>' : '<div class="st">安全</div>') +
+            '</div>' +
+            '<div class="lock"><span class="bi bi-lock-fill"></span></div>';
+        if (connected) {
+            li.innerHTML += '<span class="bi bi-check2 wifi-connected-mark" style="color:#7fffa0;font-size:16px;"></span>';
+            li.querySelector('.lock').style.display = 'none';
+            li.classList.add('is-connected');
+        }
+        li.addEventListener('click', function () {
+            updateNetState({ enabled: true, connected: true, ssid: name });
+            quickframeToggler('wifi');
+        });
+        list.append(li);
+    });
+    // 列表显示/隐藏跟随 wifi 总开关
+    list.style.display = state.enabled ? 'block' : 'none';
 }
 buildTrayWifiList();
+renderWifiIcon();
+renderEdgeState();
 // 托盘 WiFi 开关（win-check2，带持久化）
 document.querySelectorAll('.win-check2[data-store]').forEach(function (e) {
-  var key = e.getAttribute('data-store');
-  if (localStorage.getItem(key) == '1') e.classList.add('checked');
-  function render() {
-    e.querySelector('.statu').innerHTML = e.classList.contains('checked') ? '开' : '关';
-    if (key) localStorage.setItem(key, e.classList.contains('checked') ? '1' : '0');
-    var list = document.getElementById('wifiPanelList');
-    if (list) list.style.display = e.classList.contains('checked') ? 'block' : 'none';
-  }
-  render();
-  e.onclick = function (ev) {
-    ev.stopPropagation();
-    e.classList.toggle('checked');
+    var key = e.getAttribute('data-store');
+    if (localStorage.getItem(key) == '1') e.classList.add('checked');
+    function render() {
+        e.querySelector('.statu').innerHTML = e.classList.contains('checked') ? '开' : '关';
+        if (key) localStorage.setItem(key, e.classList.contains('checked') ? '1' : '0');
+        var list = document.getElementById('wifiPanelList');
+        if (list) list.style.display = e.classList.contains('checked') ? 'block' : 'none';
+        // 同步网络状态
+        var wifiOn = e.classList.contains('checked');
+        if (wifiOn) {
+            var st = readNetState();
+            updateNetState({ enabled: true, connected: st.ssid ? st.connected : false, ssid: st.ssid });
+        } else {
+            updateNetState({ enabled: false, connected: false });
+        }
+    }
     render();
-  };
+    e.onclick = function (ev) {
+        ev.stopPropagation();
+        e.classList.toggle('checked');
+        render();
+    };
 });
 // 托盘网络设置 -> 打开设置应用
 document.getElementById('wifiOpenSettings').onclick = function (e) {

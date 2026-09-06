@@ -38,22 +38,10 @@ export const backgroundWallpaper: BackgroundWallpaperConfig = {
 	src: {
 		// 桌面背景图片（支持单张或多张随机）
 		// desktop: "assets/images/DesktopWallpaper/d1.avif",
-		desktop: [
-			"assets/images/DesktopWallpaper/nanluo-w1.png",
-			"assets/images/DesktopWallpaper/nanluo-w2.jpg",
-			"assets/images/DesktopWallpaper/nanluo-w3.png",
-			"assets/images/DesktopWallpaper/nanluo-w4.png",
-			"assets/images/DesktopWallpaper/nanluo-w5.png",
-		],
+		desktop: "https://t.alcy.cc/ycy",
 		// 移动背景图片（支持单张或多张随机）
 		// mobile: "assets/images/MobileWallpaper/m1.avif",
-		mobile: [
-			"assets/images/DesktopWallpaper/nanluo-w1.png",
-			"assets/images/DesktopWallpaper/nanluo-w2.jpg",
-			"assets/images/DesktopWallpaper/nanluo-w3.png",
-			"assets/images/DesktopWallpaper/nanluo-w4.png",
-			"assets/images/DesktopWallpaper/nanluo-w5.png",
-		],
+		mobile: "https://t.alcy.cc/ycy",
 		// 背景视频播放地址
 		// 支持单个视频路径（字符串）或多个视频循环（数组）
 		// 支持远程视频URL，本地视频请放在 public/assets/videos/ 目录下

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>noVNC 远程桌面</title>
+    <link rel="stylesheet" href="novnc-app.css">
+</head>
+
+<body>
+    <div class="novnc-shell">
+        <!-- 顶部连接栏 (noVNC 风格:大 IP 输入框 + 状态灯 + 控制按钮) -->
+        <header class="novnc-topbar">
+            <div class="novnc-brand">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="13" rx="1.5"></rect>
+                    <path d="M8 21h8"></path>
+                    <path d="M12 17v4"></path>
+                </svg>
+                <span>noVNC</span>
+            </div>
+
+            <div class="novnc-connectbar">
+                <label class="novnc-host-label" for="novnc-host">远程主机</label>
+                <div class="novnc-input-group">
+                    <input id="novnc-host" type="text" class="novnc-host-input"
+                        placeholder="IP 或域名，例如 192.168.1.10"
+                        autocomplete="off" spellcheck="false" />
+                    <span class="novnc-input-sep">:</span>
+                    <input id="novnc-port" type="number" min="1" max="65535" value="5900"
+                        class="novnc-port-input" title="VNC 端口" />
+                </div>
+                <label class="novnc-ws-label" for="novnc-ws">WebSocket</label>
+                <input id="novnc-ws" type="text" class="novnc-ws-input"
+                    placeholder="wss://gateway:6080/websockify（留空则自动拼）" />
+                <label class="novnc-pass-label" for="novnc-pass">密码</label>
+                <input id="novnc-pass" type="password" class="novnc-pass-input"
+                    placeholder="VNC 密码" autocomplete="off" />
+                <button class="novnc-btn novnc-btn-primary" type="button" id="novnc-connect">连接</button>
+                <button class="novnc-btn novnc-btn-danger" type="button" id="novnc-disconnect" hidden>断开</button>
+            </div>
+
+            <div class="novnc-actions">
+                <span class="novnc-led" id="novnc-led" data-state="idle" title="未连接"></span>
+                <button class="novnc-iconbtn" type="button" id="novnc-settings-btn" title="设置">⚙</button>
+                <button class="novnc-iconbtn" type="button" id="novnc-fullscreen" title="全屏">⛶</button>
+            </div>
+        </header>
+
+        <!-- 主体: 画布 + 侧边设置抽屉 -->
+        <main class="novnc-main">
+            <div class="novnc-screen" id="novnc-screen">
+                <div class="novnc-placeholder" id="novnc-placeholder">
+                    <div class="novnc-placeholder-icon">
+                        <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="4" width="20" height="13" rx="1.5"></rect>
+                            <path d="M8 21h8"></path>
+                            <path d="M12 17v4"></path>
+                        </svg>
+                    </div>
+                    <div class="novnc-placeholder-title">未连接</div>
+                    <div class="novnc-placeholder-hint">在上方输入 IP / 域名,选择 WebSocket 网关,点击「连接」</div>
+                </div>
+                <div class="novnc-loading" id="novnc-loading" hidden>
+                    <div class="novnc-spinner"></div>
+                    <div class="novnc-loading-text" id="novnc-loading-text">正在连接...</div>
+                </div>
+                <canvas id="novnc-canvas" width="800" height="600" tabindex="0"></canvas>
+            </div>
+
+            <!-- 设置抽屉 -->
+            <aside class="novnc-drawer" id="novnc-drawer" hidden>
+                <div class="novnc-drawer-head">
+                    <span>连接设置</span>
+                    <button class="novnc-iconbtn" type="button" id="novnc-drawer-close" aria-label="关闭">×</button>
+                </div>
+                <div class="novnc-drawer-body">
+                    <div class="novnc-row">
+                        <label>颜色质量</label>
+                        <select id="novnc-quality">
+                            <option value="0">真彩色 (32 位)</option>
+                            <option value="1" selected>高质量 (24 位)</option>
+                            <option value="2">低质量 (16 位)</option>
+                        </select>
+                    </div>
+                    <div class="novnc-row">
+                        <label>缩放</label>
+                        <select id="novnc-scale">
+                            <option value="100">100%</option>
+                            <option value="75">75%</option>
+                            <option value="50">50%</option>
+                            <option value="fit" selected>适应窗口</option>
+                        </select>
+                    </div>
+                    <div class="novnc-row novnc-check">
+                        <input id="novnc-clip" type="checkbox" checked />
+                        <label for="novnc-clip">允许剪贴板（双向）</label>
+                    </div>
+                    <div class="novnc-row novnc-check">
+                        <input id="novnc-viewonly" type="checkbox" />
+                        <label for="novnc-viewonly">仅查看（禁止输入）</label>
+                    </div>
+                    <div class="novnc-row novnc-check">
+                        <input id="novnc-resize" type="checkbox" checked />
+                        <label for="novnc-resize">远程桌面尺寸自适应</label>
+                    </div>
+                    <div class="novnc-row">
+                        <label>压缩等级</label>
+                        <select id="novnc-comp">
+                            <option value="0">关闭</option>
+                            <option value="2">低</option>
+                            <option value="6" selected>中</option>
+                            <option value="9">高</option>
+                        </select>
+                    </div>
+                    <div class="novnc-row">
+                        <label>连接超时（秒）</label>
+                        <input id="novnc-timeout" type="number" min="1" max="120" value="15" />
+                    </div>
+                    <div class="novnc-row novnc-check">
+                        <input id="novnc-debug" type="checkbox" />
+                        <label for="novnc-debug">调试模式</label>
+                    </div>
+                </div>
+                <div class="novnc-drawer-foot">
+                    <button class="novnc-btn" type="button" id="novnc-send-cad">发送 Ctrl+Alt+Del</button>
+                </div>
+            </aside>
+        </main>
+
+        <!-- 状态栏 -->
+        <footer class="novnc-status" id="novnc-status">就绪 — 填写远程主机地址后点击「连接」</footer>
+    </div>
+
+    <script type="module" src="novnc-app.js"></script>
+</body>
+
+</html>

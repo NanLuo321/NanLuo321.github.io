@@ -1,0 +1,400 @@
+/* noVNC 远程桌面 - 简洁 noVNC 风格 */
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #1d1d1d;
+    color: #e0e0e0;
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 13px;
+    user-select: none;
+    overflow: hidden;
+}
+
+.novnc-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #1d1d1d;
+}
+
+/* ===== 顶部连接栏 ===== */
+.novnc-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: linear-gradient(to bottom, #2a2a2a 0%, #1f1f1f 100%);
+    border-bottom: 1px solid #000;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.novnc-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: #7ec3ff;
+    margin-right: 4px;
+}
+
+.novnc-connectbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.novnc-host-label,
+.novnc-ws-label,
+.novnc-pass-label {
+    color: #aaa;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.novnc-input-group {
+    display: flex;
+    align-items: stretch;
+    height: 32px;
+}
+
+.novnc-host-input {
+    width: 220px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid #444;
+    border-right: 0;
+    border-radius: 4px 0 0 4px;
+    background: #0e0e0e;
+    color: #e0e0e0;
+    font-size: 13px;
+    font-family: "Consolas", "Monaco", monospace;
+    outline: none;
+}
+
+.novnc-host-input:focus { border-color: #4a8ad4; }
+
+.novnc-input-sep {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    border-top: 1px solid #444;
+    border-bottom: 1px solid #444;
+    background: #181818;
+    color: #888;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.novnc-port-input {
+    width: 70px;
+    height: 32px;
+    border: 1px solid #444;
+    border-radius: 0 4px 4px 0;
+    padding: 0 6px;
+    background: #0e0e0e;
+    color: #e0e0e0;
+    font-size: 13px;
+    font-family: monospace;
+    text-align: center;
+    outline: none;
+}
+
+.novnc-port-input:focus { border-color: #4a8ad4; }
+
+.novnc-ws-input {
+    flex: 1;
+    min-width: 180px;
+    max-width: 320px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background: #0e0e0e;
+    color: #e0e0e0;
+    font-size: 12px;
+    font-family: "Consolas", monospace;
+    outline: none;
+}
+
+.novnc-ws-input:focus { border-color: #4a8ad4; }
+
+.novnc-pass-input {
+    width: 110px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background: #0e0e0e;
+    color: #e0e0e0;
+    font-size: 13px;
+    outline: none;
+}
+
+.novnc-pass-input:focus { border-color: #4a8ad4; }
+
+.novnc-btn {
+    height: 32px;
+    min-width: 64px;
+    padding: 0 14px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: linear-gradient(to bottom, #3a3a3a 0%, #2a2a2a 100%);
+    color: #e0e0e0;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.novnc-btn:hover { background: linear-gradient(to bottom, #454545 0%, #333 100%); }
+.novnc-btn:active { background: #222; }
+
+.novnc-btn-primary {
+    background: linear-gradient(to bottom, #4a8ad4 0%, #2566b3 50%, #194ea2 100%);
+    border-color: #194ea2;
+    color: #fff;
+    font-weight: 600;
+}
+.novnc-btn-primary:hover { background: linear-gradient(to bottom, #5a9ae4 0%, #3676c3 50%, #1a5ab2 100%); }
+
+.novnc-btn-danger {
+    background: linear-gradient(to bottom, #d65a5a 0%, #a02020 100%);
+    border-color: #7a1010;
+    color: #fff;
+    font-weight: 600;
+}
+.novnc-btn-danger:hover { background: linear-gradient(to bottom, #e57373 0%, #b03030 100%); }
+
+.novnc-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.novnc-iconbtn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background: #2a2a2a;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+}
+.novnc-iconbtn:hover { background: #383838; border-color: #4a8ad4; }
+
+.novnc-led {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #666;
+    box-shadow: 0 0 4px transparent;
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+.novnc-led[data-state="idle"] { background: #666; }
+.novnc-led[data-state="connecting"] {
+    background: #f5a623;
+    box-shadow: 0 0 6px #f5a623;
+    animation: novnc-blink 1s ease-in-out infinite;
+}
+.novnc-led[data-state="connected"] {
+    background: #4ade80;
+    box-shadow: 0 0 6px #4ade80;
+}
+.novnc-led[data-state="error"] {
+    background: #ef4444;
+    box-shadow: 0 0 6px #ef4444;
+}
+
+@keyframes novnc-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* ===== 主体 ===== */
+.novnc-main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    position: relative;
+}
+
+.novnc-screen {
+    flex: 1;
+    position: relative;
+    background:
+        repeating-linear-gradient(45deg, #1a1a1a 0 10px, #232323 10px 20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    min-height: 0;
+}
+
+#novnc-canvas {
+    display: block;
+    background: #000;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    max-width: 100%;
+    max-height: 100%;
+    outline: none;
+}
+
+#novnc-canvas:focus {
+    box-shadow: 0 0 0 2px #4a8ad4, 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.novnc-placeholder {
+    color: #666;
+    text-align: center;
+    pointer-events: none;
+}
+
+.novnc-placeholder-icon { color: #444; margin-bottom: 12px; }
+.novnc-placeholder-title { font-size: 18px; margin-bottom: 6px; color: #888; }
+.novnc-placeholder-hint { font-size: 12px; color: #555; }
+
+.novnc-loading {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    z-index: 10;
+    color: #fff;
+    font-size: 13px;
+}
+
+.novnc-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #4a8ad4;
+    border-radius: 50%;
+    animation: novnc-spin 0.9s linear infinite;
+}
+
+@keyframes novnc-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ===== 抽屉 ===== */
+.novnc-drawer {
+    width: 280px;
+    background: #232323;
+    border-left: 1px solid #000;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    animation: novnc-slide-in 0.18s ease-out;
+}
+
+@keyframes novnc-slide-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+.novnc-drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid #111;
+    font-weight: 600;
+    color: #eee;
+}
+
+.novnc-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px;
+}
+
+.novnc-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.novnc-row > label {
+    width: 100px;
+    flex-shrink: 0;
+    color: #bbb;
+    font-size: 12px;
+}
+
+.novnc-row > select,
+.novnc-row > input[type="number"] {
+    flex: 1;
+    height: 28px;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 0 6px;
+    background: #0e0e0e;
+    color: #e0e0e0;
+    font-size: 12px;
+    outline: none;
+}
+
+.novnc-row > select:focus,
+.novnc-row > input:focus { border-color: #4a8ad4; }
+
+.novnc-row > select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path fill='%23aaa' d='M0 0l5 6 5-6z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    background-size: 8px;
+    padding-right: 20px;
+}
+
+.novnc-row.novnc-check { gap: 6px; }
+.novnc-row.novnc-check > label { width: auto; flex: 1; }
+
+.novnc-row.novnc-check input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: #4a8ad4;
+}
+
+.novnc-drawer-foot {
+    padding: 12px 14px;
+    border-top: 1px solid #111;
+}
+
+/* ===== 状态栏 ===== */
+.novnc-status {
+    height: 22px;
+    line-height: 22px;
+    padding: 0 12px;
+    background: #181818;
+    border-top: 1px solid #000;
+    font-size: 12px;
+    color: #aaa;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.novnc-status.error { color: #ef4444; }
+.novnc-status.ok { color: #4ade80; }
+.novnc-status.warn { color: #f5a623; }
