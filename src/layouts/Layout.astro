@@ -3429,7 +3429,13 @@ function disableAnimation() {
     const fullscreenBtn = document.getElementById("profile-float-fullscreen");
     const fsIcon = document.getElementById("profile-float-fs-icon");
 
-    if (!float || !trigger) return;
+    if (!float) return;
+    // 触发按钮已移除；show/hide 注册到全局供右上角状态小岛调用
+    const toggles = ((window as any).__floatToggles ??= {});
+    toggles.profile = {
+      show: () => showFloat(),
+      hide: () => hideFloat(),
+    };
 
     // 从 localStorage 恢复位置和大小
     const savedPos = localStorage.getItem("profile-float-pos");
@@ -3449,14 +3455,14 @@ function disableAnimation() {
     // 显示/隐藏
     function showFloat() {
       float!.style.display = "flex";
-      trigger!.style.display = "none";
+      trigger?.style.setProperty("display", "none");
     }
     function hideFloat() {
       float!.style.display = "none";
-      trigger!.style.display = "flex";
+      trigger?.style.setProperty("display", "flex");
     }
 
-    trigger.onclick = function(e) {
+    if (trigger) trigger.onclick = function(e) {
       e.stopPropagation();
       showFloat();
     };
@@ -3670,7 +3676,13 @@ function disableAnimation() {
     const fullscreenBtn = document.getElementById(prefix + "-float-fullscreen");
     const fsIcon = document.getElementById(prefix + "-float-fs-icon");
 
-    if (!float || !trigger) return;
+    if (!float) return;
+    // 触发按钮已移除；show/hide 注册到全局供右上角状态小岛调用
+    const toggles = ((window as any).__floatToggles ??= {});
+    toggles[prefix] = {
+      show: () => showFloat(),
+      hide: () => hideFloat(),
+    };
 
     // 从 localStorage 恢复位置和大小
     const savedPos = localStorage.getItem(prefix + "-float-pos");
@@ -3689,7 +3701,7 @@ function disableAnimation() {
 
     function showFloat() {
       float!.style.display = "flex";
-      trigger!.style.display = "none";
+      trigger?.style.setProperty("display", "none");
       // 音乐悬浮窗打开时初始化播放器
       if (prefix === "music" && (window as any).__fireflyMusic) {
         (window as any).__fireflyMusic.init();
@@ -3701,10 +3713,10 @@ function disableAnimation() {
     }
     function hideFloat() {
       float!.style.display = "none";
-      trigger!.style.display = "flex";
+      trigger?.style.setProperty("display", "flex");
     }
 
-    trigger.onclick = function(e) {
+    if (trigger) trigger.onclick = function(e) {
       e.stopPropagation();
       showFloat();
     };

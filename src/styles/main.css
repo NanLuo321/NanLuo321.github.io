@@ -590,3 +590,19 @@ html {
   @apply text-sm text-(--text-secondary) text-center mb-2;
 }
 
+/* ============================================================
+ * 隐藏页面主滚动条
+ * 页面滚动进度改由右侧「液态玻璃滚动条」（GlassScrollbar.astro）
+ * 与右上角圆形进度环展示，故隐藏 html 根滚动条；
+ * 站内代码块 / 侧栏等内部滚动区不受影响。
+ * ============================================================ */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* 旧版 Edge */
+}
+html::-webkit-scrollbar {
+  display: none; /* Chrome / Safari / Edge */
+  width: 0;
+  height: 0;
+}
+

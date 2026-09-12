@@ -1,0 +1,554 @@
+---
+/**
+ * 灵动岛媒体指示器（右上角，iPhone Dynamic Island 风格）
+ *
+ * 常态隐藏；音频播放 / 麦克风 / 相机占用时任一情况滑入显示。
+ * 点击岛 → 展开详情（当前歌曲、麦克风/相机状态），再点收起。
+ * 当前歌曲读自音乐挂件的 .music-title / .music-artist。
+ *
+ * 调试台：Ctrl+Shift+E 开关，可模拟 音频播放 / 麦克风 / 相机 占用。
+ */
+import { Icon } from "astro-icon/components";
+---
+
+<div id="media-island" class="mi-hidden">
+	<!-- 收起态内容 -->
+	<div class="mi-pill">
+		<span class="mi-eq" data-mi-eq aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+		<span class="mi-label" data-mi-label></span>
+		<!-- 音量条（调节音量时临时显示） -->
+		<span class="mi-vol" data-mi-vol aria-hidden="true">
+			<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+			<span class="mi-vol-bar"><span class="mi-vol-fill" data-mi-vol-fill></span></span>
+		</span>
+		<!-- iOS 风格状态点：摄像头=绿点（左），麦克风=红点（右） -->
+		<span class="mi-dot mi-dot-cam" data-mi-dot-cam aria-hidden="true"></span>
+		<span class="mi-dot mi-dot-mic" data-mi-dot-mic aria-hidden="true"></span>
+	</div>
+	<!-- 展开态详情 -->
+	<div class="mi-detail" data-mi-detail>
+		<div class="mi-row">
+			<span class="mi-k">正在播放</span>
+			<span class="mi-v" data-mi-song>—</span>
+		</div>
+		<div class="mi-row">
+			<span class="mi-k">麦克风</span>
+			<span class="mi-v" data-mi-mic-state>未使用</span>
+		</div>
+		<div class="mi-row">
+			<span class="mi-k">相机</span>
+			<span class="mi-v" data-mi-cam-state>未使用</span>
+		</div>
+		<div class="mi-tip">点击收起</div>
+	</div>
+</div>
+
+<!-- 调试台（Ctrl+Shift+E 开关） -->
+<div id="mi-debug" hidden>
+	<div class="mid-head">
+		<span>灵动岛调试台</span>
+		<kbd>Ctrl+Shift+E</kbd>
+	</div>
+	<button type="button" data-mid="audio">模拟音频播放</button>
+	<button type="button" data-mid="mic">模拟麦克风占用</button>
+	<button type="button" data-mid="cam">模拟摄像头占用</button>
+	<div class="mid-real">快捷键 · Ctrl+Shift+↑/↓ 调音量</div>
+	<div class="mid-real" data-mid-real></div>
+</div>
+
+<style>
+	/* ================= 灵动岛本体 ================= */
+	:global(#media-island) {
+		position: fixed;
+		top: 0.85rem;
+		/* 让开右上角的圆形进度环 */
+		right: 6.2rem;
+		z-index: 61;
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		background: rgba(10, 10, 12, 0.9);
+		-webkit-backdrop-filter: blur(16px) saturate(170%);
+		backdrop-filter: blur(16px) saturate(170%);
+		border: 1px solid rgba(255, 255, 255, 0.09);
+		box-shadow:
+			0 6px 22px rgba(0, 0, 0, 0.32),
+			inset 0 1px 0 rgba(255, 255, 255, 0.07);
+		color: rgb(245, 245, 247);
+		border-radius: 9999px;
+		overflow: hidden;
+		cursor: pointer;
+		user-select: none;
+		transition:
+			transform 0.55s cubic-bezier(0.32, 0.72, 0, 1),
+			opacity 0.35s cubic-bezier(0.32, 0.72, 0, 1),
+			border-radius 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+
+	/* ---------- 收起态胶囊（加大版） ---------- */
+	:global(#media-island .mi-pill) {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		height: 38px;
+		padding: 0 18px;
+		font-size: 0.78rem;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		white-space: nowrap;
+	}
+	/* 展开时胶囊顶部变方 */
+	:global(#media-island.is-expanded .mi-pill) {
+		border-radius: 0;
+	}
+
+	/* ---------- 展开态：圆角矩形（非胶囊椭圆） ---------- */
+	:global(#media-island.is-expanded) {
+		border-radius: 24px;
+	}
+
+	/* ---------- 音频均衡器 ---------- */
+	:global(#media-island .mi-eq) {
+		display: none;
+		align-items: flex-end;
+		gap: 2.5px;
+		height: 16px;
+	}
+	:global(#media-island .mi-eq.show) {
+		display: inline-flex;
+	}
+	:global(#media-island .mi-eq i) {
+		width: 3.5px;
+		border-radius: 2px;
+		background: rgb(52, 211, 153);
+		animation: mi-eq-bounce 0.9s ease-in-out infinite;
+	}
+	:global(#media-island .mi-eq i:nth-child(1)) { height: 55%; animation-delay: 0s; }
+	:global(#media-island .mi-eq i:nth-child(2)) { height: 95%; animation-delay: 0.18s; }
+	:global(#media-island .mi-eq i:nth-child(3)) { height: 70%; animation-delay: 0.32s; }
+	:global(#media-island .mi-eq i:nth-child(4)) { height: 100%; animation-delay: 0.1s; }
+	@keyframes mi-eq-bounce {
+		0%, 100% { transform: scaleY(0.35); }
+		50% { transform: scaleY(1); }
+	}
+
+	/* ---------- 歌名标签 ---------- */
+	:global(#media-island .mi-label) {
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
+		opacity: 0.94;
+		max-width: 220px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	/* ---------- 音量条（调节音量时临时显示） ---------- */
+	:global(#media-island .mi-vol) {
+		display: none;
+		align-items: center;
+		gap: 7px;
+	}
+	:global(#media-island .mi-vol.show) {
+		display: inline-flex;
+	}
+	:global(#media-island .mi-vol svg) {
+		width: 15px;
+		height: 15px;
+		flex-shrink: 0;
+	}
+	:global(#media-island .mi-vol-bar) {
+		width: 70px;
+		height: 4px;
+		border-radius: 2px;
+		background: rgba(255, 255, 255, 0.18);
+		overflow: hidden;
+	}
+	:global(#media-island .mi-vol-fill) {
+		display: block;
+		height: 100%;
+		background: rgb(245, 245, 247);
+		border-radius: 2px;
+		transition: width 0.15s ease;
+	}
+
+	/* ---------- iOS 风格状态点（麦克风红点 / 摄像头绿点） ---------- */
+	:global(#media-island .mi-dot) {
+		display: none;
+		width: 7px;
+		height: 7px;
+		border-radius: 9999px;
+		flex-shrink: 0;
+	}
+	:global(#media-island .mi-dot.show) {
+		display: inline-block;
+	}
+	:global(#media-island .mi-dot-mic.show) {
+		background: rgb(255, 69, 58);
+		box-shadow: 0 0 6px rgba(255, 69, 58, 0.8);
+	}
+	:global(#media-island .mi-dot-cam.show) {
+		background: rgb(48, 209, 88);
+		box-shadow: 0 0 6px rgba(48, 209, 88, 0.8);
+	}
+
+	/* ---------- 展开态详情 ---------- */
+	:global(#media-island .mi-detail) {
+		max-height: 0;
+		opacity: 0;
+		overflow: hidden;
+		padding: 0 18px;
+		font-size: 0.74rem;
+		transition:
+			max-height 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+			opacity 0.3s ease,
+			padding 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+	:global(#media-island.is-expanded .mi-detail) {
+		max-height: 140px;
+		opacity: 1;
+		padding: 4px 18px 12px;
+	}
+	:global(#media-island .mi-row) {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 16px;
+		padding: 4px 0;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	}
+	:global(#media-island .mi-row:last-of-type) {
+		border-bottom: none;
+	}
+	:global(#media-island .mi-k) {
+		color: rgba(245, 245, 247, 0.55);
+		flex-shrink: 0;
+	}
+	:global(#media-island .mi-v) {
+		font-weight: 600;
+		text-align: right;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 200px;
+	}
+	:global(#media-island .mi-tip) {
+		margin-top: 2px;
+		text-align: center;
+		font-size: 0.62rem;
+		color: rgba(245, 245, 247, 0.4);
+	}
+
+	/* ---------- 隐藏 ---------- */
+	:global(#media-island.mi-hidden) {
+		transform: translateY(-160%) scale(0.85);
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	@media (max-width: 1023px) {
+		:global(#media-island) {
+			top: 0.55rem;
+			right: 4.6rem;
+		}
+		:global(#media-island .mi-pill) {
+			height: 32px;
+			padding: 0 14px;
+			font-size: 0.68rem;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(#media-island) {
+			transition-duration: 1ms !important;
+		}
+		:global(#media-island .mi-eq i) {
+			animation: none;
+		}
+	}
+
+	/* ================= 调试台 ================= */
+	:global(#mi-debug) {
+		position: fixed;
+		bottom: 6.5rem;
+		right: 1rem;
+		z-index: 99990;
+		width: 240px;
+		padding: 12px 14px;
+		border-radius: 16px;
+		background: rgba(18, 18, 22, 0.92);
+		-webkit-backdrop-filter: blur(16px) saturate(160%);
+		backdrop-filter: blur(16px) saturate(160%);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+		color: rgb(240, 240, 244);
+		font-size: 0.74rem;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	:global(#mi-debug[hidden]) {
+		display: none;
+	}
+	:global(#mi-debug .mid-head) {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		font-weight: 700;
+		margin-bottom: 2px;
+	}
+	:global(#mi-debug kbd) {
+		font-size: 0.6rem;
+		padding: 2px 6px;
+		border-radius: 6px;
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+	}
+	:global(#mi-debug button) {
+		text-align: left;
+		padding: 7px 10px;
+		border-radius: 10px;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: rgba(255, 255, 255, 0.05);
+		color: rgb(240, 240, 244);
+		font-size: 0.72rem;
+		cursor: pointer;
+		transition: background 0.2s ease, border-color 0.2s ease;
+	}
+	:global(#mi-debug button:hover) {
+		background: rgba(255, 255, 255, 0.1);
+	}
+	:global(#mi-debug button.on) {
+		background: rgba(52, 211, 153, 0.16);
+		border-color: rgba(52, 211, 153, 0.5);
+	}
+	:global(#mi-debug button.on)::after {
+		content: " · ON";
+		color: rgb(52, 211, 153);
+		font-weight: 700;
+	}
+	:global(#mi-debug .mid-real) {
+		font-size: 0.64rem;
+		color: rgba(240, 240, 244, 0.55);
+		line-height: 1.5;
+	}
+</style>
+
+<script>
+	/* ============ 灵动岛媒体指示器（幂等，swup 切页安全） ============ */
+	function initMediaIsland() {
+		const island = document.getElementById("media-island");
+		if (!island || (island as any).__miInited) return;
+		(island as any).__miInited = true;
+
+		const eqEl = island.querySelector<HTMLElement>("[data-mi-eq]");
+		const labelEl = island.querySelector<HTMLElement>("[data-mi-label]");
+		const dotMicEl = island.querySelector<HTMLElement>("[data-mi-dot-mic]");
+		const dotCamEl = island.querySelector<HTMLElement>("[data-mi-dot-cam]");
+		const volEl = island.querySelector<HTMLElement>("[data-mi-vol]");
+		const volFillEl = island.querySelector<HTMLElement>("[data-mi-vol-fill]");
+		const songEl = island.querySelector<HTMLElement>("[data-mi-song]");
+		const micStateEl = island.querySelector<HTMLElement>("[data-mi-mic-state]");
+		const camStateEl = island.querySelector<HTMLElement>("[data-mi-cam-state]");
+
+		// 麦克风/相机占用 = 实时遍历所有已捕获流的 live 轨道（track.stop() 不触发 ended，不能缓存状态）
+		const streams: MediaStream[] = [];
+		// 调试台模拟开关
+		const sim = { audio: false, mic: false, cam: false };
+		// 站内跳转中（点击任何内部链接后置位，落站清除，8s 兜底）
+		let navUntil = 0;
+		// 音量显示（调节音量时临时滑入，2s 无操作收回）
+		let volUntil = 0;
+		let volLevel = 1;
+		// 分步退场：红/绿点熄灭后，黑岛再延迟 600ms 收起
+		let dotsPrev = false;
+		let hideAt = 0;
+
+		const audioPlaying = (): boolean => {
+			const audios = Array.from(document.querySelectorAll("audio"));
+			return audios.some((a) => !a.paused && !a.ended && !a.muted && a.volume > 0);
+		};
+
+		const currentSong = (): string => {
+			const t = document.querySelector<HTMLElement>(".music-title")?.innerText?.trim();
+			const ar = document.querySelector<HTMLElement>(".music-artist")?.innerText?.trim();
+			if (t && ar) return `${t} · ${ar}`;
+			return t || "未知曲目";
+		};
+
+		const sync = () => {
+			const realAudio = audioPlaying();
+			const dev = deviceStreamState();
+			const a = realAudio || sim.audio;
+			const mic = dev.mic || sim.mic;
+			const cam = dev.cam || sim.cam;
+			const nav = performance.now() < navUntil;
+			const vol = performance.now() < volUntil;
+			// 点先灭、岛后收：红/绿点从亮到灭时，岛保留 600ms 再退场
+			const dotsOn = mic || cam;
+			if (dotsPrev && !dotsOn) hideAt = performance.now() + 600;
+			dotsPrev = dotsOn;
+			const any = a || mic || cam || nav || vol || performance.now() < hideAt;
+			island!.classList.toggle("mi-hidden", !any);
+			eqEl?.classList.toggle("show", a && !vol);
+			dotMicEl?.classList.toggle("show", mic);
+			dotCamEl?.classList.toggle("show", cam);
+			volEl?.classList.toggle("show", vol);
+			if (volFillEl) volFillEl.style.width = `${Math.round(volLevel * 100)}%`;
+			if (labelEl) labelEl.style.display = vol ? "none" : "";
+			if (labelEl) {
+				// 麦克风/相机占用只亮红/绿状态点，不再显示文字
+				labelEl.textContent = nav ? "正在跳转…" : a ? currentSong() : "";
+			}
+			if (songEl) songEl.textContent = a ? currentSong() : "—";
+			if (micStateEl) micStateEl.textContent = mic ? (sim.mic && !dev.mic ? "使用中（模拟）" : "使用中") : "未使用";
+			if (camStateEl) camStateEl.textContent = cam ? (sim.cam && !dev.cam ? "使用中（模拟）" : "使用中") : "未使用";
+			// 调试台实时状态
+			const real = document.querySelector<HTMLElement>("[data-mid-real]");
+			if (real) {
+				real.textContent = `真实状态 · 音频:${realAudio ? "播放" : "无"} 麦克风:${dev.mic ? "占用" : "无"} 相机:${dev.cam ? "占用" : "无"}`;
+			}
+		};
+
+		/* --- 麦克风 / 相机占用检测（站点自身 getUserMedia；实时轨道状态，stop 后立即熄灭） --- */
+		const deviceStreamState = () => {
+			let mic = false;
+			let cam = false;
+			for (const s of streams) {
+				for (const t of s.getTracks()) {
+					if (t.readyState !== "live") continue;
+					if (t.kind === "audio") mic = true;
+					else if (t.kind === "video") cam = true;
+				}
+			}
+			return { mic, cam };
+		};
+		const watchStream = (stream: MediaStream) => {
+			if (!streams.includes(stream)) streams.push(stream);
+			stream.getTracks().forEach((t) => {
+				t.addEventListener("ended", sync);
+				t.addEventListener("mute", sync);
+				t.addEventListener("unmute", sync);
+			});
+			sync();
+		};
+		const md = navigator.mediaDevices as
+			| (MediaDevices & { getUserMedia: (c: MediaStreamConstraints) => Promise<MediaStream> })
+			| undefined;
+		if (md?.getUserMedia) {
+			const orig = md.getUserMedia.bind(md);
+			md.getUserMedia = async (constraints) => {
+				const stream = await orig(constraints);
+				watchStream(stream);
+				return stream;
+			};
+		}
+
+		/* --- 点击展开 / 收起 --- */
+		island.addEventListener("click", () => {
+			island.classList.toggle("is-expanded");
+		});
+
+		/* --- 音频状态监听 --- */
+		["play", "pause", "ended"].forEach((evName) => {
+			document.addEventListener(evName, sync, true); // 捕获阶段命中所有 <audio>
+		});
+
+		/* --- 音量捕获：调节音量 → 岛显示音量条（忽略流预览元素的 muted 噪音） --- */
+		const onVolChange = (e: Event) => {
+			const t = e.target as HTMLMediaElement | null;
+			if (!t || typeof t.volume !== "number" || t.srcObject) return;
+			volLevel = t.muted ? 0 : t.volume;
+			volUntil = performance.now() + 2000;
+			sync();
+		};
+		document.addEventListener("volumechange", onVolChange, true);
+		window.addEventListener("bg-player-state-change", sync);
+
+		/* --- 站内跳转：点击任何内部链接 → 岛显示"正在跳转…"，落站后按媒体状态去留 --- */
+		document.addEventListener(
+			"click",
+			(e) => {
+				if (e.defaultPrevented || e.metaKey || e.ctrlKey) return;
+				const link = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+				if (!link) return;
+				if (link.target === "_blank" || link.hasAttribute("download")) return;
+				const href = link.getAttribute("href") || "";
+				if (!href || href.startsWith("#") || href.startsWith("javascript:") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+				try {
+					const u = new URL(link.href, location.href);
+					if (u.origin !== location.origin) return;
+					if (u.pathname === location.pathname && u.hash && u.hash !== location.hash) return; // 纯锚点
+				} catch {
+					return;
+				}
+				navUntil = performance.now() + 8000;
+				sync();
+			},
+			true,
+		);
+		const arrive = () => {
+			navUntil = 0;
+			sync();
+		};
+		document.addEventListener("astro:page-load", arrive);
+		document.addEventListener("swup:contentReplaced", arrive);
+		window.addEventListener("pageshow", arrive);
+
+		/* --- 快捷键：Ctrl+Shift+↑/↓ 调音量（优先生效于正在播放的媒体，含静音解除） --- */
+		const clamp01 = (v: number) => Math.min(1, Math.max(0, Math.round(v * 100) / 100));
+		const adjustVolume = (delta: number) => {
+			const media = Array.from(document.querySelectorAll<HTMLMediaElement>("audio,video")).filter((m) => !m.srcObject);
+			const playing = media.filter((m) => !m.paused && !m.ended);
+			const list = playing.length ? playing : media;
+			if (list.length) {
+				list.forEach((m) => {
+					if (m.muted && delta > 0) m.muted = false;
+					m.volume = clamp01(m.volume + delta); // 触发 volumechange → 岛自动弹出音量条
+				});
+			} else {
+				// 页面没有任何媒体时也给出反馈：直接驱动音量条
+				volLevel = clamp01(volLevel + delta);
+				volUntil = performance.now() + 2000;
+				sync();
+			}
+		};
+
+		/* --- 调试台（Ctrl+Shift+E 开关）；键监听全局唯一，防止 swup 重建岛后重复触发 --- */
+		const dbg = document.getElementById("mi-debug");
+		const prevKey = (window as any).__miKeydown as ((e: KeyboardEvent) => void) | undefined;
+		if (prevKey) window.removeEventListener("keydown", prevKey);
+		const onKey = (e: KeyboardEvent) => {
+			if (e.ctrlKey && e.shiftKey && (e.key === "E" || e.key === "e")) {
+				e.preventDefault();
+				if (dbg) dbg.hidden = !dbg.hidden;
+			} else if (e.ctrlKey && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+				e.preventDefault();
+				adjustVolume(e.key === "ArrowUp" ? 0.1 : -0.1);
+			}
+		};
+		(window as any).__miKeydown = onKey;
+		window.addEventListener("keydown", onKey);
+		if (dbg) {
+			dbg.querySelectorAll<HTMLButtonElement>("button[data-mid]").forEach((btn) => {
+				btn.addEventListener("click", () => {
+					const key = btn.dataset.mid as keyof typeof sim;
+					sim[key] = !sim[key];
+					btn.classList.toggle("on", sim[key]);
+					sync();
+				});
+			});
+		}
+
+		document.addEventListener("astro:page-load", sync);
+		setInterval(sync, 600);
+		sync();
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initMediaIsland);
+	} else {
+		initMediaIsland();
+	}
+	document.addEventListener("astro:page-load", initMediaIsland);
+	document.addEventListener("swup:contentReplaced", initMediaIsland);
+</script>

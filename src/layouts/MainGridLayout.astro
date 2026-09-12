@@ -4,6 +4,9 @@ import Live2DWidget from "@components/features/Live2DWidget.astro";
 import SpineModel from "@components/features/SpineModel.astro";
 import Footer from "@components/layout/Footer.astro";
 import Navbar from "@components/layout/Navbar.astro";
+import StatusIsland from "@components/layout/StatusIsland.astro";
+import GlassScrollbar from "@components/layout/GlassScrollbar.astro";
+import MediaIsland from "@components/layout/MediaIsland.astro";
 import SideBar from "@components/layout/SideBar.astro";
 import type { MarkdownHeading } from "astro";
 import { Icon } from "astro-icon/components";
@@ -298,6 +301,15 @@ const hasMultipleImages =
         <Icon is:inline id="navbar-toggle-icon-down" name="material-symbols:expand-more-rounded" class="text-[1.25rem] hidden" />
     </button>
 </div>
+
+<!-- 灵动岛状态栏：右上角常驻，音乐播放/天气面板打开/导航隐藏时自动滑出 -->
+<StatusIsland />
+
+<!-- 液态玻璃滚动条：屏幕右缘，替代被隐藏的原生滚动条 -->
+<GlassScrollbar />
+
+<!-- 灵动岛媒体指示器：音频播放/麦克风/相机占用时滑入，否则隐藏 -->
+<MediaIsland />
 
 <!-- Wallpaper - 如果允许切换则始终渲染，否则只渲染当前模式 -->
 {(isWallpaperSwitchable || isBannerMode || isFullscreenMode || isOverlayMode) && (

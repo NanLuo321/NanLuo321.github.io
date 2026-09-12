@@ -1,0 +1,185 @@
+---
+/**
+ * 圆形滚动进度环（右上角）
+ *
+ * 唯一功能：外圈弧线（底部开口）= 整个网页的滚动进度，替代页面原生滚动条
+ * （原生滚动条已在全局样式中隐藏）。
+ *
+ * 全站常驻；音乐播放中 / 天气面板打开 / 背景视频播放 / 导航栏隐藏时自动滑出。
+ */
+---
+
+<div id="status-island" data-status-island aria-hidden="true">
+	<div class="si-ring-wrap">
+		<svg class="si-ring" viewBox="0 0 72 72" aria-hidden="true">
+			<circle class="si-ring-track" cx="36" cy="36" r="31"></circle>
+			<circle class="si-ring-bar" cx="36" cy="36" r="31" data-si-bar></circle>
+		</svg>
+	</div>
+</div>
+
+<style>
+	/* ---------- 容器：右上角固定，主题自适应配色 ---------- */
+	:global(#status-island) {
+		position: fixed;
+		top: 0.9rem;
+		right: 1rem;
+		z-index: 60;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		/* 亮色=墨黑，暗色=米白 */
+		color: rgb(28, 28, 32);
+		pointer-events: none;
+		transition:
+			transform 0.55s cubic-bezier(0.32, 0.72, 0, 1),
+			opacity 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+	:global(:root.dark #status-island) {
+		color: rgb(245, 245, 247);
+	}
+
+	/* ---------- 不封闭进度环：底部开口 ---------- */
+	:global(#status-island .si-ring-wrap) {
+		position: relative;
+		width: 72px;
+		height: 72px;
+	}
+	:global(#status-island .si-ring) {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+	}
+	:global(#status-island .si-ring circle) {
+		fill: none;
+		stroke-width: 6.5;
+	}
+	:global(#status-island .si-ring-track) {
+		stroke: color-mix(in oklch, currentColor 16%, transparent);
+	}
+	:global(#status-island .si-ring-bar) {
+		stroke: currentColor;
+		stroke-linecap: round;
+	}
+
+	/* ---------- 自动隐藏 ---------- */
+	:global(#status-island.si-hidden) {
+		transform: translateY(-140%) scale(0.85);
+		opacity: 0;
+	}
+
+	@media (max-width: 1023px) {
+		:global(#status-island) {
+			top: 0.6rem;
+			right: 0.7rem;
+		}
+		:global(#status-island .si-ring-wrap) {
+			width: 52px;
+			height: 52px;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(#status-island) {
+			transition-duration: 1ms !important;
+		}
+	}
+</style>
+
+<script>
+	/* ============ 滚动进度环（幂等，swup 切页安全） ============ */
+	function initStatusIsland() {
+		const island = document.getElementById("status-island");
+		if (!island || (island as any).__siInited) return;
+		(island as any).__siInited = true;
+
+		const bar = island.querySelector<SVGCircleElement>("[data-si-bar]");
+
+		/* --- 外圈：整页滚动进度（不封闭，底部开口 44°） --- */
+		const R = 31;
+		const CIRC = 2 * Math.PI * R;
+		// SVG 角度：0° 在 3 点钟方向、顺时针；底部 = 90°。开口 44° 居中于底部
+		const GAP_DEG = 44;
+		const ARC_FRAC = (360 - GAP_DEG) / 360;
+		const ARC_LEN = CIRC * ARC_FRAC;
+		const START_OFF = -CIRC * ((90 + GAP_DEG / 2) / 360); // 从开口右端(112°)开始顺时针
+		if (bar) {
+			bar.style.strokeDasharray = `${ARC_LEN} ${CIRC - ARC_LEN}`;
+			bar.style.strokeDashoffset = `${START_OFF}`;
+			bar.style.opacity = "0";
+		}
+		const track = island.querySelector<SVGCircleElement>(".si-ring-track");
+		if (track) {
+			track.style.strokeDasharray = `${ARC_LEN} ${CIRC - ARC_LEN}`;
+			track.style.strokeDashoffset = `${START_OFF}`;
+		}
+		let ticking = false;
+		const updateProgress = () => {
+			if (!bar) return;
+			const doc = document.documentElement;
+			const max = doc.scrollHeight - window.innerHeight;
+			const p = max > 4 ? Math.min(1, Math.max(0, window.scrollY / max)) : 1;
+			const filled = ARC_LEN * p;
+			bar.style.strokeDasharray = `${filled} ${CIRC - filled}`;
+			// 进度为 0 时隐藏，避免圆头端帽在开口处渲染出孤立的圆点
+			bar.style.opacity = filled > 1 ? "1" : "0";
+			ticking = false;
+		};
+		window.addEventListener(
+			"scroll",
+			() => {
+				if (!ticking) {
+					ticking = true;
+					requestAnimationFrame(updateProgress);
+				}
+			},
+			{ passive: true },
+		);
+		window.addEventListener("resize", updateProgress);
+		updateProgress();
+
+		/* --- 显隐：音乐播放 / 背景视频播放 / 天气面板打开 / 导航隐藏 → 滑出 --- */
+		const isElVisible = (el: HTMLElement | null | undefined): boolean => {
+			if (!el) return false;
+			const cs = getComputedStyle(el);
+			if (cs.display === "none" || cs.visibility === "hidden") return false;
+			const r = el.getBoundingClientRect();
+			return r.width > 4 && r.height > 4;
+		};
+		const shouldHide = (): boolean => {
+			const overlay = document.getElementById("rainform-weather-overlay");
+			if (isElVisible(overlay)) return true;
+			const audios = Array.from(document.querySelectorAll("audio"));
+			if (audios.some((a) => !a.paused && !a.ended && a.volume > 0)) return true;
+			if (document.documentElement.hasAttribute("data-bg-video-playing")) return true;
+			const wrapper = document.getElementById("navbar-wrapper");
+			if (
+				wrapper &&
+				(wrapper.classList.contains("navbar-manual-hidden") ||
+					wrapper.classList.contains("navbar-hidden") ||
+					wrapper.classList.contains("navbar-video-hidden"))
+			)
+				return true;
+			return false;
+		};
+		const sync = () => {
+			island.classList.toggle("si-hidden", shouldHide());
+		};
+		setInterval(sync, 400);
+		window.addEventListener("bg-player-state-change", sync);
+		document.addEventListener("astro:page-load", () => {
+			sync();
+			updateProgress();
+		});
+		sync();
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initStatusIsland);
+	} else {
+		initStatusIsland();
+	}
+	document.addEventListener("astro:page-load", initStatusIsland);
+	document.addEventListener("swup:contentReplaced", initStatusIsland);
+</script>

@@ -1,6 +1,12 @@
 <canvas id="rain"></canvas>
 <div id="rain-reflection" aria-hidden="true"></div>
 
+<!-- 娱乐模式：声音控制雨幕（右下角开关） -->
+<button id="voice-rain-toggle" type="button" aria-pressed="false" title="声音控制雨幕：说话声音越大，雨越大">
+	<span class="vr-emoji" data-vr-emoji>🎤</span>
+	<span class="vr-text" data-vr-text>娱乐模式</span>
+</button>
+
 <style>
 	#rain {
 		position: fixed;
@@ -29,6 +35,58 @@
 		opacity: 0.75;
 	}
 
+	/* ---------- 娱乐模式开关（右下角） ---------- */
+	#voice-rain-toggle {
+		position: fixed;
+		right: 1.1rem;
+		bottom: 1.1rem;
+		z-index: 56;
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		padding: 9px 15px;
+		border-radius: 9999px;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: rgba(10, 10, 12, 0.82);
+		-webkit-backdrop-filter: blur(14px) saturate(160%);
+		backdrop-filter: blur(14px) saturate(160%);
+		box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+		color: rgb(245, 245, 247);
+		font-size: 0.78rem;
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		cursor: pointer;
+		user-select: none;
+		transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+	#voice-rain-toggle:hover {
+		background: rgba(24, 24, 28, 0.88);
+	}
+	#voice-rain-toggle.on {
+		border-color: rgba(52, 211, 153, 0.55);
+		box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3), 0 0 14px rgba(52, 211, 153, 0.18);
+	}
+	#voice-rain-toggle .vr-emoji {
+		font-size: 0.95rem;
+		line-height: 1;
+	}
+	#voice-rain-toggle .vr-text {
+		line-height: 1;
+		white-space: nowrap;
+	}
+	#voice-rain-toggle.error {
+		border-color: rgba(255, 69, 58, 0.55);
+	}
+
+	@media (max-width: 768px) {
+		#voice-rain-toggle {
+			right: 0.8rem;
+			bottom: 0.8rem;
+			padding: 7px 12px;
+			font-size: 0.72rem;
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		#rain,
 		#rain-reflection {
@@ -49,17 +107,143 @@
 		let w = 0;
 		let h = 0;
 		let drops = [];
-		let ripples = [];
 		const dropCount = window.matchMedia("(max-width: 768px)").matches ? 220 : 380;
 		const initialMode = localStorage.getItem("visualEffectMode") || "rain";
 		let active = initialMode === "rain" || initialMode === "all";
 
-		function applyVisibility() {
-			canvas.style.display = active ? "block" : "none";
-			if (reflection) {
-				reflection.style.display = active ? "block" : "none";
+		/* ================= 娱乐模式：声音控制雨幕 ================= */
+		const vrBtn = document.getElementById("voice-rain-toggle");
+		const vrEmoji = vrBtn && vrBtn.querySelector("[data-vr-emoji]");
+		const vrText = vrBtn && vrBtn.querySelector("[data-vr-text]");
+		let voiceMode = false; // 是否处于声控雨幕模式
+		let voiceLevel = 0; // 平滑后的麦克风音量（RMS，0..1）
+		let voiceStream = null;
+		let audioCtx = null;
+		let analyser = null;
+		let voiceData = null;
+		let voiceTimer = null;
+		let voiceStarting = false; // getUserMedia 进行中，防止快速连点竞态
+
+		// 音量 → 雨势（0..1）：轻声~0.02 → 小雨，正常~0.07 → 中雨，喊~0.13+ → 暴雨
+		const levelToRain = () => Math.min(1, voiceLevel * 8);
+		const levelLabel = () => (voiceLevel < 0.03 ? "🌧️ 小雨" : voiceLevel < 0.08 ? "🌧️🌧️ 中雨" : "🌧️🌧️🌧️🌧️ 暴雨");
+
+		function updateVrLabel() {
+			if (!vrEmoji || !vrText) return;
+			if (!voiceMode) {
+				vrEmoji.textContent = "🎤";
+				vrText.textContent = "娱乐模式";
+				return;
 			}
-			if (!active) {
+			vrEmoji.textContent = levelLabel();
+			vrText.textContent = "说话试试";
+			canvas.dataset.vrLevel = voiceLevel.toFixed(4);
+			canvas.dataset.vrIntensity = levelToRain().toFixed(3);
+		}
+
+		function pollMic() {
+			if (!analyser || !voiceData) return;
+			analyser.getByteTimeDomainData(voiceData);
+			let sum = 0;
+			for (let i = 0; i < voiceData.length; i++) {
+				const v = (voiceData[i] - 128) / 128;
+				sum += v * v;
+			}
+			const rms = Math.sqrt(sum / voiceData.length);
+			voiceLevel += (rms - voiceLevel) * 0.35; // 平滑
+			updateVrLabel();
+		}
+
+		function startVoice() {
+			if (voiceStarting || voiceMode) return;
+			voiceStarting = true;
+			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+				vrBtn && vrBtn.classList.add("error");
+				vrText && (vrText.textContent = "麦克风不可用");
+				voiceStarting = false;
+				setTimeout(() => {
+					vrBtn && vrBtn.classList.remove("error");
+					updateVrLabel();
+				}, 2000);
+				return;
+			}
+			navigator.mediaDevices
+				.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false } })
+				.then((stream) => {
+					voiceStarting = false;
+					voiceStream = stream;
+					const AC = window.AudioContext || window.webkitAudioContext;
+					audioCtx = new AC();
+					const src = audioCtx.createMediaStreamSource(stream);
+					analyser = audioCtx.createAnalyser();
+					analyser.fftSize = 1024;
+					src.connect(analyser);
+					voiceData = new Uint8Array(analyser.fftSize);
+					voiceMode = true;
+					voiceLevel = 0;
+					applyVisibility();
+					updateVrLabel();
+					voiceTimer = setInterval(pollMic, 120);
+				})
+				.catch(() => {
+					voiceStarting = false;
+					vrBtn && vrBtn.classList.add("error");
+					vrText && (vrText.textContent = "麦克风被拒绝");
+					setTimeout(() => {
+						vrBtn && vrBtn.classList.remove("error");
+						updateVrLabel();
+					}, 2000);
+				});
+		}
+
+		function stopVoice() {
+			voiceMode = false;
+			voiceLevel = 0;
+			if (voiceTimer) {
+				clearInterval(voiceTimer);
+				voiceTimer = null;
+			}
+			if (voiceStream) {
+				voiceStream.getTracks().forEach((t) => t.stop());
+				voiceStream = null;
+				// 立即通知灵动岛同步（否则要等 600ms 轮询，红点熄灭+退场不及时）
+				window.dispatchEvent(new CustomEvent("bg-player-state-change"));
+			}
+			if (audioCtx) {
+				audioCtx.close().catch(() => {});
+				audioCtx = null;
+				analyser = null;
+				voiceData = null;
+			}
+			delete canvas.dataset.vrLevel;
+			delete canvas.dataset.vrIntensity;
+			applyVisibility();
+			updateVrLabel();
+		}
+
+		if (vrBtn) {
+			vrBtn.addEventListener("click", () => {
+				if (voiceStarting) return; // 授权等待中忽略连点
+				if (voiceMode) {
+					stopVoice();
+					vrBtn.classList.remove("on");
+					vrBtn.setAttribute("aria-pressed", "false");
+				} else {
+					startVoice();
+					vrBtn.classList.add("on");
+					vrBtn.setAttribute("aria-pressed", "true");
+				}
+			});
+		}
+		/* ================= 声控雨幕结束 ================= */
+
+		function applyVisibility() {
+			const show = active || voiceMode;
+			canvas.style.display = show ? "block" : "none";
+			if (reflection) {
+				reflection.style.display = show ? "block" : "none";
+			}
+			if (!show) {
 				ctx.clearRect(0, 0, w, h);
 			}
 		}
@@ -83,87 +267,127 @@
 					speed: Math.random() * 8 + 8,
 					length: Math.random() * 20 + 10,
 					alpha: Math.random() * 0.22 + 0.16,
+					t: Math.random(), // 声控阈值：雨势 >= t 时这滴才出现
 				});
 			}
 		}
 
-		function addRipple(x) {
-			if (ripples.length > 36) ripples.shift();
-			ripples.push({
-				x,
-				y: h * (0.82 + Math.random() * 0.12),
-				radius: 1,
-				maxRadius: Math.random() * 18 + 14,
-				alpha: Math.random() * 0.16 + 0.1,
-			});
-		}
-
-		function drawRipples() {
-			for (let i = ripples.length - 1; i >= 0; i--) {
-				const r = ripples[i];
-				r.radius += 0.7;
-				r.alpha *= 0.95;
-
-				if (r.radius > r.maxRadius || r.alpha < 0.01) {
-					ripples.splice(i, 1);
-					continue;
+		/* ================= 浅色壁纸适配：采样壁纸亮度，浅色时改用深色雨滴+普通混合 ================= */
+		let backdropLuma = null; // null=未知，走主题兜底
+		const isLightBackdrop = () => {
+			if (backdropLuma != null) return backdropLuma > 0.55;
+			return !document.documentElement.classList.contains("dark");
+		};
+		function sampleBackdrop() {
+			try {
+				const wp = document.querySelector("#wallpaper-wrapper img, #wallpaper-wrapper video, video.wallpaper, img.wallpaper");
+				if (!wp || !(wp instanceof HTMLImageElement || wp instanceof HTMLVideoElement)) return;
+				if (wp instanceof HTMLVideoElement && (wp.readyState < 2 || wp.paused && wp.currentTime === 0)) return;
+				const off = document.createElement("canvas");
+				off.width = 8;
+				off.height = 8;
+				const octx = off.getContext("2d");
+				if (!octx) return;
+				octx.drawImage(wp, 0, 0, 8, 8);
+				const px = octx.getImageData(0, 0, 8, 8).data;
+				let sum = 0;
+				for (let i = 0; i < px.length; i += 4) {
+					sum += (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
 				}
-
-				ctx.beginPath();
-				ctx.ellipse(r.x, r.y, r.radius * 1.7, r.radius * 0.42, 0, 0, Math.PI * 2);
-				ctx.strokeStyle = "rgba(180,210,255," + r.alpha + ")";
-				ctx.lineWidth = 1;
-				ctx.stroke();
+				const prev = backdropLuma;
+				backdropLuma = sum / (px.length / 4);
+				if (prev !== backdropLuma) applyBackdropStyle();
+			} catch {
+				/* 跨域壁纸绘制受限时走主题兜底 */
+			}
+		}
+		function applyBackdropStyle() {
+			const light = isLightBackdrop();
+			// 浅色壁纸上 screen 混合会把雨"洗白"，改普通混合 + 深色雨滴
+			canvas.style.mixBlendMode = light ? "normal" : "screen";
+			canvas.style.opacity = light ? "0.8" : "0.55";
+			if (reflection) {
+				reflection.style.mixBlendMode = light ? "normal" : "screen";
+				reflection.style.opacity = light ? "0.55" : "0.75";
+				reflection.style.background = light
+					? "radial-gradient(ellipse at 48% 100%, rgba(70,100,160,0.16), transparent 55%), linear-gradient(transparent, rgba(60,90,150,0.16))"
+					: "";
 			}
 		}
 
 		function draw() {
-			if (!active) {
-				requestAnimationFrame(draw);
-				return;
-			}
+		if (!active && !voiceMode) {
+			requestAnimationFrame(draw);
+			return;
+		}
 
-			ctx.clearRect(0, 0, w, h);
+		ctx.clearRect(0, 0, w, h);
 
-			const groundGradient = ctx.createLinearGradient(0, h * 0.62, 0, h);
-			groundGradient.addColorStop(0, "rgba(100,150,220,0)");
-			groundGradient.addColorStop(1, "rgba(100,150,220,0.08)");
-			ctx.fillStyle = groundGradient;
-			ctx.fillRect(0, h * 0.62, w, h * 0.38);
+		// 浅色壁纸：深蓝雨滴；深色壁纸：亮蓝雨滴
+		const light = isLightBackdrop();
+		const dropCol = light ? "rgba(70,100,160," : "rgba(180,210,255,";
+		const dropColBright = light ? "rgba(40,70,130," : "rgba(230,245,255,";
 
-			ctx.lineWidth = 1;
-			ctx.lineCap = "round";
+		const groundGradient = ctx.createLinearGradient(0, h * 0.62, 0, h);
+		groundGradient.addColorStop(0, light ? "rgba(60,90,140,0)" : "rgba(100,150,220,0)");
+		groundGradient.addColorStop(1, light ? "rgba(60,90,140,0.1)" : "rgba(100,150,220,0.08)");
+		ctx.fillStyle = groundGradient;
+		ctx.fillRect(0, h * 0.62, w, h * 0.38);
 
-			drops.forEach((d) => {
-				const gradient = ctx.createLinearGradient(d.x, d.y, d.x, d.y + d.length);
-				gradient.addColorStop(0, "rgba(180,210,255,0)");
-				gradient.addColorStop(0.25, "rgba(180,210,255," + d.alpha + ")");
-				gradient.addColorStop(1, "rgba(230,245,255," + (d.alpha * 0.85) + ")");
+		ctx.lineWidth = 1;
+		ctx.lineCap = "round";
 
-				ctx.beginPath();
-				ctx.strokeStyle = gradient;
-				ctx.moveTo(d.x, d.y);
-				ctx.lineTo(d.x, d.y + d.length);
-				ctx.stroke();
+		// 声控模式下的雨势：音量越大，出现的雨滴越多
+		const rainIntensity = voiceMode ? levelToRain() : 1;
 
+		drops.forEach((d) => {
+			if (voiceMode && d.t > rainIntensity) {
+				// 这滴雨被"雨势"隐藏，但仍推进循环位置以便雨势变大时无缝出现
 				d.y += d.speed;
-
 				if (d.y > h) {
-					if (Math.random() > 0.55) addRipple(d.x);
 					d.y = -20;
 					d.x = Math.random() * w;
 					d.speed = Math.random() * 8 + 8;
 					d.length = Math.random() * 20 + 10;
 					d.alpha = Math.random() * 0.22 + 0.16;
+					d.t = Math.random(); // 每轮重掷阈值，可见雨滴不断轮换，雨幕更密
 				}
-			});
+				return;
+			}
 
-			drawRipples();
-			requestAnimationFrame(draw);
-		}
+			const alphaBoost = voiceMode ? 0.8 + rainIntensity * 0.5 : 1;
+			const a1 = Math.min(0.6, d.alpha * alphaBoost);
+			const gradient = ctx.createLinearGradient(d.x, d.y, d.x, d.y + d.length);
+			gradient.addColorStop(0, dropCol + "0)");
+			gradient.addColorStop(0.25, dropCol + a1 + ")");
+			gradient.addColorStop(1, dropColBright + Math.min(0.65, a1 * 0.85) + ")");
+
+			ctx.beginPath();
+			ctx.strokeStyle = gradient;
+			ctx.moveTo(d.x, d.y);
+			ctx.lineTo(d.x, d.y + d.length);
+			ctx.stroke();
+
+			d.y += d.speed * (voiceMode ? 0.8 + rainIntensity * 0.5 : 1);
+
+			if (d.y > h) {
+				d.y = -20;
+				d.x = Math.random() * w;
+				d.speed = Math.random() * 8 + 8;
+				d.length = Math.random() * 20 + 10;
+				d.alpha = Math.random() * 0.22 + 0.16;
+				d.t = Math.random();
+			}
+		});
+
+		requestAnimationFrame(draw);
+	}
 
 		resize();
 		applyVisibility();
+		applyBackdropStyle();
+		sampleBackdrop();
+		setInterval(sampleBackdrop, 2000); // 壁纸可能变化，定期重采样
 		window.addEventListener("resize", resize, { passive: true });
 		window.addEventListener("effectModeChange", (event) => {
 			const mode = event.detail && event.detail.mode;

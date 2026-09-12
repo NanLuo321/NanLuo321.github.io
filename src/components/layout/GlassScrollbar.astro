@@ -1,0 +1,262 @@
+---
+/**
+ * 液态玻璃滚动条（站内独立组件，屏幕右缘垂直居中）
+ *
+ * 原生滚动条已在全局隐藏，本组件替代之：
+ *  - 轨道：透明玻璃细条（backdrop-blur + 高光描边，iOS 液态玻璃质感）
+ *  - 滑块：同配方玻璃块，位置/高度实时反映整页滚动进度
+ *  - 可拖拽滑块、可点击轨道跳转；页面不可滚动时整条隐藏
+ */
+---
+
+<div id="glass-scrollbar" aria-hidden="true">
+	<div class="gs-track" data-gs-track>
+		<div class="gs-thumb" data-gs-thumb></div>
+	</div>
+</div>
+
+<style>
+	:global(#glass-scrollbar) {
+		position: fixed;
+		top: 50%;
+		right: 0.55rem;
+		transform: translateY(-50%);
+		z-index: 55;
+		pointer-events: none;
+		transition:
+			opacity 0.35s cubic-bezier(0.32, 0.72, 0, 1),
+			transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+	:global(#glass-scrollbar.gs-hidden) {
+		opacity: 0;
+		visibility: hidden;
+	}
+	/* 鼠标不在右缘附近时自动隐藏（gs-away），靠近右侧或拖拽/滚动时短暂显示 */
+	/* 隐藏：向右滑出（左→右）；显示：从右向左弹入。不能用 visibility:hidden，否则滑出动画被立即裁掉 */
+	:global(#glass-scrollbar.gs-away) {
+		opacity: 0;
+		transform: translateY(-50%) translateX(44px);
+		pointer-events: none;
+	}
+	:global(#glass-scrollbar.gs-away .gs-track) {
+		pointer-events: none;
+	}
+
+	/* ---------- 轨道：透明液态玻璃细条 ---------- */
+	:global(#glass-scrollbar .gs-track) {
+		position: relative;
+		width: 10px;
+		height: 62vh;
+		border-radius: 9999px;
+		transition: width 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+		background: color-mix(in oklch, var(--card-bg) 22%, transparent);
+		-webkit-backdrop-filter: blur(10px) saturate(150%);
+		backdrop-filter: blur(10px) saturate(150%);
+		border: 1px solid color-mix(in oklch, var(--card-bg) 30%, transparent);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.18),
+			inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+			0 2px 10px rgba(0, 0, 0, 0.06);
+		pointer-events: auto;
+		cursor: pointer;
+	}
+	:global(:root.dark #glass-scrollbar .gs-track) {
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.1),
+			inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+			0 2px 10px rgba(0, 0, 0, 0.3);
+	}
+
+	/* ---------- 滑块：液态玻璃块 ---------- */
+	:global(#glass-scrollbar .gs-thumb) {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 48px;
+		border-radius: 9999px;
+		background: linear-gradient(
+			135deg,
+			color-mix(in oklch, var(--card-bg) 78%, transparent) 0%,
+			color-mix(in oklch, var(--card-bg) 48%, transparent) 100%
+		);
+		-webkit-backdrop-filter: blur(14px) saturate(170%);
+		backdrop-filter: blur(14px) saturate(170%);
+		border: 1px solid color-mix(in oklch, var(--card-bg) 85%, transparent);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.5),
+			inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+			0 2px 8px rgba(0, 0, 0, 0.12);
+		cursor: grab;
+		touch-action: none;
+	}
+	:global(#glass-scrollbar .gs-thumb:active) {
+		cursor: grabbing;
+	}
+	:global(:root.dark #glass-scrollbar .gs-thumb) {
+		background: linear-gradient(
+			135deg,
+			color-mix(in oklch, var(--card-bg) 62%, transparent) 0%,
+			color-mix(in oklch, var(--card-bg) 34%, transparent) 100%
+		);
+		border-color: color-mix(in oklch, var(--card-bg) 70%, transparent);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.22),
+			inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+			0 2px 8px rgba(0, 0, 0, 0.4);
+	}
+
+	/* ---------- 拖拽中：轨道加粗 ---------- */
+	:global(#glass-scrollbar.is-dragging .gs-track) {
+		width: 15px;
+		background: color-mix(in oklch, var(--card-bg) 34%, transparent);
+	}
+	:global(:root.dark #glass-scrollbar.is-dragging .gs-track) {
+		background: color-mix(in oklch, var(--card-bg) 26%, transparent);
+	}
+
+	@media (max-width: 1023px) {
+		:global(#glass-scrollbar) {
+			right: 0.35rem;
+		}
+		:global(#glass-scrollbar .gs-track) {
+			width: 8px;
+			height: 52vh;
+		}
+		:global(#glass-scrollbar.is-dragging .gs-track) {
+			width: 12px;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(#glass-scrollbar) {
+			transition-duration: 1ms !important;
+		}
+	}
+</style>
+
+<script>
+	/* ============ 液态玻璃滚动条（幂等，swup 切页安全） ============ */
+	function initGlassScrollbar() {
+		const root = document.getElementById("glass-scrollbar");
+		const track = document.querySelector<HTMLElement>("[data-gs-track]");
+		const thumb = document.querySelector<HTMLElement>("[data-gs-thumb]");
+		if (!root || !track || !thumb || (root as any).__gsInited) return;
+		(root as any).__gsInited = true;
+
+		const MIN_THUMB = 40;
+		let dragging = false;
+		let dragStartY = 0;
+		let dragStartScroll = 0;
+
+		const metrics = () => {
+			const doc = document.documentElement;
+			const max = doc.scrollHeight - window.innerHeight;
+			const trackH = track!.clientHeight;
+			const thumbH = max > 4 ? Math.max(MIN_THUMB, trackH * (window.innerHeight / (doc.scrollHeight || 1))) : trackH;
+			return { max, trackH, thumbH };
+		};
+
+		const render = () => {
+			const { max, trackH, thumbH } = metrics();
+			if (max <= 4) {
+				root!.classList.add("gs-hidden");
+				return;
+			}
+			root!.classList.remove("gs-hidden");
+			const p = Math.min(1, Math.max(0, window.scrollY / max));
+			thumb!.style.height = `${thumbH}px`;
+			const y = (trackH - thumbH) * p;
+			thumb!.style.transform = `translateY(${y}px)`;
+		};
+
+		let ticking = false;
+		window.addEventListener(
+			"scroll",
+			() => {
+				if (!ticking) {
+					ticking = true;
+					requestAnimationFrame(() => {
+						render();
+						ticking = false;
+					});
+				}
+			},
+			{ passive: true },
+		);
+		window.addEventListener("resize", render);
+
+		/* --- 拖拽滑块 --- */
+		thumb!.addEventListener("pointerdown", (e) => {
+			const { max } = metrics();
+			if (max <= 4) return;
+			dragging = true;
+			root!.classList.add("is-dragging");
+			setAway(false); // 拖拽期间强制可见
+			dragStartY = e.clientY;
+			dragStartScroll = window.scrollY;
+			thumb!.setPointerCapture(e.pointerId);
+			e.preventDefault();
+		});
+		thumb!.addEventListener("pointermove", (e) => {
+			if (!dragging) return;
+			const { max, trackH, thumbH } = metrics();
+			if (max <= 4 || trackH - thumbH <= 0) return;
+			const dy = e.clientY - dragStartY;
+			const p = Math.min(1, Math.max(0, dy / (trackH - thumbH)));
+			// 必须用 instant：'auto' 会继承站点的 smooth 滚动，拖拽会被动画吃掉
+			window.scrollTo({ top: dragStartScroll + p * max, behavior: "instant" as ScrollBehavior });
+		});
+		const stopDrag = () => {
+			dragging = false;
+			root!.classList.remove("is-dragging");
+			scheduleAway(1200); // 拖完稍作停留再收起
+		};
+		thumb!.addEventListener("pointerup", stopDrag);
+		thumb!.addEventListener("pointercancel", stopDrag);
+
+		/* --- 点击轨道跳转 --- */
+		track!.addEventListener("pointerdown", (e) => {
+			if (e.target === thumb!) return;
+			const { max, trackH, thumbH } = metrics();
+			if (max <= 4) return;
+			const rect = track!.getBoundingClientRect();
+			const ratio = Math.min(1, Math.max(0, (e.clientY - rect.top - thumbH / 2) / (trackH - thumbH)));
+			window.scrollTo({ top: ratio * max, behavior: "smooth" });
+		});
+
+		document.addEventListener("astro:page-load", render);
+		render();
+
+		/* --- 靠近右缘才显示：鼠标距右边 <100px 时现身，离开后延迟隐藏 --- */
+		let awayTimer: ReturnType<typeof setTimeout> | undefined;
+		const setAway = (away: boolean) => root!.classList.toggle("gs-away", away);
+		const scheduleAway = (delay: number) => {
+			clearTimeout(awayTimer);
+			awayTimer = setTimeout(() => {
+				if (!dragging) setAway(true);
+			}, delay);
+		};
+		document.addEventListener(
+			"mousemove",
+			(e) => {
+				if (e.clientX > window.innerWidth - 100) {
+					setAway(false);
+					scheduleAway(1200);
+				} else if (!dragging) {
+					scheduleAway(300);
+				}
+			},
+			{ passive: true },
+		);
+		setAway(true); // 初始隐藏，靠近右缘唤出
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initGlassScrollbar);
+	} else {
+		initGlassScrollbar();
+	}
+	document.addEventListener("astro:page-load", initGlassScrollbar);
+	document.addEventListener("swup:contentReplaced", initGlassScrollbar);
+</script>

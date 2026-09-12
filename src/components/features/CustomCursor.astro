@@ -273,6 +273,13 @@
       mouseY = e.clientY;
       if (!rafId) animate();
     });
+    // 拖拽场景（如玻璃滚动条 setPointerCapture + preventDefault）会抑制 mousemove，
+    // pointermove 不受影响且仍冒泡到 document，保证拖拽时光标圆圈继续跟随
+    document.addEventListener("pointermove", function (e) {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      if (!rafId) animate();
+    });
 
     // 鼠标进入/离开窗口
     document.addEventListener("mouseenter", function () {
