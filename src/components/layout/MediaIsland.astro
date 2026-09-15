@@ -56,6 +56,19 @@ import { Icon } from "astro-icon/components";
 	<div class="mid-real" data-mid-real></div>
 </div>
 
+<!-- 音量 HUD（左上角）：Ctrl+Shift+↑/↓ 调节时弹出，片刻后收起 -->
+<div id="vol-hud" aria-hidden="true">
+	<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+	<span class="vh-pct" data-vol-hud-pct>50%</span>
+	<span class="vh-bar"><span class="vh-fill" data-vol-hud-fill></span></span>
+</div>
+
+<!-- 快捷键提示（左上角）：进站后弹一次，告诉访客怎么调音量；点击关闭 -->
+<div id="kbd-hint" aria-hidden="true">
+	<span class="kh-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>↑</kbd><kbd>↓</kbd></span>
+	<span class="kh-text">调节音量</span>
+</div>
+
 <style>
 	/* ================= 灵动岛本体 ================= */
 	:global(#media-island) {
@@ -171,6 +184,130 @@ import { Icon } from "astro-icon/components";
 		transition: width 0.15s ease;
 	}
 
+	/* ---------- 左上角音量 HUD（Ctrl+Shift+↑/↓ 调节时弹出） ---------- */
+	:global(#vol-hud) {
+		position: fixed;
+		top: 1.25rem;
+		left: 1.25rem;
+		z-index: 99990;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		height: 40px;
+		padding: 0 14px 0 12px;
+		border-radius: 9999px;
+		background: color-mix(in oklch, var(--card-bg, #fff) 55%, transparent);
+		-webkit-backdrop-filter: blur(20px) saturate(180%);
+		backdrop-filter: blur(20px) saturate(180%);
+		border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent);
+		box-shadow: var(--shadow-navbar, 0 4px 16px rgba(0, 0, 0, 0.08));
+		color: rgb(23, 23, 23);
+		font-size: 0.75rem;
+		font-weight: 600;
+		line-height: 1;
+		opacity: 0;
+		transform: translateY(-12px) scale(0.9);
+		pointer-events: none;
+		transition:
+			opacity 0.22s ease,
+			transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+	:global(#vol-hud.show) {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+	:global(#vol-hud svg) {
+		width: 1rem;
+		height: 1rem;
+		flex: none;
+	}
+	:global(#vol-hud .vh-pct) {
+		min-width: 30px;
+		text-align: center;
+		white-space: nowrap;
+	}
+	:global(#vol-hud .vh-bar) {
+		width: 72px;
+		height: 4px;
+		border-radius: 9999px;
+		background: rgba(0, 0, 0, 0.12);
+		overflow: hidden;
+	}
+	:global(#vol-hud .vh-fill) {
+		display: block;
+		height: 100%;
+		border-radius: 9999px;
+		background: var(--primary, rgb(59, 130, 246));
+		transition: width 0.15s ease;
+	}
+	:global(.dark #vol-hud) {
+		color: rgb(245, 245, 247);
+	}
+	:global(.dark #vol-hud .vh-bar) {
+		background: rgba(255, 255, 255, 0.18);
+	}
+
+	/* ---------- 左上角快捷键提示（进站弹一次，教访客调音量） ---------- */
+	:global(#kbd-hint) {
+		position: fixed;
+		top: 1.25rem;
+		left: 1.25rem;
+		z-index: 99990;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		height: 40px;
+		padding: 0 14px 0 12px;
+		border-radius: 9999px;
+		background: color-mix(in oklch, var(--card-bg, #fff) 55%, transparent);
+		-webkit-backdrop-filter: blur(20px) saturate(180%);
+		backdrop-filter: blur(20px) saturate(180%);
+		border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent);
+		box-shadow: var(--shadow-navbar, 0 4px 16px rgba(0, 0, 0, 0.08));
+		color: rgb(23, 23, 23);
+		font-size: 0.72rem;
+		font-weight: 600;
+		line-height: 1;
+		cursor: pointer;
+		user-select: none;
+		opacity: 0;
+		transform: translateY(-12px) scale(0.9);
+		pointer-events: none;
+		transition:
+			opacity 0.22s ease,
+			transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+	:global(#kbd-hint.show) {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+		pointer-events: auto;
+	}
+	:global(#kbd-hint .kh-keys) {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+	}
+	:global(#kbd-hint kbd) {
+		font: inherit;
+		font-size: 0.62rem;
+		padding: 3px 5px;
+		border-radius: 5px;
+		background: rgba(0, 0, 0, 0.07);
+		border: 1px solid rgba(0, 0, 0, 0.1);
+		line-height: 1;
+	}
+	:global(#kbd-hint .kh-text) {
+		white-space: nowrap;
+		opacity: 0.85;
+	}
+	:global(.dark #kbd-hint) {
+		color: rgb(245, 245, 247);
+	}
+	:global(.dark #kbd-hint kbd) {
+		background: rgba(255, 255, 255, 0.1);
+		border-color: rgba(255, 255, 255, 0.14);
+	}
+
 	/* ---------- iOS 风格状态点（麦克风红点 / 摄像头绿点） ---------- */
 	:global(#media-island .mi-dot) {
 		display: none;
@@ -238,9 +375,9 @@ import { Icon } from "astro-icon/components";
 		color: rgba(245, 245, 247, 0.4);
 	}
 
-	/* ---------- 隐藏 ---------- */
+	/* ---------- 隐藏：原地缩回（不位移） ---------- */
 	:global(#media-island.mi-hidden) {
-		transform: translateY(-160%) scale(0.85);
+		transform: scale(0.5);
 		opacity: 0;
 		pointer-events: none;
 	}
@@ -496,6 +633,43 @@ import { Icon } from "astro-icon/components";
 
 		/* --- 快捷键：Ctrl+Shift+↑/↓ 调音量（优先生效于正在播放的媒体，含静音解除） --- */
 		const clamp01 = (v: number) => Math.min(1, Math.max(0, Math.round(v * 100) / 100));
+		/* --- 左上角音量 HUD：调节时弹出（百分比 + 进度条），1.2s 后收起 --- */
+		const huds = document.querySelectorAll("#vol-hud");
+		huds.forEach((n, i) => i > 0 && n.remove()); // swup 重建时去重
+		const hud = document.getElementById("vol-hud");
+		const hudPct = hud?.querySelector<HTMLElement>("[data-vol-hud-pct]") ?? null;
+		const hudFill = hud?.querySelector<HTMLElement>("[data-vol-hud-fill]") ?? null;
+		let hudTimer = 0;
+		const showHud = (level: number, muted: boolean) => {
+			if (!hud || !hudPct || !hudFill) return;
+			hudPct.textContent = muted ? "静音" : `${Math.round(level * 100)}%`;
+			hudFill.style.width = `${Math.round(level * 100)}%`;
+			document.getElementById("kbd-hint")?.classList.remove("show"); // HUD 弹出时快捷键提示让位
+			hud.classList.add("show");
+			if (hudTimer) window.clearTimeout(hudTimer);
+			hudTimer = window.setTimeout(() => hud.classList.remove("show"), 1200);
+		};
+
+		/* --- 左上角快捷键提示：进站后弹一次（教不知道快捷键的访客调音量） --- */
+		const hints = document.querySelectorAll("#kbd-hint");
+		hints.forEach((n, i) => i > 0 && n.remove()); // swup 重建时去重
+		const kbdHint = document.getElementById("kbd-hint");
+		if (kbdHint) {
+			const t0 = performance.now();
+			const tryShowHint = () => {
+				if (!kbdHint.isConnected) return;
+				const gateOpen = !document.getElementById("version-gate")?.hidden;
+				if (!gateOpen) {
+					kbdHint.classList.add("show");
+					window.setTimeout(() => kbdHint.classList.remove("show"), 6000);
+				} else if (performance.now() - t0 < 15000) {
+					// 版本门还开着（首次进站）：等它关了再提示
+					window.setTimeout(tryShowHint, 600);
+				}
+			};
+			window.setTimeout(tryShowHint, 2500);
+			kbdHint.addEventListener("click", () => kbdHint.classList.remove("show"));
+		}
 		const adjustVolume = (delta: number) => {
 			const media = Array.from(document.querySelectorAll<HTMLMediaElement>("audio,video")).filter((m) => !m.srcObject);
 			const playing = media.filter((m) => !m.paused && !m.ended);
@@ -505,10 +679,12 @@ import { Icon } from "astro-icon/components";
 					if (m.muted && delta > 0) m.muted = false;
 					m.volume = clamp01(m.volume + delta); // 触发 volumechange → 岛自动弹出音量条
 				});
+				showHud(list[0].volume, list[0].muted);
 			} else {
 				// 页面没有任何媒体时也给出反馈：直接驱动音量条
 				volLevel = clamp01(volLevel + delta);
 				volUntil = performance.now() + 2000;
+				showHud(volLevel, false);
 				sync();
 			}
 		};

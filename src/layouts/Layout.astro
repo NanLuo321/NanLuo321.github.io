@@ -11,6 +11,7 @@ import CustomCursor from "@components/features/CustomCursor.astro";
 import PageLoader from "@components/features/PageLoader.astro";
 import RainEffect from "@components/RainEffect.astro";
 import LeafEffect from "@components/LeafEffect.astro";
+import VersionGate from "@components/VersionGate.astro";
 import SakuraEffect from "@components/features/SakuraEffect.astro";
 import ConfigCarrier from "@components/layout/ConfigCarrier.astro";
 import { Icon } from "astro-icon/components";
@@ -768,6 +769,7 @@ const siteLang = lang.replace("_", "-");
     <MusicManager />
     <RainEffect />
     <LeafEffect />
+    <VersionGate />
     <slot />
 
 

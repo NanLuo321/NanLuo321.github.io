@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>OBS Studio</title>
+    <link rel="stylesheet" href="obs.css">
+</head>
+
+<body>
+    <div class="obs-shell">
+        <!-- 顶部菜单条 -->
+        <div class="obs-menubar">
+            <div class="obs-menu-item" data-menu="file">文件</div>
+            <div class="obs-menu-item" data-menu="edit">编辑</div>
+            <div class="obs-menu-item" data-menu="view">视图</div>
+            <div class="obs-menu-item" data-menu="profile">配置</div>
+            <div class="obs-menu-item" data-menu="tools">工具</div>
+            <div class="obs-menu-item" data-menu="help">帮助</div>
+            <div class="obs-spacer"></div>
+            <div class="obs-brand">
+                <span class="obs-brand-name">OBS Studio</span>
+                <span class="obs-brand-ver">Web Edition</span>
+            </div>
+        </div>
+
+        <!-- 工具条:录制控制 -->
+        <div class="obs-toolbar">
+            <div class="obs-toolbar-left">
+                <button class="obs-tb-btn primary" id="obs-record" title="开始录制 (Ctrl+R)">
+                    <span class="obs-tb-icon obs-rec-dot"></span><span class="obs-tb-text">开始录制</span>
+                </button>
+                <button class="obs-tb-btn" id="obs-pause" title="暂停 (Ctrl+P)" disabled>
+                    <span class="obs-tb-icon obs-pause-icon"></span><span class="obs-tb-text">暂停</span>
+                </button>
+                <button class="obs-tb-btn danger" id="obs-stop" title="停止 (Ctrl+S)" disabled>
+                    <span class="obs-tb-icon obs-stop-icon"></span><span class="obs-tb-text">停止</span>
+                </button>
+            </div>
+            <div class="obs-toolbar-mid">
+                <div class="obs-stat">
+                    <span class="obs-stat-label">状态</span>
+                    <span class="obs-stat-value" id="obs-state">空闲</span>
+                </div>
+                <div class="obs-stat">
+                    <span class="obs-stat-label">时长</span>
+                    <span class="obs-stat-value" id="obs-time">00:00:00</span>
+                </div>
+                <div class="obs-stat">
+                    <span class="obs-stat-label">大小</span>
+                    <span class="obs-stat-value" id="obs-size">0.0 MB</span>
+                </div>
+                <div class="obs-stat">
+                    <span class="obs-stat-label">帧率</span>
+                    <span class="obs-stat-value" id="obs-fps">—</span>
+                </div>
+            </div>
+            <div class="obs-toolbar-right">
+                <select class="obs-select" id="obs-quality" title="录制质量">
+                    <option value="lossless">高质量 (4Mbps)</option>
+                    <option value="high" selected>推荐 (2Mbps)</option>
+                    <option value="medium">普通 (1Mbps)</option>
+                    <option value="low">低 (500Kbps)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 主体三栏 -->
+        <div class="obs-main">
+            <!-- 左:场景 + 来源 -->
+            <div class="obs-left">
+                <div class="obs-panel">
+                    <div class="obs-panel-head">
+                        <span class="obs-panel-title">场景</span>
+                        <div class="obs-panel-actions">
+                            <button class="obs-mini-btn" id="obs-add-scene" title="添加场景">+</button>
+                            <button class="obs-mini-btn" id="obs-del-scene" title="删除场景">−</button>
+                        </div>
+                    </div>
+                    <ul class="obs-scene-list" id="obs-scene-list">
+                        <li class="active" data-scene="0">
+                            <span class="obs-scene-name">场景 1</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="obs-panel">
+                    <div class="obs-panel-head">
+                        <span class="obs-panel-title">来源</span>
+                        <div class="obs-panel-actions">
+                            <button class="obs-mini-btn" id="obs-add-source" title="添加来源">+</button>
+                            <button class="obs-mini-btn" id="obs-del-source" title="删除来源">−</button>
+                        </div>
+                    </div>
+                    <ul class="obs-source-list" id="obs-source-list"></ul>
+                </div>
+            </div>
+
+            <!-- 中:预览 + 推流状态 -->
+            <div class="obs-center">
+                <div class="obs-preview-wrap">
+                    <div class="obs-preview" id="obs-preview">
+                        <div class="obs-preview-canvas" id="obs-preview-canvas">
+                            <video id="obs-screen-video" muted autoplay playsinline></video>
+                            <div class="obs-overlay" id="obs-overlay">
+                                <div class="obs-overlay-text">请先选择并启用来源</div>
+                            </div>
+                            <div class="obs-rec-indicator" id="obs-rec-indicator" hidden>
+                                <span class="obs-rec-dot"></span> REC
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="obs-status-strip">
+                    <span class="obs-strip-item">CPU <b id="obs-cpu">—</b></span>
+                    <span class="obs-strip-item">分辨率 <b id="obs-res">—</b></span>
+                    <span class="obs-strip-item">丢帧 <b id="obs-dropped">0</b></span>
+                </div>
+            </div>
+
+            <!-- 右:混音器 -->
+            <div class="obs-right">
+                <div class="obs-panel">
+                    <div class="obs-panel-head">
+                        <span class="obs-panel-title">混音器</span>
+                        <div class="obs-panel-actions">
+                            <button class="obs-mini-btn" id="obs-settings" title="设置">⚙</button>
+                        </div>
+                    </div>
+                    <div class="obs-mixer" id="obs-mixer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加来源弹窗 -->
+    <div class="obs-modal obs-hidden" id="obs-source-modal">
+        <div class="obs-modal-card">
+            <div class="obs-modal-head">添加来源</div>
+            <div class="obs-modal-body">
+                <ul class="obs-source-types">
+                    <li data-type="desktop" class="obs-source-recommend obs-source-disabled"><b>🪟 当前桌面（Windows）</b><span>🚧 功能维护中，暂不可用</span></li>
+                    <li data-type="screen"><b>🖥 整个屏幕</b><span>录制整个显示器画面</span></li>
+                    <li data-type="window"><b>📦 应用窗口</b><span>录制指定应用窗口</span></li>
+                    <li data-type="tab"><b>🌐 浏览器标签页</b><span>录制其他浏览器标签页</span></li>
+                    <li data-type="camera"><b>📷 摄像头</b><span>调用摄像头</span></li>
+                    <li data-type="mic"><b>🎤 麦克风</b><span>录音频轨</span></li>
+                </ul>
+            </div>
+            <div class="obs-modal-foot">
+                <button class="obs-tb-btn" id="obs-source-cancel">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div class="obs-modal obs-hidden" id="obs-settings-modal">
+        <div class="obs-modal-card">
+            <div class="obs-modal-head">录制设置</div>
+            <div class="obs-modal-body">
+                <div class="obs-settings-row">
+                    <label>画面来源</label>
+                    <select id="obs-set-source"></select>
+                </div>
+                <div class="obs-settings-row">
+                    <label>帧率 (FPS)</label>
+                    <select id="obs-set-fps">
+                        <option>15</option>
+                        <option selected>30</option>
+                        <option>60</option>
+                    </select>
+                </div>
+                <div class="obs-settings-row">
+                    <label>画面镜像</label>
+                    <input type="checkbox" id="obs-set-mirror" />
+                </div>
+                <div class="obs-settings-row">
+                    <label>系统音频</label>
+                    <input type="checkbox" id="obs-set-sys-audio" checked />
+                </div>
+                <div class="obs-settings-row">
+                    <label>麦克风</label>
+                    <input type="checkbox" id="obs-set-mic" checked />
+                </div>
+            </div>
+            <div class="obs-modal-foot">
+                <button class="obs-tb-btn" id="obs-settings-cancel">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script type="module" src="obs.js"></script>
+</body>
+
+</html>

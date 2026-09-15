@@ -260,7 +260,13 @@ function initEffectModeToggle() {
     }
 
     const storedMode = localStorage.getItem('visualEffectMode');
-    applyMode(storedMode === 'sakura' || storedMode === 'leaf' || storedMode === 'all' ? storedMode : 'rain');
+    // 精简优化版：粒子特效保持关闭，不被默认值重置
+    if (localStorage.getItem('siteVersion') === 'lite') {
+        localStorage.setItem('visualEffectMode', 'none');
+        window.dispatchEvent(new CustomEvent('effectModeChange', { detail: { mode: 'none' } }));
+    } else {
+        applyMode(storedMode === 'sakura' || storedMode === 'leaf' || storedMode === 'all' ? storedMode : 'rain');
+    }
 
     if (buttonEl.dataset.bound === 'true') return;
     buttonEl.dataset.bound = 'true';
@@ -777,6 +783,9 @@ if (document.readyState === 'loading') {
 			return Array.from(root.querySelectorAll<HTMLElement>('button, a[href]')).filter((n) => {
 				if (n.closest('#navbar-actions')) return false;
 				if (n.closest('button[data-ai-close]')) return false;
+				// 文章岛面板（二级菜单）也在导航条子树里，但它的卡片不是高亮目标：
+				// 面板展开时坐标在导航条下方，收起/切页后坐标退化，高亮会卡到屏幕中间
+				if (n.closest('[data-ai-panel]')) return false;
 				return true;
 			});
 		}
@@ -859,6 +868,9 @@ if (document.readyState === 'loading') {
 				if (t.closest('#navbar-actions')) return;
 				if (t.closest('button[data-ai-close]')) return;
 				if (t.closest('.dropdown-menu')) return;
+				// 文章岛面板内的链接（二级菜单卡片）不抢高亮：点了会导航，
+				// 高亮交给 URL 匹配；把 pill 滑到面板里的卡片上会卡在导航条外
+				if (t.closest('[data-ai-panel]')) return;
 				lockTo(t);
 				requestAnimationFrame(() => moveTo(t));
 			});

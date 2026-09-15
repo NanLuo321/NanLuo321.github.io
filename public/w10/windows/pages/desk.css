@@ -25,6 +25,35 @@ li {
   left: 0;
   right: 0;
   bottom: 45px;
+  overflow: hidden;
+}
+
+.desk-scroll {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+  box-sizing: border-box;
+  padding: 10px;
+}
+
+.desk-scroll::-webkit-scrollbar { width: 6px; }
+.desk-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+.desk-scroll::-webkit-scrollbar-track { background: transparent; }
+
+.desk ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 4px;
 }
 
 .bar {
@@ -131,14 +160,6 @@ li {
   display: flex;
   justify-content: center;
   align-items: center;
-}
-
-.desk ul {
-  width: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
 }
 
 .desk ul li.desk-icon {
@@ -389,12 +410,40 @@ li {
   width: 250px;
   height: 100%;
   color: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.win-frame .applist ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.25) transparent;
+}
+
+.win-frame .applist ul::-webkit-scrollbar {
+  width: 6px;
+}
+.win-frame .applist ul::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.25);
+  border-radius: 3px;
+}
+.win-frame .applist ul::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .win-frame .applist ul li {
   width: 100%;
   height: 50px;
   line-height: 50px;
+  display: flex;
+  align-items: center;
 }
 
 .win-frame .applist ul .zm {

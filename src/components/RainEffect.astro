@@ -321,6 +321,14 @@
 			return;
 		}
 
+		// 文章岛分裂/展开动画窗口（html.ai-anim，见 ArticleIsland）：canvas 保留
+		// 最后一帧不重绘，主线程整个让给动画 —— 否则雨幕每帧全屏重绘会吃掉
+		// 一半主线程，导航栏每帧样式重算+布局就要排队掉帧
+		if (document.documentElement.classList.contains("ai-anim")) {
+			requestAnimationFrame(draw);
+			return;
+		}
+
 		ctx.clearRect(0, 0, w, h);
 
 		// 浅色壁纸：深蓝雨滴；深色壁纸：亮蓝雨滴

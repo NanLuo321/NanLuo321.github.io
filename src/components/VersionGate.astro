@@ -1,0 +1,229 @@
+<div id="version-gate" hidden>
+	<div class="vg-card">
+		<div class="vg-title">选择浏览版本</div>
+		<div class="vg-sub">每次刷新网页都可以重新切换版本</div>
+		<button type="button" class="vg-btn" data-ver="lite">
+			<span class="vg-emoji">⭐</span>
+			<span class="vg-body">
+				<span class="vg-name">精简优化版</span>
+				<span class="vg-desc">更少粒子与动画，流畅优先</span>
+			</span>
+		</button>
+		<button type="button" class="vg-btn" data-ver="normal">
+			<span class="vg-emoji">⭐⭐</span>
+			<span class="vg-body">
+				<span class="vg-name">正常版 <i class="vg-rec">推荐</i></span>
+				<span class="vg-desc">完整视觉特效</span>
+			</span>
+		</button>
+		<button type="button" class="vg-btn vg-dim" data-ver="promax">
+			<span class="vg-emoji">⭐⭐⭐</span>
+			<span class="vg-body">
+				<span class="vg-name">ProMax <i class="vg-soon">敬请期待</i></span>
+				<span class="vg-desc">即将上线</span>
+			</span>
+		</button>
+		<div class="vg-tip" data-vg-tip></div>
+	</div>
+</div>
+
+<style>
+	#version-gate {
+		position: fixed;
+		inset: 0;
+		z-index: 100000;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(8, 8, 12, 0.55);
+		-webkit-backdrop-filter: blur(14px) saturate(140%);
+		backdrop-filter: blur(14px) saturate(140%);
+	}
+	#version-gate[hidden] {
+		display: none;
+	}
+	.vg-card {
+		width: min(92vw, 380px);
+		padding: 26px 22px 18px;
+		border-radius: 24px;
+		background: rgba(12, 12, 16, 0.92);
+		-webkit-backdrop-filter: blur(20px) saturate(160%);
+		backdrop-filter: blur(20px) saturate(160%);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		color: rgb(245, 245, 247);
+		font-family: inherit;
+	}
+	.vg-title {
+		font-size: 1.15rem;
+		font-weight: 700;
+		text-align: center;
+		letter-spacing: 0.04em;
+	}
+	.vg-sub {
+		margin: 8px 0 18px;
+		text-align: center;
+		font-size: 0.62rem;
+		color: rgba(245, 245, 247, 0.4);
+		line-height: 1.6;
+	}
+	.vg-sub code {
+		font-size: 0.58rem;
+		padding: 1px 5px;
+		border-radius: 5px;
+		background: rgba(255, 255, 255, 0.08);
+	}
+	.vg-btn {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		width: 100%;
+		padding: 13px 16px;
+		margin-bottom: 10px;
+		border-radius: 16px;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: rgba(255, 255, 255, 0.05);
+		color: rgb(245, 245, 247);
+		text-align: left;
+		cursor: pointer;
+		transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+	.vg-btn:hover {
+		background: rgba(255, 255, 255, 0.1);
+		border-color: rgba(255, 255, 255, 0.22);
+		transform: translateY(-1px);
+	}
+	.vg-btn:active {
+		transform: scale(0.98);
+	}
+	.vg-btn.vg-dim {
+		opacity: 0.55;
+	}
+	.vg-emoji {
+		font-size: 0.8rem;
+		line-height: 1;
+		white-space: nowrap;
+		letter-spacing: -0.08em;
+	}
+	.vg-body {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+	}
+	.vg-name {
+		font-size: 0.9rem;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		gap: 7px;
+	}
+	.vg-desc {
+		font-size: 0.68rem;
+		color: rgba(245, 245, 247, 0.5);
+	}
+	.vg-rec {
+		font-style: normal;
+		font-size: 0.58rem;
+		padding: 2px 7px;
+		border-radius: 9999px;
+		background: rgba(52, 211, 153, 0.18);
+		color: rgb(52, 211, 153);
+		font-weight: 700;
+	}
+	.vg-soon {
+		font-style: normal;
+		font-size: 0.58rem;
+		padding: 2px 7px;
+		border-radius: 9999px;
+		background: rgba(255, 255, 255, 0.1);
+		color: rgba(245, 245, 247, 0.6);
+		font-weight: 700;
+	}
+	.vg-tip {
+		min-height: 18px;
+		text-align: center;
+		font-size: 0.7rem;
+		color: rgb(52, 211, 153);
+		font-weight: 600;
+	}
+</style>
+
+<script is:inline>
+	(function () {
+		var KEY = "siteVersion";
+		var gate = document.getElementById("version-gate");
+		if (!gate) return;
+
+		var ver = null;
+		try {
+			ver = localStorage.getItem(KEY);
+		} catch (e) {}
+
+		/* 已保存的版本先应用（页面在门后面按已选版本渲染），门每次刷新都弹出供重新切换 */
+		if (ver === "lite") {
+			// 精简版：强制关闭粒子特效（rain/sakura/leaf 都读这个键）+ 底部波浪
+			try {
+				localStorage.setItem("visualEffectMode", "none");
+				localStorage.setItem("wavesEnabled", "false");
+			} catch (e) {}
+			document.body.classList.add("site-lite");
+			document.documentElement.setAttribute("data-waves-enabled", "false");
+			var waves = document.getElementById("header-waves");
+			if (waves) waves.style.display = "none";
+		} else if (ver === "normal" || ver === "promax") {
+			document.body.classList.add("site-" + ver);
+		}
+
+	/* 门的弹出时机：
+	   - 首次进站（没选过版本）→ 弹
+	   - 刷新网页 / 前后导航（reload / back_forward）→ 弹，供重新切换
+	   - 站内点链接跳转（navigate，整页加载）→ 不弹，别打断浏览
+	   另用 window 标记兜底 swup 等不重载 window 的切页场景 */
+	var navType = "navigate";
+	try {
+		var entries = performance.getEntriesByType("navigation");
+		navType = (entries && entries[0] && entries[0].type) || "navigate";
+	} catch (e) {}
+	var isReloadish = navType === "reload" || navType === "back_forward";
+	if (window.__versionGateShownThisLoad) return;
+	window.__versionGateShownThisLoad = true;
+	if (ver !== null && !isReloadish) return;
+	gate.hidden = false;
+	document.documentElement.style.overflow = "hidden";
+
+		gate.addEventListener("click", function (e) {
+			var btn = e.target && e.target.closest ? e.target.closest("[data-ver]") : null;
+			if (!btn) return;
+			var v = btn.getAttribute("data-ver");
+			if (v === "promax") {
+				var tip = gate.querySelector("[data-vg-tip]");
+				if (tip) tip.textContent = "ProMax 敬请期待 🚀";
+				return;
+			}
+			try {
+				localStorage.setItem(KEY, v);
+				localStorage.setItem("visualEffectMode", v === "lite" ? "none" : "rain");
+			} catch (err) {}
+			document.body.classList.add("site-" + v);
+			if (v === "lite") {
+				// 立即关掉底部波浪
+				try {
+					localStorage.setItem("wavesEnabled", "false");
+				} catch (err2) {}
+				document.documentElement.setAttribute("data-waves-enabled", "false");
+				var w = document.getElementById("header-waves");
+				if (w) w.style.display = "none";
+			} else {
+				// 正常版：恢复精简时关掉的东西
+				document.body.classList.remove("site-lite");
+				document.documentElement.removeAttribute("data-waves-enabled");
+				var w2 = document.getElementById("header-waves");
+				if (w2) w2.style.display = "";
+			}
+			gate.hidden = true;
+			document.documentElement.style.overflow = "";
+			window.dispatchEvent(new CustomEvent("effectModeChange", { detail: { mode: v === "lite" ? "none" : "rain" } }));
+		});
+	})();
+</script>

@@ -41,7 +41,18 @@
 		"#media-island .mi-vol svg{width:15px;height:15px;flex-shrink:0}",
 		"#media-island .mi-vol-bar{width:70px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden}",
 		"#media-island .mi-vol-fill{display:block;height:100%;background:#f5f5f7;border-radius:2px;transition:width .15s ease}",
-		"#media-island.mi-hidden{transform:translateY(-160%) scale(.85);opacity:0;pointer-events:none}",
+		"#media-island.mi-hidden{transform:scale(.5);opacity:0;pointer-events:none}",
+		"#vol-hud{position:fixed;top:1.25rem;left:1.25rem;z-index:2147483000;display:flex;align-items:center;gap:8px;height:40px;padding:0 14px 0 12px;border-radius:9999px;background:rgba(18,18,22,.82);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(255,255,255,.1);box-shadow:0 6px 22px rgba(0,0,0,.32);color:#f5f5f7;font-size:.75rem;font-weight:600;line-height:1;font-family:inherit;opacity:0;transform:translateY(-12px) scale(.9);pointer-events:none;transition:opacity .22s ease,transform .28s cubic-bezier(.32,.72,0,1)}",
+		"#vol-hud.show{opacity:1;transform:translateY(0) scale(1)}",
+		"#vol-hud svg{width:1rem;height:1rem;flex:none}",
+		"#vol-hud .vh-pct{min-width:30px;text-align:center;white-space:nowrap}",
+		"#vol-hud .vh-bar{width:72px;height:4px;border-radius:9999px;background:rgba(255,255,255,.18);overflow:hidden}",
+		"#vol-hud .vh-fill{display:block;height:100%;border-radius:9999px;background:rgb(52,211,153);transition:width .15s ease}",
+		"#kbd-hint{position:fixed;top:1.25rem;left:1.25rem;z-index:2147483000;display:flex;align-items:center;gap:8px;height:40px;padding:0 14px 0 12px;border-radius:9999px;background:rgba(18,18,22,.82);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(255,255,255,.1);box-shadow:0 6px 22px rgba(0,0,0,.32);color:#f5f5f7;font-size:.72rem;font-weight:600;line-height:1;font-family:inherit;cursor:pointer;user-select:none;opacity:0;transform:translateY(-12px) scale(.9);pointer-events:none;transition:opacity .22s ease,transform .28s cubic-bezier(.32,.72,0,1)}",
+		"#kbd-hint.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}",
+		"#kbd-hint .kh-keys{display:inline-flex;align-items:center;gap:3px}",
+		"#kbd-hint kbd{font:inherit;font-size:.62rem;padding:3px 5px;border-radius:5px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);line-height:1}",
+		"#kbd-hint .kh-text{white-space:nowrap;opacity:.85}",
 		"#mi-debug{position:fixed;bottom:6.5rem;right:1rem;z-index:2147483001;width:240px;padding:12px 14px;border-radius:16px;background:rgba(18,18,22,.92);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 40px rgba(0,0,0,.4);color:#f0f0f4;font-size:.74rem;display:none;flex-direction:column;gap:8px}",
 		"#mi-debug.open{display:flex}",
 		"#mi-debug .mid-head{display:flex;align-items:center;justify-content:space-between;font-weight:700;margin-bottom:2px}",
@@ -118,6 +129,30 @@
 	dbg.appendChild(realEl);
 	dbg.appendChild(el("div", "mid-real", "快捷键 · Ctrl+Shift+↑/↓ 调音量"));
 	document.body.appendChild(dbg);
+
+	/* ---------- 左上角音量 HUD（Ctrl+Shift+↑/↓ 调节时弹出） ---------- */
+	var hud = el("div", "");
+	hud.id = "vol-hud";
+	hud.setAttribute("aria-hidden", "true");
+	hud.innerHTML =
+		'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>' +
+		'<span class="vh-pct" data-vol-hud-pct>50%</span>' +
+		'<span class="vh-bar"><span class="vh-fill" data-vol-hud-fill></span></span>';
+	document.body.appendChild(hud);
+
+	/* ---------- 左上角快捷键提示（进站弹一次，教访客调音量） ---------- */
+	var kbdHint = el("div", "");
+	kbdHint.id = "kbd-hint";
+	kbdHint.setAttribute("aria-hidden", "true");
+	kbdHint.innerHTML =
+		'<span class="kh-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>↑</kbd><kbd>↓</kbd></span>' +
+		'<span class="kh-text">调节音量</span>';
+	document.body.appendChild(kbdHint);
+	setTimeout(function () {
+		kbdHint.classList.add("show");
+		setTimeout(function () { kbdHint.classList.remove("show"); }, 6000);
+	}, 2500);
+	kbdHint.addEventListener("click", function () { kbdHint.classList.remove("show"); });
 
 	/* ---------- 逻辑 ---------- */
 	var navUntil = 0;
@@ -347,6 +382,21 @@
 	});
 
 	/* 快捷键调音量：优先生效于正在播放的媒体（页面+iframe），无媒体时直接驱动音量条 */
+	/* 左上角音量 HUD：调节时弹出（百分比 + 进度条），1.2s 后收起 */
+	var hud = document.getElementById("vol-hud");
+	var hudPct = hud ? hud.querySelector("[data-vol-hud-pct]") : null;
+	var hudFill = hud ? hud.querySelector("[data-vol-hud-fill]") : null;
+	var hudTimer = 0;
+	function showHud(level, muted) {
+		if (!hud || !hudPct || !hudFill) return;
+		hudPct.textContent = muted ? "静音" : Math.round(level * 100) + "%";
+		hudFill.style.width = Math.round(level * 100) + "%";
+		var tip = document.getElementById("kbd-hint");
+		if (tip) tip.classList.remove("show");
+		hud.classList.add("show");
+		if (hudTimer) clearTimeout(hudTimer);
+		hudTimer = setTimeout(function () { hud.classList.remove("show"); }, 1200);
+	}
 	function adjustVolume(delta) {
 		var media = collectMedia().filter(function (m) { return !m.srcObject; });
 		var playing = media.filter(function (m) { return !m.paused && !m.ended; });
@@ -356,9 +406,11 @@
 				if (m.muted && delta > 0) m.muted = false;
 				m.volume = Math.min(1, Math.max(0, Math.round((m.volume + delta) * 100) / 100));
 			});
+			showHud(list[0].volume, list[0].muted);
 		} else {
 			volLevel = Math.min(1, Math.max(0, Math.round((volLevel + delta) * 100) / 100));
 			volUntil = performance.now() + 2000;
+			showHud(volLevel, false);
 			sync();
 		}
 	}

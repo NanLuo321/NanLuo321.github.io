@@ -64,7 +64,7 @@
     width: 0;
     height: 0;
     pointer-events: none;
-    z-index: 99999;
+    z-index: 100002; /* 永远置顶（高于版本选择门 100000） */
   }
 
   #cursor-dot {
@@ -187,7 +187,7 @@
     width: 0;
     height: 0;
     pointer-events: none;
-    z-index: 99998;
+    z-index: 100001; /* 高于版本选择门 */
   }
 
   /* 单个波纹：固定大小，用 scale 瞬间出现并扩散 */

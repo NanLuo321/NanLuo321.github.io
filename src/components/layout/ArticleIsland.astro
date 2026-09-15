@@ -46,13 +46,12 @@ const triggerFinalHref = url(triggerHref);
 		生命周期：先在岛内那一格变成头部 → 再向两边拉伸 + 向下展开列表。
 	-->
 	<div class="ai-float-island" data-ai-panel role="region" aria-label={triggerName}>
-		<div class="ai-fi-head">
-			<span class="ai-fi-dot" aria-hidden="true"></span>
+		<!-- 头部 = 原「文章」按钮的延续：同样的 图标 + 文字 + 下箭头，箭头展开时转向上。
+		     整个头部可点（data-ai-close），点了就收起 —— 与「再按一次按钮收起」同义 -->
+		<div class="ai-fi-head" data-ai-close role="button" tabindex="0" aria-label={`收起${triggerName}`}>
+			<Icon is:inline name={triggerIcon} class="ai-fi-ticon text-[1.1rem]" />
 			<span class="ai-fi-title">{triggerName}</span>
-			<span class="ai-fi-count">{items.length}</span>
-			<button type="button" class="ai-fi-chev" data-ai-close aria-label={`收起${triggerName}`}>
-				<Icon is:inline name="material-symbols:keyboard-arrow-down-rounded" class="text-[1.15rem]" />
-			</button>
+			<Icon is:inline name="material-symbols:keyboard-arrow-down-rounded" class="ai-fi-chev text-[1.2rem]" />
 		</div>
 		<div class="ai-fi-body">
 			{items.map((item, i) => (
@@ -314,12 +313,13 @@ const triggerFinalHref = url(triggerHref);
 	   高度/内边距也是过渡的，展开时它会「长」成面板头部，而不是跳变 */
 	:global(.ai-float-island.is-pill .ai-fi-head) {
 		height: var(--ai-head-h, 44px);
-		padding: 0 4px 0 10px;
+		padding: 0 4px 0 16px;
 		border-bottom-color: transparent;
 	}
 
 	/* --- 面板头部：正好铺满岛内那一格（--ai-head-h = 岛高），
-	       内容自然与导航行其它按钮同一条基线 --- */
+	       内容与被取代的「文章」按钮对齐（px-4 = 左内边 16px），
+	       整条头部可点（data-ai-close），hover 给一点按钮式的高亮 --- */
 	:global(.ai-float-island .ai-fi-head) {
 		position: relative;
 		display: flex;
@@ -327,15 +327,20 @@ const triggerFinalHref = url(triggerHref);
 		align-items: center;
 		gap: 7px;
 		height: var(--ai-head-h, 44px);
-		padding: 0 8px 0 12px;
+		padding: 0 8px 0 16px;
 		box-sizing: border-box;
 		border-bottom: 1px solid transparent;
+		cursor: pointer;
 		opacity: 0;
 		transition:
 			opacity 0.24s ease,
 			height var(--ai-dur, 460ms) var(--ai-ease, cubic-bezier(0.32, 0.72, 0, 1)),
 			padding var(--ai-dur, 460ms) var(--ai-ease, cubic-bezier(0.32, 0.72, 0, 1)),
 			border-color 0.3s ease;
+	}
+
+	:global(.ai-float-island.is-shown .ai-fi-head:hover) {
+		background-image: linear-gradient(rgba(127, 127, 127, 0.1), rgba(127, 127, 127, 0.1));
 	}
 
 	:global(.ai-float-island.is-pill .ai-fi-head),
@@ -345,17 +350,14 @@ const triggerFinalHref = url(triggerHref);
 
 	:global(.ai-float-island.is-expanded .ai-fi-head) {
 		height: var(--ai-head-h, 44px);
-		padding: 0 8px 0 12px;
+		padding: 0 8px 0 16px;
 		border-bottom-color: rgba(0, 0, 0, 0.06);
 	}
 
-	:global(.ai-float-island .ai-fi-dot) {
+	:global(.ai-float-island .ai-fi-ticon) {
 		flex: none;
-		width: 7px;
-		height: 7px;
-		border-radius: 50%;
-		background: linear-gradient(135deg, rgb(59, 130, 246), rgb(99, 102, 241));
-		box-shadow: 0 0 0 0.5px rgba(59, 130, 246, 0.35);
+		display: inline-flex;
+		color: currentColor;
 	}
 
 	:global(.ai-float-island .ai-fi-title) {
@@ -365,46 +367,14 @@ const triggerFinalHref = url(triggerHref);
 		white-space: nowrap;
 	}
 
-	:global(.ai-float-island .ai-fi-count) {
-		display: inline-flex;
-		flex: none;
-		align-items: center;
-		justify-content: center;
-		min-width: 18px;
-		height: 16px;
-		padding: 0 5px;
-		border-radius: 9999px;
-		background: rgba(0, 0, 0, 0.07);
-		color: rgba(23, 23, 23, 0.6);
-		font-size: 0.625rem;
-		font-weight: 600;
-		line-height: 1;
-	}
-
+	/* 头部箭头：与触发按钮的箭头同款同节奏，展开时转向上（示意「点这里收回」） */
 	:global(.ai-float-island .ai-fi-chev) {
-		display: inline-flex;
 		flex: none;
-		align-items: center;
-		justify-content: center;
-		width: 26px;
-		height: 26px;
-		margin-left: auto;
-		padding: 0;
-		border: 0;
-		border-radius: 50%;
-		background: rgba(0, 0, 0, 0.05);
-		color: inherit;
-		cursor: pointer;
-		opacity: 0.6;
-		transition:
-			transform 0.4s cubic-bezier(0.32, 0.72, 0, 1),
-			opacity 0.2s ease,
-			background 0.15s ease;
-	}
-
-	:global(.ai-float-island .ai-fi-chev:hover) {
-		opacity: 1;
-		background: rgba(0, 0, 0, 0.1);
+		display: inline-flex;
+		color: currentColor;
+		opacity: 0.7;
+		margin-left: 0.15rem;
+		transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 	}
 
 	:global(.ai-float-island.is-expanded .ai-fi-chev) {
@@ -505,19 +475,6 @@ const triggerFinalHref = url(triggerHref);
 	:global(.dark .ai-float-island) {
 		color: rgb(245, 245, 247);
 		box-shadow: var(--shadow-navbar-dark);
-	}
-
-	:global(.dark .ai-float-island .ai-fi-count) {
-		background: rgba(255, 255, 255, 0.12);
-		color: rgba(245, 245, 247, 0.7);
-	}
-
-	:global(.dark .ai-float-island .ai-fi-chev) {
-		background: rgba(255, 255, 255, 0.1);
-	}
-
-	:global(.dark .ai-float-island .ai-fi-chev:hover) {
-		background: rgba(255, 255, 255, 0.18);
 	}
 
 	:global(.dark .ai-float-island .ai-fi-card:hover) {
@@ -959,7 +916,7 @@ const triggerFinalHref = url(triggerHref);
 	const PANEL_RADIUS = "0 0 24px 24px"; // 展开态（未分裂：顶边藏在岛里）
 	// 三胶囊分裂态：整条岛裂开后，中间胶囊（= 面板）四角都露出来，全圆
 	const SPLIT_PANEL_RADIUS = "24px";
-	const SPLIT_PILL_RADIUS = "20px";
+	const SPLIT_PILL_RADIUS = "9999px"; // 收拢胶囊用全圆：高度在变，9999px 任何时刻都是胶囊形，不会出现「方角」
 	const GAP = 12; // 分裂后胶囊与「文章」列之间的缝隙（与导航行 gap-3 同节奏）
 	const MS_SPLIT = 240; // 分割态停稳片刻，再开始展开
 	const MS_EXPAND = 440; // 拉伸 + 向下展开时长
@@ -1030,6 +987,8 @@ const triggerFinalHref = url(triggerHref);
 	function resetPanel(panel: HTMLElement): void {
 		panel.classList.add("no-anim");
 		panel.classList.remove("is-shown", "is-expanded", "is-pill", "is-split");
+		// 收起/复位即动画结束：雨幕解冻（见 RainEffect 的 ai-anim 钩子）
+		document.documentElement.classList.remove("ai-anim");
 		panel.style.opacity = "";
 		panel.style.removeProperty("--ai-dur");
 		panel.style.removeProperty("left");
@@ -1164,46 +1123,39 @@ const triggerFinalHref = url(triggerHref);
 			let splitRaf = 0;
 			let capL: HTMLElement | null = null;
 			let capR: HTMLElement | null = null;
+			// startSplit 时的玻璃材料，收起时用于瞬时无缝还玻璃
+			let glassSnap: ReturnType<typeof snapshotGlass> | null = null;
 
 			const rowOf = (frame: HTMLElement | null): HTMLElement | null =>
 				frame ? ((frame.firstElementChild as HTMLElement) ?? null) : null;
 
-			function measureSplit(): {
-				barL: number; barT: number; barW: number; barH: number;
-				colL: number; colR: number; row: HTMLElement;
-			} | null {
+			function renderSplit(t: number): void {
+				if (!capL || !capR) return;
+				// 每帧实测：玻璃条是 fit-content（列宽变化会连带动整条岛），位置/尺寸
+				// 都不能缓存，缓存就会「展开后玻璃错位」。三个 rect 在同一帧里读，
+				// 只强制一次布局。
 				const frame = frameOf(island);
 				const row = rowOf(frame);
-				if (!frame || !row || !row.isConnected) return null;
+				if (!frame || !row || !row.isConnected) return;
 				const rr = row.getBoundingClientRect();
 				const fr = frame.getBoundingClientRect();
 				const ir = island.getBoundingClientRect();
-				if (fr.width < 10 || ir.width < 10) return null;
-				// 玻璃条的边缘是玻璃框的 border-box 边缘；row 在边框内侧，
-				// 所以相对 row 的偏移是「负的边框宽」（通常 -1px）
-				return {
-					barL: fr.left - rr.left,
-					barT: fr.top - rr.top,
-					barW: fr.width,
-					barH: fr.height,
-					colL: ir.left - rr.left,
-					colR: ir.right - rr.left,
-					row,
-				};
-			}
-
-			function renderSplit(t: number): void {
-				const m = measureSplit();
-				if (!m || !capL || !capR) return;
+				if (fr.width < 10 || ir.width < 10) return;
+				const barL = fr.left - rr.left;
+				const barT = fr.top - rr.top;
+				const barW = fr.width;
+				const barH = fr.height;
+				const colL = ir.left - rr.left;
+				const colR = ir.right - rr.left;
 				const gap = GAP * t;
-				capL.style.left = `${m.barL}px`;
-				capL.style.top = `${m.barT}px`;
-				capL.style.height = `${m.barH}px`;
-				capL.style.width = `${Math.max(0, m.colL - gap - m.barL)}px`;
-				capR.style.top = `${m.barT}px`;
-				capR.style.height = `${m.barH}px`;
-				capR.style.left = `${m.colR + gap}px`;
-				capR.style.width = `${Math.max(0, m.barL + m.barW - (m.colR + gap))}px`;
+				capL.style.left = `${barL}px`;
+				capL.style.top = `${barT}px`;
+				capL.style.height = `${barH}px`;
+				capL.style.width = `${Math.max(0, colL - gap - barL)}px`;
+				capR.style.top = `${barT}px`;
+				capR.style.height = `${barH}px`;
+				capR.style.left = `${colR + gap}px`;
+				capR.style.width = `${Math.max(0, barL + barW - (colR + gap))}px`;
 			}
 
 			function ensureCaps(row: HTMLElement): void {
@@ -1221,8 +1173,13 @@ const triggerFinalHref = url(triggerHref);
 				}
 			}
 
-			/** 岛此刻的玻璃档位：透明模式（full/semifull）返回 null —— 没玻璃就不用分 */
-			function snapshotGlass(): { alphaPct: number; filter: string; radius: string } | null {
+			/** 岛此刻的玻璃档位：透明模式（full/semifull）返回 null —— 没玻璃就不用分。
+			 *  bg/border/shadow 是收起时的「瞬时还玻璃」材料：与左右胶囊同材质，
+			 *  同帧无缝换层，不用等样式表那 0.36s 的淡入（那会露出一截透明） */
+			function snapshotGlass(): {
+				alphaPct: number; filter: string; radius: string;
+				bg: string; border: string; shadow: string;
+			} | null {
 				const frame = frameOf(island);
 				if (!frame) return null;
 				const cs = getComputedStyle(frame);
@@ -1240,10 +1197,13 @@ const triggerFinalHref = url(triggerHref);
 					alphaPct: Math.round(alpha * 100),
 					filter: filter && filter !== "none" ? filter : "blur(12px)",
 					radius: cs.borderTopLeftRadius || "9999px",
+					bg,
+					border: cs.borderLeftColor,
+					shadow: cs.boxShadow,
 				};
 			}
 
-			function animateSplit(target: 0 | 1, dur: number): void {
+			function animateSplit(target: 0 | 1, dur: number, onDone?: () => void): void {
 				if (splitRaf) cancelAnimationFrame(splitRaf);
 				splitRaf = 0;
 				if (!splitVisible) return;
@@ -1254,7 +1214,14 @@ const triggerFinalHref = url(triggerHref);
 				const step = (now: number) => {
 					const p = Math.min(1, (now - t0) / d);
 					renderSplit(from + (target - from) * ease(p));
-					splitRaf = p < 1 ? requestAnimationFrame(step) : 0;
+					if (p < 1) {
+						splitRaf = requestAnimationFrame(step);
+					} else {
+						splitRaf = 0;
+						// 最后一帧（缝隙刚好为 0）当场回调：收起时岛玻璃在这一帧
+						// 瞬时还上，不留「合拢完还开着缝」的中间帧
+						onDone?.();
+					}
 				};
 				splitRaf = requestAnimationFrame(step);
 			}
@@ -1290,6 +1257,7 @@ const triggerFinalHref = url(triggerHref);
 				if (!frame || !row) return;
 				splitOn = true;
 				const snap = snapshotGlass();
+				glassSnap = snap;
 				splitVisible = !!snap;
 				// 面板切换成「整块玻璃」：岛内那一格也铺上（之前透出的是岛的玻璃，岛玻璃要摘了）
 				panel.style.setProperty("--ai-glass-top", "0px");
@@ -1333,7 +1301,36 @@ const triggerFinalHref = url(triggerHref);
 					splitRaf = 0;
 				}
 				const frame = frameOf(island);
-				if (frame) setSplitClass(frame, false);
+				if (frame) {
+					setSplitClass(frame, false);
+					// 无缝换层：合拢的胶囊盖着的位置，玻璃材质与岛一模一样，
+					// 所以用快照「瞬时钉回」，不等样式表 0.36s 的淡入
+					// （淡入会让左右两段先透明一下，露出一截壁纸）。
+					// 下一拍交还样式表：值相同，过渡原地踏步，肉眼无感；
+					// 开着切了主题的话则顺势交叉淡到新主题值。
+					const snap = glassSnap;
+					if (snap) {
+						frame.style.setProperty("transition", "none");
+						frame.style.setProperty("background", snap.bg, "important");
+						frame.style.setProperty("border-color", snap.border, "important");
+						frame.style.setProperty(
+							"box-shadow",
+							snap.shadow && snap.shadow !== "none" ? snap.shadow : "none",
+							"important",
+						);
+						frame.style.setProperty("backdrop-filter", snap.filter, "important");
+						frame.style.setProperty("-webkit-backdrop-filter", snap.filter, "important");
+						void frame.offsetWidth;
+						requestAnimationFrame(() => {
+							frame.style.removeProperty("transition");
+							frame.style.removeProperty("background");
+							frame.style.removeProperty("border-color");
+							frame.style.removeProperty("box-shadow");
+							frame.style.removeProperty("backdrop-filter");
+							frame.style.removeProperty("-webkit-backdrop-filter");
+						});
+					}
+				}
 				for (const c of [capL, capR]) {
 					if (!c) continue;
 					c.classList.add("no-anim");
@@ -1342,6 +1339,7 @@ const triggerFinalHref = url(triggerHref);
 				}
 				splitOn = false;
 				splitVisible = false;
+				glassSnap = null;
 				// 面板交还「岛内透玻璃」模式：岛玻璃已经回来了，头部那一格交给它
 				panel.style.setProperty("--ai-glass-top", `${band}px`);
 				panel.style.removeProperty("border-top-color");
@@ -1424,8 +1422,13 @@ const triggerFinalHref = url(triggerHref);
 				// 移动端：交给 CSS 抽屉，不做两段式
 				if (!isDesktop()) return;
 
+				// 分裂/展开是纯主线程活，雨幕 canvas 先冻结 ~0.8s 让路
+				// （RainEffect 见 html.ai-anim 就跳过重绘；resetPanel 兜底解冻）
+				// 注意必须排在 clearTimers() 之后，否则刚注册的解冻 timer 会被清掉
 				const token = ++state.token;
 				clearTimers();
+				document.documentElement.classList.add("ai-anim");
+				later(() => document.documentElement.classList.remove("ai-anim"), MS_SPLIT + MS_EXPAND + 120);
 
 				const g = measure();
 				// 设定「岛内那一格」的高度：面板头部就按它铺满岛内那一行，
@@ -1436,6 +1439,13 @@ const triggerFinalHref = url(triggerHref);
 				// 先把岛此刻的玻璃抄到面板上：分割出来的那一块从第一帧起
 				// 就与岛同材质，不存在「先白一下再对上」的闪
 				syncGlass(frameOf(island), panel);
+				// 药丸阶段玻璃面为零（整块都在 --ai-glass-top 以上，岛玻璃本来就垫在
+				// 底下），先把面板的模糊关掉，少一块 backdrop-filter 面；
+				// startSplit 摘岛玻璃时会按岛的配方把模糊铺回来
+				if (snapshotGlass()) {
+					panel.style.setProperty("backdrop-filter", "none");
+					panel.style.setProperty("-webkit-backdrop-filter", "none");
+				}
 
 				// ① 分割：面板先按岛内那一格的大小出现 —— 位置就是「文章」按钮原位，
 				//    头部（● 文章 N ⌃）原地取代按钮，所以这一步是「形态变化」而不是
@@ -1490,6 +1500,9 @@ const triggerFinalHref = url(triggerHref);
 					return;
 				}
 
+				// 收起动画期间同样冻结雨幕让路（resetPanel 里解冻）
+				document.documentElement.classList.add("ai-anim");
+
 				const g = measure();
 
 				// 反向：内容淡出 → 「文章」那一列收窄回按钮宽（邻居归位）、
@@ -1501,22 +1514,29 @@ const triggerFinalHref = url(triggerHref);
 				island.style.width = `${g.btnW}px`;
 
 				if (splitOn) {
-					// 分割态收起：面板此刻就是「中间胶囊」（顶格铺玻璃、全圆、带描边），
-					// 左右胶囊向中间合拢，三枚合回一条后岛玻璃瞬时原样还上，再淡出面板
+					// 分割态收起：面板缩回岛内那一格（全程可见、不淡出），左右胶囊向
+					// 中间合拢；缝隙归零那一帧（animateSplit 完成回调）岛玻璃同材质
+					// 瞬时还上、按钮归位 —— 胶囊是「滑回去吸附进岛里」的，不是消失。
+					// 头部与按钮同款同位，归位瞬间肉眼无缝
 					panel.style.setProperty("--ai-glass-top", "0px");
 					panel.classList.add("is-split");
 					applyBox(panel, { y: g.y, h: g.band, r: SPLIT_PILL_RADIUS });
-					animateSplit(0, MS_CLOSE);
-					later(() => {
+					if (!splitVisible) {
+						// 透明模式没有可见分裂（animateSplit 直接返回、无回调），定时器兜底归位
+						later(() => {
+							if (token !== state.token) return;
+							endSplit(g.band);
+							resetPanel(panel);
+							resetSlot(island, trigger);
+						}, MS_CLOSE);
+						return;
+					}
+					animateSplit(0, MS_CLOSE, () => {
 						if (token !== state.token) return;
 						endSplit(g.band);
-						panel.style.opacity = "0";
-					}, MS_CLOSE + 30);
-					later(() => {
-						if (token !== state.token) return;
 						resetPanel(panel);
 						resetSlot(island, trigger);
-					}, MS_CLOSE + 320);
+					});
 					return;
 				}
 
@@ -1560,16 +1580,15 @@ const triggerFinalHref = url(triggerHref);
 				);
 			});
 
-			// 展开后原按钮已隐去（面板头部原地取代它），点头部＝再点一次「文章」：
-			// 收起。收起按钮（data-ai-close）自己有绑定，这里只管头部其余区域。
+			// 头部（data-ai-close）已在 closeTargets 里绑了 click；这里只补键盘：
+			// 头部是 role="button"，Enter / 空格 = 收起
 			const headEl = panel.querySelector<HTMLElement>(".ai-fi-head");
 			if (headEl) {
 				headEl.addEventListener(
-					"click",
+					"keydown",
 					(e) => {
-						if ((e.target as HTMLElement).closest("[data-ai-close]")) return;
+						if (e.key !== "Enter" && e.key !== " ") return;
 						e.preventDefault();
-						e.stopPropagation();
 						close();
 					},
 					{ signal },
