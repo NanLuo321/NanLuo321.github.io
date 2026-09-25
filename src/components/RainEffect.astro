@@ -77,6 +77,20 @@
 	#voice-rain-toggle.error {
 		border-color: rgba(255, 69, 58, 0.55);
 	}
+	/* 授权等待中：脉动提示「正在申请麦克风」，此时再点一下即撤销 */
+	#voice-rain-toggle.starting {
+		border-color: rgba(56, 189, 248, 0.55);
+		animation: vr-pulse 1.1s ease-in-out infinite;
+	}
+	@keyframes vr-pulse {
+		0%,
+		100% {
+			opacity: 0.62;
+		}
+		50% {
+			opacity: 1;
+		}
+	}
 
 	@media (max-width: 768px) {
 		#voice-rain-toggle {
@@ -129,6 +143,7 @@
 		const levelLabel = () => (voiceLevel < 0.03 ? "🌧️ 小雨" : voiceLevel < 0.08 ? "🌧️🌧️ 中雨" : "🌧️🌧️🌧️🌧️ 暴雨");
 
 		function updateVrLabel() {
+			syncIsland(); // 状态变了就顺手推给岛内那颗遥控器
 			if (!vrEmoji || !vrText) return;
 			if (!voiceMode) {
 				vrEmoji.textContent = "🎤";
@@ -154,22 +169,80 @@
 			updateVrLabel();
 		}
 
+		/* ---------- 状态 → 界面：唯一出口 ----------
+		   踩过的坑：原来在点击处理里「乐观」地同步加 .on，而 getUserMedia 是异步的、
+		   还可能失败（拒绝授权 / 没有设备 / 权限弹窗被晾着）。失败分支只加了 .error，
+		   从没摘掉 .on —— 于是按钮从此显示成「已开启」，再点又因为 voiceMode 仍是 false
+		   而重新申请一次权限：视觉上就是「打开后关不掉」。现在一切都由 syncVoiceUi()
+		   按真实状态渲染，失败必定回滚。 */
+		let voiceStartToken = 0; // 每次申请自增；在途的回调凭它作废
+		let voiceStartTimer = null;
+
+		function syncVoiceUi() {
+			if (!vrBtn) return;
+			vrBtn.classList.toggle("on", voiceMode);
+			vrBtn.classList.toggle("starting", voiceStarting);
+			vrBtn.setAttribute("aria-pressed", voiceMode ? "true" : "false");
+			syncIsland();
+		}
+
+		/** 申请失败 / 超时：解锁并如实回滚，绝不留「开着」的假象 */
+		function failVoice(msg) {
+			voiceStarting = false;
+			if (voiceStartTimer) {
+				clearTimeout(voiceStartTimer);
+				voiceStartTimer = null;
+			}
+			vrText && (vrText.textContent = msg);
+			vrBtn && vrBtn.classList.add("error");
+			syncVoiceUi();
+			setTimeout(() => {
+				vrBtn && vrBtn.classList.remove("error");
+				updateVrLabel();
+				syncVoiceUi();
+			}, 2200);
+		}
+
+		/** 点第二下 = 撤销这次授权等待（不然按钮会卡在「申请中」点什么都没反应） */
+		function cancelVoiceStart() {
+			voiceStartToken++;
+			voiceStarting = false;
+			if (voiceStartTimer) {
+				clearTimeout(voiceStartTimer);
+				voiceStartTimer = null;
+			}
+			updateVrLabel();
+			syncVoiceUi();
+		}
+
 		function startVoice() {
 			if (voiceStarting || voiceMode) return;
+			const token = ++voiceStartToken;
 			voiceStarting = true;
+			syncVoiceUi();
 			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-				vrBtn && vrBtn.classList.add("error");
 				vrText && (vrText.textContent = "麦克风不可用");
-				voiceStarting = false;
-				setTimeout(() => {
-					vrBtn && vrBtn.classList.remove("error");
-					updateVrLabel();
-				}, 2000);
+				failVoice("麦克风不可用");
 				return;
 			}
+			/* 权限弹窗被晾着、或浏览器不给回音时 voiceStarting 会永远卡住，
+			   按钮从此点不动 —— 8s 没结果就按失败处理，强制解锁。 */
+			voiceStartTimer = setTimeout(() => {
+				if (token !== voiceStartToken) return;
+				failVoice("麦克风没有响应");
+			}, 8000);
 			navigator.mediaDevices
 				.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false } })
 				.then((stream) => {
+					if (token !== voiceStartToken) {
+						// 期间用户又点了一下（撤销），这条流原样还回去
+						stream.getTracks().forEach((t) => t.stop());
+						return;
+					}
+					if (voiceStartTimer) {
+						clearTimeout(voiceStartTimer);
+						voiceStartTimer = null;
+					}
 					voiceStarting = false;
 					voiceStream = stream;
 					const AC = window.AudioContext || window.webkitAudioContext;
@@ -182,21 +255,23 @@
 					voiceMode = true;
 					voiceLevel = 0;
 					applyVisibility();
+					syncVoiceUi();
 					updateVrLabel();
 					voiceTimer = setInterval(pollMic, 120);
 				})
 				.catch(() => {
-					voiceStarting = false;
-					vrBtn && vrBtn.classList.add("error");
-					vrText && (vrText.textContent = "麦克风被拒绝");
-					setTimeout(() => {
-						vrBtn && vrBtn.classList.remove("error");
-						updateVrLabel();
-					}, 2000);
+					if (token !== voiceStartToken) return;
+					failVoice("麦克风被拒绝");
 				});
 		}
 
 		function stopVoice() {
+			voiceStartToken++; // 在途的授权回调作废
+			if (voiceStartTimer) {
+				clearTimeout(voiceStartTimer);
+				voiceStartTimer = null;
+			}
+			voiceStarting = false;
 			voiceMode = false;
 			voiceLevel = 0;
 			if (voiceTimer) {
@@ -219,22 +294,60 @@
 			delete canvas.dataset.vrIntensity;
 			applyVisibility();
 			updateVrLabel();
+			syncVoiceUi();
 		}
 
 		if (vrBtn) {
 			vrBtn.addEventListener("click", () => {
-				if (voiceStarting) return; // 授权等待中忽略连点
 				if (voiceMode) {
 					stopVoice();
-					vrBtn.classList.remove("on");
-					vrBtn.setAttribute("aria-pressed", "false");
-				} else {
-					startVoice();
-					vrBtn.classList.add("on");
-					vrBtn.setAttribute("aria-pressed", "true");
+					return;
 				}
+				// 正在申请权限时再点一下 = 撤销这次申请（否则按钮会卡在等待里）
+				if (voiceStarting) {
+					cancelVoiceStart();
+					return;
+				}
+				startVoice();
 			});
+			/* 首次进入时把「正在申请」这类状态对齐一次，
+			   顺手清掉上一轮遗留的 on（热更新 / 切页后 DOM 被复用的情况） */
+			syncVoiceUi();
 		}
+
+		/* ================= 岛内遥控：ProMax 把「娱乐模式」搬进了导航岛 =================
+		   真开关还是上面那颗 #voice-rain-toggle（麦克风 / 雨势的唯一起点），
+		   ProMax 下它被 CSS 藏起来，改用 Navbar.astro 里的 #pm-rain-toggle 当遥控器。
+
+		   接线方式刻意选「document 事件委托 + 状态由本组件主动外推」：
+		   岛内按钮在文档里排在 RainEffect 之后，而且导航岛会被 swup / 文章态重建，
+		   任何「启动时抓节点 + 挂监听」的写法都会在某个时机静默失效
+		   （踩过两次：DragGlass 一次、这里一次）。 */
+		function islandBtn() {
+			return document.getElementById("pm-rain-toggle");
+		}
+		/* 把真开关的状态推到岛内按钮上 */
+		function syncIsland() {
+			const b = islandBtn();
+			if (!b || !vrBtn) return;
+			b.classList.toggle("on", vrBtn.classList.contains("on"));
+			b.classList.toggle("error", vrBtn.classList.contains("error"));
+			b.classList.toggle("starting", vrBtn.classList.contains("starting"));
+			b.setAttribute("aria-pressed", vrBtn.getAttribute("aria-pressed") || "false");
+		}
+
+		document.addEventListener("click", (e) => {
+			const t = e.target;
+			if (!t || !t.closest) return;
+			if (!t.closest("#pm-rain-toggle")) return;
+			e.preventDefault();
+			const s = document.getElementById("voice-rain-toggle");
+			if (!s) return;
+			s.click();
+			setTimeout(syncIsland, 80); // 乐观同步；麦克风异步失败时由 updateVrLabel / stopVoice 兜底
+		});
+		document.addEventListener("astro:page-load", syncIsland);
+		document.addEventListener("swup:contentReplaced", syncIsland);
 		/* ================= 声控雨幕结束 ================= */
 
 		function applyVisibility() {

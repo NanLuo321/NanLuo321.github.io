@@ -1,0 +1,30 @@
+{
+  "extName": {
+    "message": "Google Docs Offline",
+    "description": "Extension name"
+  },
+  "extDesc": {
+    "message": "Edit, create, and view your documents, spreadsheets, and presentations — all without internet access.",
+    "description": "Extension description"
+  },
+  "createNew": {
+    "message": "CREATE NEW",
+    "description": "Text shown in the extension pop up for creating a new document"
+  },
+  "popupHelpText": {
+    "message": "Write, edit, and collaborate wherever you are, with or without an internet connection.",
+    "description": "Help text that is shown as part of the extension pop-up title"
+  },
+  "learnMore": {
+    "message": "Learn More",
+    "description": "Text shown after the help text that the user can click to learn more."
+  },
+  "explanationOfflineEnabled": {
+    "message": "You're offline, but you can still edit available files or create new ones.",
+    "description": "Text shown in the extension popup when the user is offline and offline is enabled."
+  },
+  "explanationOfflineDisabled": {
+    "message": "You're offline. To use Google Docs without an internet connection, go to settings on the Google Docs homepage and turn on offline sync the next time you're connected to the internet.",
+    "description": "Text shown in the extension popup when the user is offline and offline is disabled."
+  }
+}

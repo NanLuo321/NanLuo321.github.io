@@ -69,6 +69,7 @@ const isCurrent = linkPath === currentNorm || (linkPath === "/" && currentNorm =
 			aria-label={processedLink.name}
 			href={processedLink.external ? processedLink.url : url(processedLink.url)}
 			target={processedLink.external ? "_blank" : null}
+			draggable="false"
 			class="btn-plain scale-animation rounded-lg h-10 font-bold px-4 active:scale-95"
 			class:list={[{ "is-current": isCurrent }]}
 			aria-current={isCurrent ? "page" : undefined}

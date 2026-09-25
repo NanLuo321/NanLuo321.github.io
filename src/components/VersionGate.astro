@@ -1,30 +1,61 @@
-<div id="version-gate" hidden>
-	<div class="vg-card">
-		<div class="vg-title">选择浏览版本</div>
-		<div class="vg-sub">每次刷新网页都可以重新切换版本</div>
-		<button type="button" class="vg-btn" data-ver="lite">
-			<span class="vg-emoji">⭐</span>
-			<span class="vg-body">
-				<span class="vg-name">精简优化版</span>
-				<span class="vg-desc">更少粒子与动画，流畅优先</span>
-			</span>
-		</button>
-		<button type="button" class="vg-btn" data-ver="normal">
-			<span class="vg-emoji">⭐⭐</span>
-			<span class="vg-body">
-				<span class="vg-name">正常版 <i class="vg-rec">推荐</i></span>
-				<span class="vg-desc">完整视觉特效</span>
-			</span>
-		</button>
-		<button type="button" class="vg-btn vg-dim" data-ver="promax">
-			<span class="vg-emoji">⭐⭐⭐</span>
-			<span class="vg-body">
-				<span class="vg-name">ProMax <i class="vg-soon">敬请期待</i></span>
-				<span class="vg-desc">即将上线</span>
-			</span>
-		</button>
+<!--
+  版本门 + 开屏
+  ─────────────────────────────────────────────────────────────
+  分两段上场：
+    ① 幕布期（整站还在加载）—— 黑底 + WELCOME 先到位，静态、零动画。
+      加载期间不出空档；重活（大半径 blur 光斑 / 流光 / backdrop-filter 按钮）
+      一律不上，免得跟首屏抢主线程（用户反馈：一起上会卡）。
+    ② 开场（window load + 字体就绪 + 站内 Loading 退场之后）——
+      .is-shown 接上：光斑淡入开始游动、WELCOME 起流光、TO 与 南洛'S BLOG
+      依次模糊入场；4.5s 后 .is-ready 收起开屏、放出版本按钮。
+      期间点一下可立刻跳过。
+  行为沿用原来的版本门脚本：
+    · localStorage.siteVersion 记档；首次进站 / 刷新弹，站内跳转不弹
+    · lite 关粒子特效与底部波浪；normal / promax 还原
+    · ultra、promaxplusultra 是占位档：只回一句提示，不写盘
+-->
+<div
+	id="version-gate"
+	hidden
+	style="position:fixed;inset:0;z-index:100000;overflow:hidden;background:#000;color:#fff"
+>
+	<!-- 黑白动态背景 -->
+	<div class="vg-bg" aria-hidden="true"></div>
+
+	<!-- 开屏 -->
+	<section class="vg-intro" data-vg-skip>
+		<div class="vg-glass vg-line1">WELCOME</div>
+		<div class="vg-glass vg-line2">TO</div>
+		<div class="vg-glass vg-line3">南洛'S BLOG</div>
+		<div class="vg-skip">点一下跳过</div>
+	</section>
+
+	<!-- 版本选择 -->
+	<section class="vg-panel">
+		<div class="vg-versions">
+			<button type="button" class="vg-btn" data-ver="lite">
+				<span class="vg-name">精简版</span>
+				<span class="vg-tag">Lite</span>
+			</button>
+			<button type="button" class="vg-btn" data-ver="normal">
+				<span class="vg-name">普通版</span>
+				<span class="vg-tag vg-tag--rec">推荐 · Normal</span>
+			</button>
+			<button type="button" class="vg-btn" data-ver="promax">
+				<span class="vg-name">PROMAX</span>
+				<span class="vg-tag vg-tag--rec">新</span>
+			</button>
+			<button type="button" class="vg-btn vg-btn--soon" data-ver="promaxplusultra" data-soon="1">
+				<span class="vg-name">PROMAX ULTRA</span>
+				<span class="vg-tag vg-tag--soon">预告</span>
+			</button>
+			<button type="button" class="vg-btn vg-btn--soon" data-ver="ultra" data-soon="1">
+				<span class="vg-name">ULTRA</span>
+				<span class="vg-tag vg-tag--soon">明年</span>
+			</button>
+		</div>
 		<div class="vg-tip" data-vg-tip></div>
-	</div>
+	</section>
 </div>
 
 <style>
@@ -32,120 +63,372 @@
 		position: fixed;
 		inset: 0;
 		z-index: 100000;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: rgba(8, 8, 12, 0.55);
-		-webkit-backdrop-filter: blur(14px) saturate(140%);
-		backdrop-filter: blur(14px) saturate(140%);
+		overflow: hidden;
+		background: #000;
+		color: #fff;
+		font-family:
+			-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
 	}
 	#version-gate[hidden] {
 		display: none;
 	}
-	.vg-card {
-		width: min(92vw, 380px);
-		padding: 26px 22px 18px;
-		border-radius: 24px;
-		background: rgba(12, 12, 16, 0.92);
-		-webkit-backdrop-filter: blur(20px) saturate(160%);
-		backdrop-filter: blur(20px) saturate(160%);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-		color: rgb(245, 245, 247);
-		font-family: inherit;
+
+	/* =========================
+	   黑白动态背景
+	========================= */
+	.vg-bg {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		background:
+			radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.12), transparent 28%),
+			radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.08), transparent 30%), #000;
 	}
-	.vg-title {
-		font-size: 1.15rem;
-		font-weight: 700;
-		text-align: center;
-		letter-spacing: 0.04em;
+	.vg-bg::before,
+	.vg-bg::after {
+		content: "";
+		position: absolute;
+		border-radius: 50%;
+		/* 幕布期不画这两团大半径 blur（一次性光栅也不做），
+		   开场时再淡入 + 游动 */
+		opacity: 0;
+		transition: opacity 1.1s ease;
 	}
-	.vg-sub {
-		margin: 8px 0 18px;
-		text-align: center;
-		font-size: 0.62rem;
-		color: rgba(245, 245, 247, 0.4);
-		line-height: 1.6;
+	.vg-bg::before {
+		width: 70vw;
+		height: 70vw;
+		left: -20vw;
+		top: -30vw;
+		background: radial-gradient(
+			circle,
+			rgba(255, 255, 255, 0.2),
+			rgba(255, 255, 255, 0.03) 35%,
+			transparent 70%
+		);
+		filter: blur(70px);
 	}
-	.vg-sub code {
-		font-size: 0.58rem;
-		padding: 1px 5px;
-		border-radius: 5px;
-		background: rgba(255, 255, 255, 0.08);
+	.vg-bg::after {
+		width: 60vw;
+		height: 60vw;
+		right: -20vw;
+		bottom: -25vw;
+		background: radial-gradient(circle, rgba(255, 255, 255, 0.16), transparent 65%);
+		filter: blur(80px);
 	}
-	.vg-btn {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		width: 100%;
-		padding: 13px 16px;
-		margin-bottom: 10px;
-		border-radius: 16px;
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		background: rgba(255, 255, 255, 0.05);
-		color: rgb(245, 245, 247);
-		text-align: left;
-		cursor: pointer;
-		transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+	#version-gate.is-shown .vg-bg::before {
+		opacity: 1;
+		animation: vgBgMove 12s ease-in-out infinite alternate;
 	}
-	.vg-btn:hover {
-		background: rgba(255, 255, 255, 0.1);
-		border-color: rgba(255, 255, 255, 0.22);
-		transform: translateY(-1px);
+	#version-gate.is-shown .vg-bg::after {
+		opacity: 1;
+		animation: vgBgMove2 15s ease-in-out infinite alternate;
 	}
-	.vg-btn:active {
-		transform: scale(0.98);
+	@keyframes vgBgMove {
+		from {
+			transform: translate3d(0, 0, 0) scale(1);
+		}
+		to {
+			transform: translate3d(15vw, 12vh, 0) scale(1.2);
+		}
 	}
-	.vg-btn.vg-dim {
-		opacity: 0.55;
+	@keyframes vgBgMove2 {
+		from {
+			transform: translate3d(0, 0, 0);
+		}
+		to {
+			transform: translate3d(-12vw, -10vh, 0) scale(1.15);
+		}
 	}
-	.vg-emoji {
-		font-size: 0.8rem;
-		line-height: 1;
-		white-space: nowrap;
-		letter-spacing: -0.08em;
-	}
-	.vg-body {
+
+	/* =========================
+	   开屏（三行液态玻璃文字）
+	========================= */
+	.vg-intro {
+		position: absolute;
+		inset: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 3px;
-		min-width: 0;
+		justify-content: center;
+		align-items: center;
+		text-align: center;
+		cursor: pointer;
+		transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
-	.vg-name {
-		font-size: 0.9rem;
+	#version-gate.is-ready .vg-intro {
+		opacity: 0;
+		transform: scale(1.04);
+		pointer-events: none;
+	}
+	.vg-glass {
+		position: relative;
+		opacity: 0;
 		font-weight: 700;
+		letter-spacing: 0.16em;
+		color: rgba(255, 255, 255, 0.88);
+		text-shadow:
+			0 1px 0 rgba(255, 255, 255, 0.9),
+			0 -1px 0 rgba(255, 255, 255, 0.15),
+			0 3px 20px rgba(255, 255, 255, 0.18),
+			0 8px 35px rgba(0, 0, 0, 0.9);
+		background: linear-gradient(
+			180deg,
+			#ffffff 0%,
+			#eeeeee 18%,
+			#777777 45%,
+			#ffffff 58%,
+			#333333 75%,
+			#ffffff 100%
+		);
+		background-size: 100% 220%;
+		-webkit-background-clip: text;
+		background-clip: text;
+		-webkit-text-fill-color: transparent;
+		filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9)) drop-shadow(0 10px 30px rgba(0, 0, 0, 0.8));
+	}
+	#version-gate.is-shown .vg-glass {
+		animation:
+			vgTextIn 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+			vgShine 4s ease-in-out infinite;
+	}
+	#version-gate.is-shown .vg-line2 {
+		animation-delay: 0.8s, 0.8s;
+	}
+	#version-gate.is-shown .vg-line3 {
+		animation-delay: 1.2s, 1.2s;
+	}
+	/* 幕布期：WELCOME 先出现（静态玻璃字，不跑动画） */
+	#version-gate.is-cover .vg-line1 {
+		opacity: 1;
+	}
+	/* 开场时 WELCOME 已经在位了，不再重播入场（否则会「闪一下」重来），
+	   只接上流光继续走 */
+	#version-gate.is-shown .vg-line1 {
+		opacity: 1;
+		animation: vgShine 4s ease-in-out infinite 0.3s;
+	}
+	.vg-line1 {
+		font-size: clamp(42px, 7vw, 100px);
+	}
+	.vg-line2 {
+		margin-top: 6px;
+		font-size: clamp(28px, 4vw, 60px);
+	}
+	.vg-line3 {
+		margin-top: 10px;
+		font-size: clamp(24px, 3.5vw, 52px);
+	}
+	@keyframes vgTextIn {
+		0% {
+			opacity: 0;
+			transform: translateY(35px) scale(0.94);
+			filter: blur(15px);
+		}
+		100% {
+			opacity: 1;
+			transform: translateY(0) scale(1);
+			filter: blur(0);
+		}
+	}
+	@keyframes vgShine {
+		0% {
+			background-position: 0% 0%;
+		}
+		50% {
+			background-position: 0% 100%;
+		}
+		100% {
+			background-position: 0% 0%;
+		}
+	}
+	.vg-skip {
+		margin-top: 34px;
+		font-size: 0.7rem;
+		letter-spacing: 0.28em;
+		color: rgba(255, 255, 255, 0.34);
+		opacity: 0;
+	}
+	/* 「点一下跳过」只在开场之后才提示（幕布期点了也没意义） */
+	#version-gate.is-shown .vg-skip {
+		animation: vgSkipIn 1s ease 2.2s forwards;
+	}
+	@keyframes vgSkipIn {
+		to {
+			opacity: 1;
+		}
+	}
+
+	/* =========================
+	   版本选择
+	========================= */
+	.vg-panel {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		opacity: 0;
+		transform: scale(0.96);
+		pointer-events: none;
+		transition: opacity 1.2s ease, transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+	#version-gate.is-ready .vg-panel {
+		opacity: 1;
+		transform: scale(1);
+		pointer-events: auto;
+	}
+	.vg-versions {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		width: min(420px, 88vw);
+	}
+
+	/* 玻璃按钮 */
+	.vg-btn {
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 7px;
+		justify-content: space-between;
+		gap: 10px;
+		width: 100%;
+		height: 62px;
+		padding: 0 22px;
+		border-radius: 18px;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.025));
+		-webkit-backdrop-filter: blur(25px) saturate(180%);
+		backdrop-filter: blur(25px) saturate(180%);
+		color: rgba(255, 255, 255, 0.82);
+		font-size: 15px;
+		font-family: inherit;
+		letter-spacing: 0.12em;
+		cursor: pointer;
+		overflow: hidden;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.25), inset 0 -1px 0 rgba(0, 0, 0, 0.8),
+			0 12px 40px rgba(0, 0, 0, 0.35);
+		transition:
+			transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.35s, border 0.35s,
+			box-shadow 0.35s, color 0.35s;
 	}
-	.vg-desc {
-		font-size: 0.68rem;
-		color: rgba(245, 245, 247, 0.5);
+	/* 斜切高光 */
+	.vg-btn::before {
+		content: "";
+		position: absolute;
+		top: -100%;
+		left: -60%;
+		width: 45%;
+		height: 300%;
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+		transform: rotate(20deg);
+		filter: blur(8px);
+		transition: left 0.8s;
 	}
-	.vg-rec {
-		font-style: normal;
-		font-size: 0.58rem;
-		padding: 2px 7px;
+	/* 顶部反光棱 */
+	.vg-btn::after {
+		content: "";
+		position: absolute;
+		top: 0;
+		left: 10%;
+		right: 10%;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+		opacity: 0.6;
+	}
+	.vg-btn:hover {
+		transform: translateY(-4px) scale(1.015);
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.05));
+		border-color: rgba(255, 255, 255, 0.45);
+		color: #fff;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 15px 50px rgba(255, 255, 255, 0.08);
+	}
+	.vg-btn:hover::before {
+		left: 125%;
+	}
+	.vg-btn:active {
+		transform: scale(0.97);
+	}
+	.vg-btn:focus-visible {
+		outline: 2px solid rgba(255, 255, 255, 0.6);
+		outline-offset: 3px;
+	}
+	.vg-name {
+		font-weight: 700;
+	}
+	.vg-tag {
+		font-size: 0.66rem;
+		letter-spacing: 0.08em;
+		padding: 3px 9px;
 		border-radius: 9999px;
+		background: rgba(255, 255, 255, 0.1);
+		color: rgba(255, 255, 255, 0.6);
+		white-space: nowrap;
+	}
+	.vg-tag--rec {
 		background: rgba(52, 211, 153, 0.18);
 		color: rgb(52, 211, 153);
 		font-weight: 700;
 	}
-	.vg-soon {
-		font-style: normal;
-		font-size: 0.58rem;
-		padding: 2px 7px;
-		border-radius: 9999px;
-		background: rgba(255, 255, 255, 0.1);
-		color: rgba(245, 245, 247, 0.6);
+	.vg-tag--soon {
+		background: rgba(255, 214, 102, 0.16);
+		color: rgb(255, 214, 102);
 		font-weight: 700;
 	}
+	/* 占位档位：虚线框 + 压暗，一眼看出「还没到」 */
+	.vg-btn--soon {
+		border-style: dashed;
+		border-color: rgba(255, 255, 255, 0.16);
+		background: rgba(255, 255, 255, 0.02);
+	}
+	.vg-btn--soon .vg-name {
+		opacity: 0.75;
+	}
 	.vg-tip {
-		min-height: 18px;
+		min-height: 20px;
+		margin-top: 16px;
 		text-align: center;
-		font-size: 0.7rem;
+		font-size: 0.72rem;
+		letter-spacing: 0.06em;
 		color: rgb(52, 211, 153);
 		font-weight: 600;
+	}
+
+	/* =========================
+	   移动端
+	========================= */
+	@media (max-width: 600px) {
+		.vg-glass {
+			letter-spacing: 0.1em;
+		}
+		.vg-btn {
+			height: 58px;
+			border-radius: 16px;
+			font-size: 13px;
+			padding: 0 18px;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#version-gate.is-shown .vg-bg::before,
+		#version-gate.is-shown .vg-bg::after,
+		#version-gate.is-shown .vg-glass {
+			animation: none;
+		}
+		#version-gate.is-shown .vg-glass,
+		#version-gate.is-shown .vg-bg::before,
+		#version-gate.is-shown .vg-bg::after {
+			opacity: 1;
+		}
+		/* 无动画时三行文字都要直接可见（否则 TO / 南洛'S BLOG 永远 opacity:0） */
+		#version-gate .vg-line2,
+		#version-gate .vg-line3 {
+			opacity: 1;
+		}
+		#version-gate.is-shown .vg-skip {
+			opacity: 1;
+		}
 	}
 </style>
 
@@ -172,39 +455,162 @@
 			var waves = document.getElementById("header-waves");
 			if (waves) waves.style.display = "none";
 		} else if (ver === "normal" || ver === "promax") {
+			// ProMax = 正常版的满配特效 + 导航岛沉底（样式见 styles/promax.css）
+			document.body.classList.remove("site-lite");
 			document.body.classList.add("site-" + ver);
 		}
 
-	/* 门的弹出时机：
-	   - 首次进站（没选过版本）→ 弹
-	   - 刷新网页 / 前后导航（reload / back_forward）→ 弹，供重新切换
-	   - 站内点链接跳转（navigate，整页加载）→ 不弹，别打断浏览
-	   另用 window 标记兜底 swup 等不重载 window 的切页场景 */
-	var navType = "navigate";
-	try {
-		var entries = performance.getEntriesByType("navigation");
-		navType = (entries && entries[0] && entries[0].type) || "navigate";
-	} catch (e) {}
-	var isReloadish = navType === "reload" || navType === "back_forward";
-	if (window.__versionGateShownThisLoad) return;
-	window.__versionGateShownThisLoad = true;
-	if (ver !== null && !isReloadish) return;
-	gate.hidden = false;
-	document.documentElement.style.overflow = "hidden";
+		/* 门的弹出时机：
+		   - 首次进站（没选过版本）→ 弹
+		   - 刷新网页 / 前后导航（reload / back_forward）→ 弹，供重新切换
+		   - 站内点链接跳转（navigate，整页加载）→ 不弹，别打断浏览
+		   另用 window 标记兜底 swup 等不重载 window 的切页场景 */
+		var navType = "navigate";
+		try {
+			var entries = performance.getEntriesByType("navigation");
+			navType = (entries && entries[0] && entries[0].type) || "navigate";
+		} catch (e) {}
+		var isReloadish = navType === "reload" || navType === "back_forward";
+		if (window.__versionGateShownThisLoad) return;
+		window.__versionGateShownThisLoad = true;
+		if (ver !== null && !isReloadish) return;
 
+		/* ── 等整站加载完再开门 ────────────────────────────────────────
+		   开屏这块东西不轻：70vw/60vw 的大半径 blur 光斑在动、玻璃文字在跑
+		   流光、按钮全是 backdrop-filter。要是它跟首屏抢主线程和合成层
+		   （图片还在拉、字体还在换、引擎还在初始化），表现就是「卡」。
+		   所以先把门关着，等到：
+		     1) window load —— 图片 / 字体文件 / CSS / 脚本全部到手
+		     2) document.fonts.ready —— 字体度量就绪，玻璃文字排版不跳
+		     3) 站内 Loading 动画退场 —— 免得两层遮罩叠在一起
+		   之后再让出两帧 + 一次空闲回调（等引擎把首帧画完），才真正开场。
+		   兜底 6s：万一某个资源卡死，也不能把用户永远挡在门外。 */
+		function whenPageReady(done) {
+			var timers = [];
+			var fired = false;
+			function finish() {
+				if (fired) return;
+				fired = true;
+				for (var i = 0; i < timers.length; i++) clearTimeout(timers[i]);
+				done();
+			}
+			timers.push(setTimeout(finish, 6000)); /* 兜底 */
+
+			var pending = 3;
+			function oneDone() {
+				if (--pending > 0) return;
+				/* 让出两帧 + 一次空闲回调：等首帧渲染与引擎初始化跑完再开场 */
+				requestAnimationFrame(function () {
+					requestAnimationFrame(function () {
+						if (typeof requestIdleCallback === "function") {
+							timers.push(setTimeout(finish, 400)); /* idle 没回调时的兜底 */
+							requestIdleCallback(finish, { timeout: 300 });
+						} else {
+							timers.push(setTimeout(finish, 80));
+						}
+					});
+				});
+			}
+
+			/* 1) 全站资源加载完成 */
+			if (document.readyState === "complete") oneDone();
+			else window.addEventListener("load", oneDone, { once: true });
+
+			/* 2) 字体就绪 */
+			try {
+				if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+					document.fonts.ready.then(oneDone, oneDone);
+				} else oneDone();
+			} catch (e) {
+				oneDone();
+			}
+
+			/* 3) 站内 Loading 动画已退场（它 600ms 后加 is-hidden） */
+			var loader = document.getElementById("page-loader");
+			if (!loader || loader.classList.contains("is-hidden")) {
+				oneDone();
+			} else {
+				var tries = 0;
+				var poll = setInterval(function () {
+					if (!loader.isConnected || loader.classList.contains("is-hidden") || ++tries > 60) {
+						clearInterval(poll);
+						oneDone();
+					}
+				}, 100);
+				timers.push(poll);
+			}
+		}
+
+		function openGate() {
+			/* 撤幕布、锁滚动都在这一帧：早锁会白白冻住页面，还可能干扰引擎测量 */
+			gate.hidden = false;
+			gate.classList.remove("is-cover");
+			document.documentElement.style.overflow = "hidden";
+			/* 下一帧再加 .is-shown，保证入场动画从头播
+			   （万一用户在开门这一帧就把版本选完，别把状态留在门上） */
+			requestAnimationFrame(function () {
+				if (!gate.hidden) gate.classList.add("is-shown");
+			});
+
+			/* 开屏时序：.is-shown 启动三行文字的入场 + 流光；
+			   4.5s 后 .is-ready 收起开屏、放出版本按钮；
+			   期间点一下可立刻跳过（不打断正在播的背景动画）。 */
+			var readyTimer = setTimeout(function () {
+				gate.classList.add("is-ready");
+			}, 4500);
+			gate.addEventListener("click", function (e) {
+				// 只有还没 ready、且点在开屏区域时才算「跳过」
+				if (gate.classList.contains("is-ready")) return;
+				if (e.target && e.target.closest && e.target.closest("[data-ver]")) return;
+				gate.classList.add("is-ready");
+				if (readyTimer) clearTimeout(readyTimer);
+			});
+			// 键盘可达：回车 / 空格也能跳过开屏
+			gate.addEventListener("keydown", function (e) {
+				if (gate.classList.contains("is-ready")) return;
+				if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
+					gate.classList.add("is-ready");
+					if (readyTimer) clearTimeout(readyTimer);
+				}
+			});
+		}
+
+		/* ── 幕布期 ────────────────────────────────────────────────────
+		   先用一块纯黑幕布 + 静态的 WELCOME 字顶上去（零动画：不画大半径
+		   blur 光斑、不跑流光、按钮也不上），这样加载期间不露页面空档，
+		   也不会跟首屏抢性能。真正的开场等整站就绪（见 whenPageReady）。 */
+		gate.hidden = false;
+		gate.classList.add("is-cover");
+		document.documentElement.style.overflow = "hidden";
+
+		whenPageReady(openGate);
+
+		var soonTipTimer = 0;
 		gate.addEventListener("click", function (e) {
 			var btn = e.target && e.target.closest ? e.target.closest("[data-ver]") : null;
 			if (!btn) return;
 			var v = btn.getAttribute("data-ver");
-			if (v === "promax") {
-				var tip = gate.querySelector("[data-vg-tip]");
-				if (tip) tip.textContent = "ProMax 敬请期待 🚀";
+			/* 占位档位（ProMaxPlusUltra / ULTRA）：只在面板底部回一句提示，
+			   不写 localStorage、不切 body 类名，免得选出一个还不存在的版本。 */
+			if (v === "ultra" || v === "promaxplusultra") {
+				var tipEl = gate.querySelector("[data-vg-tip]");
+				if (tipEl) {
+					tipEl.textContent =
+						v === "ultra"
+							? "ULTRA 版还在路上，明年再说～"
+							: "ProMaxPlusUltra 还在图纸上，先剧透一下～";
+					if (soonTipTimer) clearTimeout(soonTipTimer);
+					soonTipTimer = setTimeout(function () {
+						tipEl.textContent = "";
+					}, 2600);
+				}
 				return;
 			}
 			try {
 				localStorage.setItem(KEY, v);
 				localStorage.setItem("visualEffectMode", v === "lite" ? "none" : "rain");
 			} catch (err) {}
+			document.body.classList.remove("site-lite", "site-normal", "site-promax");
 			document.body.classList.add("site-" + v);
 			if (v === "lite") {
 				// 立即关掉底部波浪
@@ -215,15 +621,30 @@
 				var w = document.getElementById("header-waves");
 				if (w) w.style.display = "none";
 			} else {
-				// 正常版：恢复精简时关掉的东西
-				document.body.classList.remove("site-lite");
+				// 正常版 / ProMax：恢复精简时关掉的东西
 				document.documentElement.removeAttribute("data-waves-enabled");
 				var w2 = document.getElementById("header-waves");
 				if (w2) w2.style.display = "";
 			}
+			// 导航岛沉底的 ProMax 版：收起按钮的箭头语义要反向，重建一次图标状态
+			try {
+				var resync = window.resetFullscreenNavbarState;
+				if (typeof resync === "function") resync();
+			} catch (err3) {}
+			// 版本换了 → 归一化浮层方向（搜索面板 / 媒体详情 / 文章面板都按 body 类判断）
+			try {
+				document.dispatchEvent(new CustomEvent("siteversionchange", { detail: { ver: v } }));
+			} catch (err4) {}
 			gate.hidden = true;
+			gate.classList.remove("is-cover", "is-shown", "is-ready");
 			document.documentElement.style.overflow = "";
-			window.dispatchEvent(new CustomEvent("effectModeChange", { detail: { mode: v === "lite" ? "none" : "rain" } }));
+			/* 解锁滚动后视口宽度会变化（滚动条回来了）→ 提醒玻璃引擎重新量一次 */
+			try {
+				window.dispatchEvent(new Event("resize"));
+			} catch (err5) {}
+			window.dispatchEvent(
+				new CustomEvent("effectModeChange", { detail: { mode: v === "lite" ? "none" : "rain" } }),
+			);
 		});
 	})();
 </script>

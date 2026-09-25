@@ -4,49 +4,31 @@ import { i18n } from "@i18n/translation";
 import { navigateToPage } from "@utils/navigation-utils";
 import { onMount } from "svelte";
 import Icon from "@/components/common/Icon.svelte";
-import { url as formatUrl, getSearchUrl } from "@/utils/url-utils";
+import {
+	loadSearchIndex,
+	MAX_RESULTS,
+	runSearch,
+	searchIndexFailed,
+	type SearchHit,
+} from "@/utils/island-search";
+import { getSearchUrl } from "@/utils/url-utils";
 
 /**
  * 导航岛右上角的搜索
  * ============================================================================
- * 索引来自 /api/search-index.json（构建期把所有内容拉平成一份 JSON）：
- * 文章、最新动态/日记、分类、标签、静态页面全都在里面。
+ * 检索内核（索引 / 打分 / 高亮 / 摘要）在 @/utils/island-search ——
+ * 屏幕上方那枚 TopSearch 用的是同一份，别在这儿再抄一遍。
  *
- * 检索方式刻意用「子串匹配」而不是 Pagefind 的分词检索：
- *   - 中文单字（「日」「记」「文」「章」「动」「态」）必须能命中；
- *   - 开发环境也要能用（Pagefind 只在 build 之后存在）。
+ * ⚠ ProMax 桌面端：搜索**不再在岛里展开**。点这枚按钮会把活交给顶部的
+ *   TopSearch，让搜索胶囊从岛上「飞」到屏幕上方再展开（岛身纹丝不动）。
+ *   原因见 TopSearch.svelte 顶部那段注释。
  */
 
-type SearchDocKind = "post" | "dynamic" | "category" | "tag" | "page";
-
-interface SearchDoc {
-	kind: SearchDocKind;
-	title: string;
-	url: string;
-	desc?: string;
-	meta?: string;
-	text?: string;
-	date?: number;
-}
-
-interface SearchHit {
-	title: string;
-	url: string;
-	kind: SearchDocKind;
-	badge: string;
-	snippet: string;
-}
-
-const KIND_BADGE: Record<SearchDocKind, string> = {
-	post: "文章",
-	dynamic: "动态",
-	category: "分类",
-	tag: "标签",
-	page: "页面",
-};
-
-/** 同一字段的命中权重：标题 > 分类/标签 > 摘要 > 正文 */
-const MAX_RESULTS = 6;
+/** ProMax 桌面端：搜索搬去了屏幕上方（岛身保持原样，只当一枚启动器） */
+const searchLivesAtTop = (): boolean =>
+	typeof document !== "undefined" &&
+	document.body.classList.contains("site-promax") &&
+	window.matchMedia("(min-width: 768px)").matches;
 
 // --- State ---
 let keyword = $state("");
@@ -57,105 +39,19 @@ let indexFailed = $state(false);
 let isExpanded = $state(false);
 let inputEl = $state<HTMLInputElement | null>(null);
 
-let docs: SearchDoc[] = [];
-let indexPromise: Promise<void> | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+let indexWarmed = false;
 
-// --- Index ---
-const loadIndex = (): Promise<void> => {
-	if (docs.length > 0) return Promise.resolve();
-	if (indexPromise) return indexPromise;
-	indexPromise = (async () => {
-		try {
-			const res = await fetch(formatUrl("/api/search-index.json"));
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const data = await res.json();
-			const list = Array.isArray(data) ? data : (data?.docs ?? []);
-			docs = Array.isArray(list) ? list : [];
-			indexFailed = false;
-		} catch (error) {
-			console.warn("[island-search] 索引加载失败:", error);
-			docs = [];
-			indexFailed = true;
-		} finally {
-			indexPromise = null;
-		}
-	})();
-	return indexPromise;
-};
-
-// --- Match helpers ---
-const escapeHtml = (text: string): string =>
-	text
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;");
-
-const escapeRegExp = (text: string): string =>
-	text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-/** 把命中的字串包成 <mark>（先转义再高亮，避免 HTML 注入） */
-const highlight = (text: string, term: string): string => {
-	if (!term) return escapeHtml(text);
-	return escapeHtml(text).replace(
-		new RegExp(escapeRegExp(escapeHtml(term)), "gi"),
-		(matched) => `<mark>${matched}</mark>`,
-	);
-};
-
-/** 围绕第一个命中位置截一段上下文 */
-const buildSnippet = (doc: SearchDoc, term: string, len = 78): string => {
-	const source = doc.desc || doc.text || "";
-	if (!source) return "";
-	const at = source.toLowerCase().indexOf(term);
-	if (at < 0) return highlight(source.slice(0, len), "");
-	const radius = Math.floor(len / 2);
-	const start = Math.max(0, at - radius);
-	const end = Math.min(source.length, start + len);
-	return (
-		(start > 0 ? "… " : "") +
-		highlight(source.slice(start, end), term) +
-		(end < source.length ? " …" : "")
-	);
-};
-
-const scoreDoc = (doc: SearchDoc, query: string, terms: string[]): number => {
-	const title = (doc.title || "").toLowerCase();
-	const meta = (doc.meta || "").toLowerCase();
-	const desc = (doc.desc || "").toLowerCase();
-	const text = (doc.text || "").toLowerCase();
-	const haystack = `${title} ${meta} ${desc} ${text}`;
-
-	// 多词查询按 AND 处理：有一个词没出现就整体不命中
-	for (const term of terms) {
-		if (!haystack.includes(term)) return 0;
-	}
-
-	let score = 0;
-	if (title.includes(query)) score += title === query ? 200 : 110;
-	if (meta.includes(query)) score += 55;
-	if (desc.includes(query)) score += 40;
-	if (text.includes(query)) score += 18;
-
-	for (const term of terms) {
-		if (title.includes(term)) score += 22;
-		if (meta.includes(term)) score += 11;
-		if (desc.includes(term)) score += 7;
-		if (text.includes(term)) score += 3;
-	}
-
-	// 同分时：入口类条目（页面/分类/标签）优先于正文条目
-	score += { page: 9, category: 10, tag: 8, post: 5, dynamic: 4 }[doc.kind] ?? 0;
-	// 标题本身就是查询词时再抬一手，避免「文章」被别的长标题压掉
-	if (doc.kind === "page" && title.length <= query.length + 2) score += 12;
-	return score;
+/** 预热索引：展开的那一刻就拉，等用户打完字基本已经就绪 */
+const warmIndex = (): void => {
+	if (indexWarmed) return;
+	indexWarmed = true;
+	loadSearchIndex();
 };
 
 const search = (raw: string): void => {
-	const query = raw.trim().toLowerCase();
 	clearTimeout(debounceTimer);
-	if (!query) {
+	if (!raw.trim()) {
 		hits = [];
 		totalHits = 0;
 		return;
@@ -163,25 +59,10 @@ const search = (raw: string): void => {
 
 	isSearching = true;
 	debounceTimer = setTimeout(async () => {
-		await loadIndex();
-		const terms = query.split(/\s+/).filter(Boolean);
-		const scored: Array<{ doc: SearchDoc; score: number }> = [];
-		for (const doc of docs) {
-			const score = scoreDoc(doc, query, terms);
-			if (score > 0) scored.push({ doc, score });
-		}
-		scored.sort(
-			(a, b) => b.score - a.score || (b.doc.date ?? 0) - (a.doc.date ?? 0),
-		);
-
-		totalHits = scored.length;
-		hits = scored.slice(0, MAX_RESULTS).map(({ doc }) => ({
-			title: highlight(doc.title || "", query),
-			url: doc.url,
-			kind: doc.kind,
-			badge: KIND_BADGE[doc.kind] ?? "内容",
-			snippet: buildSnippet(doc, query),
-		}));
+		const out = await runSearch(raw);
+		hits = out.hits;
+		totalHits = out.total;
+		indexFailed = searchIndexFailed();
 		isSearching = false;
 	}, 130);
 };
@@ -190,7 +71,7 @@ const search = (raw: string): void => {
 const expand = (): void => {
 	isExpanded = true;
 	// 一开始就预热索引，等用户打完字基本已经就绪
-	loadIndex();
+	warmIndex();
 	setTimeout(() => {
 		inputEl?.focus();
 	}, 250);
@@ -203,8 +84,31 @@ const collapse = (): void => {
 	totalHits = 0;
 };
 
+/**
+ * 点岛里那枚放大镜：
+ *   · ProMax 桌面端 → 交给屏幕顶部的 TopSearch（胶囊从岛上飞到屏幕上方），
+ *     岛内那套横向展开**一次都不再用** —— 这是用户的要求，也是岛不拉伸的前提。
+ *   · 其它版本 / 窄屏 → 老样子在岛内横向展开。
+ */
 const toggle = (e: MouseEvent): void => {
 	e.stopPropagation();
+	if (searchLivesAtTop()) {
+		const api = (
+			window as unknown as {
+				__topSearch?: {
+					open: (o?: { from?: Element | null }) => void;
+					close: () => void;
+				};
+			}
+		).__topSearch;
+		if (api) {
+			if (isExpanded) collapse();
+			// 把入口按钮本身递过去当「起飞点」，胶囊就从这枚图标里长出去
+			api.open({ from: e.currentTarget as Element | null });
+			return;
+		}
+		// 顶部那套还没挂上（理论不会：它随布局一起 hydrate）→ 退回岛内展开
+	}
 	if (isExpanded) {
 		collapse();
 	} else {
@@ -367,6 +271,34 @@ onMount(() => {
 	gap: 0;
 }
 
+/* ProMax：这块不再是一枚「发白的实心药丸」，而是岛面上开的一扇玻璃窗 ——
+   底色换成青蓝玻璃那套，交给 LiquidGlass 引擎上折射（.dis-input-container 预设，
+   nest 打开：它本来就住在已上玻璃的导航岛里）。
+   起因：原来那层 rgba(0,0,0,0.04) 太接近全透，透出来的是岛里被磨过的亮壁纸，
+   于是整块读成白的（用户原话「点一下搜索也变白」）。 */
+:global(body.site-promax) .dis-input-container {
+	background: linear-gradient(
+		135deg,
+		rgba(186, 230, 253, 0.46) 0%,
+		rgba(255, 255, 255, 0.26) 50%,
+		rgba(186, 230, 253, 0.46) 100%
+	);
+	border-color: rgba(125, 211, 252, 0.52);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+:global(body.site-promax.dark) .dis-input-container,
+:global(.dark body.site-promax) .dis-input-container {
+	background: linear-gradient(
+		135deg,
+		rgba(56, 189, 248, 0.34) 0%,
+		rgba(125, 211, 252, 0.18) 50%,
+		rgba(56, 189, 248, 0.34) 100%
+	);
+	border-color: rgba(125, 211, 252, 0.44);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
 :global(.dark) .dis-input-container {
 	background: rgba(255, 255, 255, 0.06);
 	border-color: rgba(255, 255, 255, 0.08);
@@ -472,6 +404,27 @@ onMount(() => {
 		0 8px 32px rgba(0, 0, 0, 0.4),
 		0 2px 8px rgba(0, 0, 0, 0.2),
 		inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ProMax 版（导航岛沉在屏幕底部）：结果面板改向上弹出，动画也跟着从下往上 */
+@media (min-width: 1024px) {
+	:global(body.site-promax) .dis-results-panel {
+		top: auto;
+		bottom: calc(100% + 0.5rem);
+		transform-origin: bottom right;
+		animation: dis-results-in-up 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+}
+
+@keyframes dis-results-in-up {
+	from {
+		opacity: 0;
+		transform: translateY(4px) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
 }
 
 .dis-results {

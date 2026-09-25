@@ -1,0 +1,525 @@
+/* ==========================================================================
+ * ProMax 版 —— iPhone Duo / iOS 27 Liquid Glass
+ *
+ * 由 VersionGate 选中 ProMax 时给 <body> 加 .site-promax 触发。
+ * 与「正常版」的结构差异（全部只发生在**桌面端**）：
+ *
+ *   1. 导航岛从屏幕顶部沉到屏幕底部（#top-row）
+ *   2. 岛沉底后，所有「向下展开」的浮层与「向上飞走」的隐藏动画都要镜像
+ *   3. 导航岛改成「纯图标岛」：文字标签收掉，只留图标 + 一枚圆形头像
+ *   4. 加上 iPhone 式 home indicator —— 而且是有功能的：
+ *      阅读进度条 + 回到顶部 + hover 提示 + 切页扫光
+ *   5. 角落浮层（左下四枚触发器 / 右下控制条）整体上抬，别压在岛上
+ *
+ * 平板（768~1023）现在**跟桌面同一套**：导航图标行从 lg 放宽到 md 之后，
+ * 岛上塞得下整排图标，底部那枚手机文字岛（#mobile-nav-island）也在 md 隐藏了，
+ * 所以 ProMax 的沉底岛 / 图标化 / home indicator 一并对平板生效 ——
+ * 否则平板上「图标 + 文字」挤在一枚窄岛里换行，看起来就是图标消失、布局散架。
+ * 真手机（<768px）保持原样：走 #mobile-nav-island。
+ * ========================================================================== */
+
+/* ---------- 0. home indicator 默认不存在 ----------
+   它是 ProMax 桌面端专属，其它版本 / 窄屏一律不渲染。 */
+#pm-home-indicator {
+	display: none;
+}
+
+@media (min-width: 768px) {
+	/* ---------- 1. 导航岛沉底 ---------- */
+	body.site-promax #top-row {
+		top: auto;
+		/* 离屏幕下沿留出整根 home indicator 的位置：岛底 1.55rem，
+		   下面那根短条贴在 0.12rem 上下 —— 两条之间约 18px 的空隙，
+		   扫过去一眼能分开「岛」和「进度条」两件东西。 */
+		bottom: 1.55rem;
+		/* 阴影方向镜像：岛贴着屏幕下沿，影子应该往内容那一侧（上）打。
+		   变量定义在 #top-row 上，岛 / 搜索面板 / 文章面板 / 媒体详情全在里面，
+		   靠继承一处生效；左上角的快捷键提示不在里面，保持原样。 */
+		--shadow-navbar: 0 -4px 18px rgba(0, 0, 0, 0.1);
+		--shadow-navbar-dark: 0 -4px 18px rgba(0, 0, 0, 0.22);
+	}
+
+	/* ---------- 1b. 岛加高 ----------
+	   ProMax 是纯图标岛，岛里全是 40px 的方形图标格；h-14（56px）下
+	   上下只剩 8px 呼吸，读起来「扁」。统一抬到 68px：
+	     · #navbar 自己那层高度也要跟着改 —— 它是布局高度，
+	       只改视觉层会让岛溢出父级、把文章面板的锚点带偏
+	     · 岛里每个图标格 40 → 44px，图标字号 1.25 → 1.375rem
+	     · 高亮带 42 → 48px，正好盖住 44px 的格子还多出一点「肉边」
+	   尺寸全部收敛到 --pm-island-h / --pm-cell，改一处就整体等比。 */
+	body.site-promax #top-row {
+		--pm-island-h: 4.25rem; /* 68px */
+		--pm-cell: 2.75rem; /* 44px */
+	}
+	body.site-promax #navbar {
+		height: var(--pm-island-h);
+	}
+	body.site-promax #navbar > div {
+		height: var(--pm-island-h);
+	}
+	body.site-promax #navbar-actions .navbar-actions-inner {
+		height: var(--pm-island-h);
+	}
+	body.site-promax .navbar-pill {
+		height: 3rem;
+		/* 底色必须留在 background-color（见 Navbar.astro 的说明）：
+		   LiquidGlass 的透底只认 background-color，画进渐变里
+		   高亮就会保持全饱和青、成了一颗实心胶囊。 */
+		background-color: rgba(14, 165, 233, 0.5);
+		border-color: rgba(56, 189, 248, 0.55);
+		box-shadow:
+			0 4px 14px -4px rgba(14, 165, 233, 0.46),
+			inset 0 1px 0 rgba(255, 255, 255, 0.3),
+			inset 0 -1px 0 rgba(14, 165, 233, 0.3);
+	}
+	/* 暗色必须带 html. 前缀：否则上面那条 (0,2,1) 会压过 .dark .navbar-pill (0,2,0)，
+	   暗色下会错用亮色那套浅蓝底 */
+	html.dark body.site-promax .navbar-pill {
+		background-color: rgba(14, 165, 233, 0.44);
+		border-color: rgba(56, 189, 248, 0.48);
+	}
+
+	/* ---------- 1c. 岛面玻璃质感（平背景下也要「像玻璃」） ----------
+	   文章 / 友链这类 no-banner 页面是 wallpaper-transparent：岛后面
+	   没有壁纸纹理，只有一整片纯色。液态玻璃的折射在这种背景下无从
+	   体现，20% 的白 tint 一叠就成了「白雾条」（用户原话：
+	   「点进文章后导航岛从液态玻璃变成白雾」）。
+	   引擎只接管 background-color（内联 !important），所以玻璃的
+	   「受光面」全部走它不碰的属性：
+	     · background-image：135° 斜切受光 —— 左上亮、右下回光，
+	       这是玻璃板最容易被认出来的特征
+	     · 边框 + 内发光：上棱一道白高光，下棱一点回光
+	     · 投影加重：玻璃板「浮」在页面上的厚度感
+	   ⚠ 必须 !important + 压过 navbar.css 里 wallpaper-transparent 的
+	   background 简写（那条会把 background-image 清成 none）。 */
+	body.site-promax #navbar-wrapper #navbar > div,
+	body.site-promax #navbar-actions .navbar-actions-inner {
+		background-image: linear-gradient(
+			135deg,
+			rgba(255, 255, 255, 0.32) 0%,
+			rgba(255, 255, 255, 0.07) 44%,
+			rgba(255, 255, 255, 0.18) 100%
+		) !important;
+		border: 1px solid rgba(255, 255, 255, 0.42) !important;
+		box-shadow:
+			0 14px 34px -16px rgba(18, 38, 68, 0.4),
+			0 2px 8px -2px rgba(18, 38, 68, 0.12),
+			inset 0 1px 0 rgba(255, 255, 255, 0.5),
+			inset 0 -1px 0 rgba(255, 255, 255, 0.14) !important;
+	}
+	html.dark body.site-promax #navbar-wrapper #navbar > div,
+	html.dark body.site-promax #navbar-actions .navbar-actions-inner {
+		background-image: linear-gradient(
+			135deg,
+			rgba(255, 255, 255, 0.13) 0%,
+			rgba(255, 255, 255, 0.03) 44%,
+			rgba(255, 255, 255, 0.08) 100%
+		) !important;
+		border: 1px solid rgba(255, 255, 255, 0.16) !important;
+		box-shadow:
+			0 14px 34px -16px rgba(0, 0, 0, 0.6),
+			0 2px 8px -2px rgba(0, 0, 0, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.2),
+			inset 0 -1px 0 rgba(255, 255, 255, 0.06) !important;
+	}
+
+	/* ---------- 1d. 「正在跳转 / 正在播放」指示块：从左岛搬进右岛 ----------
+	   搬移脚本见 MainGridLayout（site-promax 时把 #media-island 挂到
+	   #navbar-actions 行尾）。这里只修搬运后的两处细节：
+	     · 右岛行内是 gap-1（0.25rem），左岛是 gap-3 —— 收起态的负边距
+	       要跟着改，否则收起时会吃掉 0.5rem 空隙
+	     · 挤出方向贴着右岛右缘，胶囊的变形原点在左 —— 保持默认即可 */
+	body.site-promax #navbar-actions #media-island {
+		margin-left: -0.25rem;
+	}
+
+	/* 搬运后右岛本身也在一条「刚好占满」的横向 flex 里（左岛宽 + 间隙 + 右岛宽
+	   正好等于容器宽），于是胶囊被当成可压缩项压扁成「正…」——.mi-slot 是
+	   overflow:hidden + min-width:0，天生会让路。这里把这一路改成按内容撑开：
+	   插槽取 max-content、胶囊不收缩；行宽不够就让整条导航岛自己变宽
+	   （它是居中的，左右一起长），总比把文字掐掉强。 */
+	body.site-promax #navbar-actions #media-island,
+	body.site-promax #navbar-actions #media-island .mi-pill {
+		flex: 0 0 auto;
+	}
+	body.site-promax #navbar-actions #media-island .mi-slot {
+		overflow: visible;
+		min-width: max-content;
+	}
+
+	/* ---------- 2. 隐藏/显示动画方向镜像（原来向上飞，现在向下飞） ---------- */
+	/* 滚动上滑隐藏（banner 模式） */
+	body.site-promax #navbar-wrapper.navbar-hidden {
+		opacity: 0;
+		transform: translateY(4rem); /* 原 -translate-y-16 */
+	}
+	/* 手动收起 / 视频播放自动收起 */
+	body.site-promax #navbar-wrapper.navbar-manual-hidden,
+	body.site-promax #navbar-wrapper.navbar-video-hidden {
+		transform: translateY(140%) scale(0.9); /* 原 -140% */
+	}
+
+	/* ---------- 3. semifull 贴边圆角镜像 ----------
+	   原样式是「贴顶」：上两角是直的、下两角圆；岛沉底后要反过来。 */
+	body.site-promax #wallpaper-wrapper ~ * #navbar[data-transparent-mode="semifull"] > div,
+	body.site-promax:has(#wallpaper-wrapper) #navbar[data-transparent-mode="semifull"] > div,
+	body.site-promax #wallpaper-wrapper ~ * #navbar[data-transparent-mode="semifull"].scrolled > div,
+	body.site-promax:has(#wallpaper-wrapper) #navbar[data-transparent-mode="semifull"].scrolled > div {
+		border-radius: 0.75rem 0.75rem 0 0 !important;
+	}
+
+	/* ---------- 4. 页脚让位：沉底的岛会压住最后一行 ---------- */
+	body.site-promax .footer {
+		padding-bottom: 4.5rem;
+	}
+
+	/* ---------- 5. 角落浮层让位 ----------
+	   ProMax 的定位是「岛的天下」：屏幕上只留一枚沉底导航岛 + 一根进度条。
+	   所以左下角那四枚浮动触发器（个人介绍 / 公告 / 音乐 / 天气浮窗）直接收掉；
+	   右下角那根竖排控制条（目录 / 回到评论 / 回到顶部）原本就是内容页才出现，
+	   而岛沉底后它会落在岛的横向带里，同样收掉。 */
+	body.site-promax #profile-float-trigger,
+	body.site-promax #announce-float-trigger,
+	body.site-promax #music-float-trigger,
+	body.site-promax #weather-float-trigger {
+		display: none !important;
+	}
+
+	/* 竖排控制条：岛沉底后归岛管（回到顶部已在 home indicator 上），整条收掉 */
+	body.site-promax .floating-controls-container {
+		display: none !important;
+	}
+
+	/* 右上角那圈「滚动进度环」（StatusIsland）：ProMax 的进度表达已经交给
+	   沉底岛下面那根 home indicator 了，同一个信息不留两处，收掉。 */
+	body.site-promax #status-island {
+		display: none !important;
+	}
+
+	/* 屏幕下沿那排水波纹（#header-waves，壁纸底部那道会动的浪）：
+	   ProMax 的下沿归沉底导航岛 + 进度条，再来一道浪就变成两层装饰打架，
+	   而且浪的动画会一直压在岛底下动 —— 收掉。 */
+	body.site-promax #header-waves {
+		display: none !important;
+	}
+
+	/* ======================================================================
+	 * 6. 纯图标岛（iPhone Duo 式）
+	 *
+	 * 岛上每个入口原本是「图标 + 文字」，这里把文字收掉只留图标：
+	 *   - 文字是裸文本节点，用 font-size: 0 抹掉；图标自带 font-size 不受影响
+	 *   - 下拉箭头 / 外链箭头一并隐藏（图标态没有它们的位置）
+	 *   - 每个按钮收成 40×40 的方形，hover 高亮（.navbar-pill）自动跟着变圆
+	 *   - logo 文字「南洛のBlog」换成圆形头像
+	 * ====================================================================== */
+
+	/* --- logo：文字 → 圆形头像 --- */
+	body.site-promax #navbar #navbar-title {
+		display: none;
+	}
+	body.site-promax #navbar .pm-logo-avatar {
+		display: block;
+		width: 34px;
+		height: 34px;
+	}
+	body.site-promax #navbar #navbar-logo-btn {
+		width: var(--pm-cell);
+		height: var(--pm-cell);
+		padding: 0 !important;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	body.site-promax #navbar #navbar-logo-btn > div {
+		gap: 0;
+	}
+
+	/* --- 导航项（主页 / 音乐 / 联系 / 友链 / 关于我 …） --- */
+	body.site-promax #navbar .dropdown-container > .dropdown-trigger,
+	body.site-promax #navbar .dropdown-container > a {
+		width: var(--pm-cell);
+		height: var(--pm-cell);
+		padding: 0 !important;
+		justify-content: center;
+	}
+	body.site-promax #navbar .dropdown-container > .dropdown-trigger > div,
+	body.site-promax #navbar .dropdown-container > a > div {
+		font-size: 0;
+		gap: 0;
+		justify-content: center;
+	}
+	body.site-promax #navbar .dropdown-container .navbar-icon {
+		font-size: 1.375rem !important;
+		margin-right: 0 !important;
+		margin-left: 0 !important;
+	}
+	/* 下拉小箭头 + 外链小箭头 */
+	body.site-promax #navbar .dropdown-container .dropdown-arrow,
+	body.site-promax #navbar .dropdown-container > a > div > svg:not(.navbar-icon) {
+		display: none !important;
+	}
+
+	/* --- 「文章」触发器（ArticleIsland）：同样只留图标 --- */
+	body.site-promax #navbar .ai-trigger {
+		width: var(--pm-cell);
+		height: var(--pm-cell);
+		padding-left: 0 !important;
+		padding-right: 0 !important;
+		justify-content: center;
+		gap: 0;
+	}
+	body.site-promax #navbar .ai-trigger .ai-trigger-text,
+	body.site-promax #navbar .ai-trigger .ai-trigger-arrow {
+		display: none !important;
+	}
+	body.site-promax #navbar .ai-trigger .navbar-icon {
+		font-size: 1.375rem !important;
+	}
+	/* 展开时岛内那一格（分割态）与按钮对齐：居中、只留图标 */
+	body.site-promax #navbar .ai-float-island.is-pill .ai-fi-head {
+		padding-left: 0;
+		padding-right: 0;
+		justify-content: center;
+		gap: 0;
+	}
+	body.site-promax #navbar .ai-float-island.is-pill .ai-fi-title,
+	body.site-promax #navbar .ai-float-island.is-pill .ai-fi-chev {
+		display: none !important;
+	}
+
+	/* --- 「天气」按钮：只留图标 --- */
+	body.site-promax #navbar #rainform-weather-toggle {
+		width: var(--pm-cell);
+		height: var(--pm-cell);
+		padding: 0 !important;
+		justify-content: center;
+		gap: 0;
+	}
+	body.site-promax #navbar #rainform-weather-toggle > span {
+		display: none !important;
+	}
+	body.site-promax #navbar #rainform-weather-toggle > svg {
+		font-size: 1.375rem;
+	}
+
+	/* --- 右侧那颗动作岛（搜索 / 特效 / 娱乐模式 / 主题）跟着长高 --- */
+	body.site-promax #navbar-actions #pm-rain-toggle,
+	body.site-promax #navbar-actions #effect-mode-toggle,
+	body.site-promax #navbar-actions #bg-player-toggle {
+		width: var(--pm-cell);
+		height: var(--pm-cell);
+	}
+
+	/* --- 娱乐模式：从右下角搬进岛里 ---
+	   岛内这颗按钮只是「遥控器」——真正管麦克风与雨势的仍然是 RainEffect.astro
+	   里那颗 #voice-rain-toggle，这里把它藏起来，点击由岛内按钮转发（见下方脚本）。 */
+	#pm-rain-toggle {
+		display: none;
+	}
+	body.site-promax #pm-rain-toggle {
+		display: flex;
+	}
+	body.site-promax #pm-rain-toggle.on {
+		color: rgb(52, 211, 153);
+		background: color-mix(in srgb, rgb(52, 211, 153) 16%, transparent);
+		box-shadow:
+			0 0 0 1px color-mix(in srgb, rgb(52, 211, 153) 45%, transparent),
+			0 0 14px color-mix(in srgb, rgb(52, 211, 153) 30%, transparent);
+	}
+	body.site-promax #pm-rain-toggle.error {
+		color: rgb(255, 69, 58);
+		box-shadow: 0 0 0 1px rgba(255, 69, 58, 0.55);
+	}
+	/* 授权等待中：脉动提示「正在申请麦克风」，此时再点一下即撤销这次申请 */
+	body.site-promax #pm-rain-toggle.starting {
+		color: rgb(125, 211, 252);
+		box-shadow: 0 0 0 1px color-mix(in srgb, rgb(125, 211, 252) 55%, transparent);
+		animation: pm-rain-pulse 1.1s ease-in-out infinite;
+	}
+	@keyframes pm-rain-pulse {
+		0%,
+		100% {
+			opacity: 0.62;
+		}
+		50% {
+			opacity: 1;
+		}
+	}
+	/* 原来那颗右下角胶囊：岛内已有遥控器，藏掉 */
+	body.site-promax #voice-rain-toggle {
+		display: none !important;
+	}
+
+	/* ======================================================================
+	 * 7. iPhone 式 home indicator —— 顺带当「阅读进度 + 回到顶部」
+	 *
+	 * 位置就是 iOS 那根：屏幕底部居中、122×5 的圆角短条。
+	 * 功能（脚本见 Layout.astro 的 initProMaxHomeIndicator）：
+	 *   ① 内嵌填充随页面滚动比例从左往右长 —— 极简阅读进度条
+	 *   ② 点一下 / 按回车 —— 平滑回到顶部
+	 *   ③ hover —— 拉长加粗 + 浮出「回到顶部」提示
+	 *   ④ 切页 / 加载 —— 扫过一道流动高光
+	 * ====================================================================== */
+	body.site-promax #pm-home-indicator {
+		display: block;
+		position: absolute;
+		left: 50%;
+		/* 相对 #top-row（岛底 1.55rem）往下 1.42rem → 条子落在距屏幕下沿
+		   约 2px 处：钉在最底下，跟上面的岛拉开明显一段。 */
+		bottom: -1.42rem;
+		z-index: 1;
+		width: 122px;
+		height: 5px;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-radius: 9999px;
+		/* 墨色：亮色壁纸用黑、暗色壁纸用白 —— 由脚本按壁纸平均亮度写
+		   --pm-hi-ink（见 MainGridLayout 的 initProMaxHomeIndicator）。
+		   缺省值跟主题走，脚本没跑或取不到壁纸时也不会变成一根看不见的条。 */
+		color: var(--pm-hi-ink, rgb(17, 17, 19));
+		/* 轨道：极淡的一层，靠 currentColor 自己适配黑 / 白 */
+		background: color-mix(in oklch, currentColor 16%, transparent);
+		box-shadow: inset 0 0 0 1px color-mix(in oklch, currentColor 8%, transparent);
+		transform: translateX(-50%);
+		pointer-events: auto;
+		cursor: pointer;
+		appearance: none;
+		-webkit-appearance: none;
+		transition:
+			width 0.42s cubic-bezier(0.32, 0.72, 0, 1),
+			height 0.26s cubic-bezier(0.32, 0.72, 0, 1),
+			background 0.26s ease,
+			color 0.26s ease,
+			bottom 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+	html.dark body.site-promax #pm-home-indicator {
+		color: var(--pm-hi-ink, rgb(245, 245, 247));
+	}
+
+	/* 进度填充：宽度 = --pm-hi-progress（脚本写百分比）。
+	   颜色不再是主题绿，而是跟轨道同一份墨色（黑 / 白），
+	   只有一条「更实的自己」叠在淡淡的自己上面。 */
+	body.site-promax #pm-home-indicator .pm-hi-fill {
+		display: block;
+		width: var(--pm-hi-progress, 0%);
+		min-width: 9px;
+		height: 100%;
+		border-radius: inherit;
+		background: currentColor;
+		box-shadow: 0 0 9px color-mix(in srgb, currentColor 45%, transparent);
+		opacity: 1;
+		will-change: width;
+		transition: width 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+
+	/* 已经回到页面最顶部：进度归零，填充整段收回，不留一颗「小疙瘩」 */
+	body.site-promax.pm-at-top #pm-home-indicator .pm-hi-fill {
+		width: 0;
+		min-width: 0;
+	}
+
+	/* hover / 聚焦：拉长加粗 + 轨道加深 */
+	body.site-promax #pm-home-indicator:hover,
+	body.site-promax #pm-home-indicator:focus-visible {
+		width: 178px;
+		height: 7px;
+		bottom: -1.5rem;
+		background: color-mix(in oklch, currentColor 30%, transparent);
+		outline: none;
+	}
+
+	/* 提示气泡 */
+	body.site-promax #pm-home-indicator .pm-hi-tip {
+		position: absolute;
+		left: 50%;
+		bottom: calc(100% + 14px);
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		padding: 5px 11px;
+		border-radius: 9999px;
+		white-space: nowrap;
+		font-size: 0.68rem;
+		font-weight: 600;
+		line-height: 1.1;
+		letter-spacing: 0.01em;
+		color: rgb(245, 245, 247);
+		background: rgba(18, 18, 22, 0.9);
+		-webkit-backdrop-filter: blur(12px) saturate(160%);
+		backdrop-filter: blur(12px) saturate(160%);
+		box-shadow:
+			0 8px 24px rgba(0, 0, 0, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		opacity: 0;
+		transform: translate(-50%, 5px);
+		pointer-events: none;
+		transition:
+			opacity 0.2s ease,
+			transform 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+	}
+	body.site-promax #pm-home-indicator:hover .pm-hi-tip,
+	body.site-promax #pm-home-indicator:focus-visible .pm-hi-tip {
+		opacity: 1;
+		transform: translate(-50%, 0);
+	}
+	/* 已到顶部时不用提示「回到顶部」 */
+	body.site-promax.pm-at-top #pm-home-indicator .pm-hi-tip {
+		display: none;
+	}
+	/* 百分比数字：等宽数字，避免读数时宽度跳动。
+	   它长在深色气泡里，跟随墨色会看不清，固定浅色。 */
+	body.site-promax #pm-home-indicator .pm-hi-pct {
+		font-variant-numeric: tabular-nums;
+		min-width: 2.2em;
+		text-align: right;
+		color: rgb(245, 245, 247);
+	}
+
+	/* 切页 / 加载：一道流动高光扫过（脚本加 .pm-hi-loading） */
+	body.site-promax #pm-home-indicator.pm-hi-loading .pm-hi-fill {
+		width: 100%;
+		opacity: 1;
+		background: linear-gradient(
+			90deg,
+			transparent 0%,
+			color-mix(in srgb, currentColor 55%, transparent) 35%,
+			currentColor 50%,
+			color-mix(in srgb, currentColor 55%, transparent) 65%,
+			transparent 100%
+		);
+		background-size: 220% 100%;
+		animation: pm-hi-sweep 1.1s linear infinite;
+	}
+	@keyframes pm-hi-sweep {
+		from {
+			background-position: 130% 0;
+		}
+		to {
+			background-position: -130% 0;
+		}
+	}
+
+	/* ============================================================
+	 * 「向下滚动」提示（#scroll-down-indicator）与文章面板抢同一块地方
+	 *
+	 * 壁纸全屏模式下它固定在 bottom:5rem / 水平居中；ProMax 把导航岛沉到
+	 * 屏幕底部之后，两者正好叠在一起。岛是玻璃、面板也是玻璃（半透），
+	 * 于是那枚 5rem 的大白箭头会隔着面板透出来 —— 看着就像面板里凭空
+	 * 多了一个「⌄」（用户截图上那个）。
+	 * 面板展开期间把它让出去：它是 hero 的滚动提示，面板开着时既点不到
+	 * 也不需要；收起后自动回来（过渡是它自带的 0.4s opacity）。
+	 * ============================================================ */
+	body.site-promax:has(.article-island.open) #scroll-down-indicator {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		body.site-promax #pm-home-indicator,
+		body.site-promax #pm-home-indicator * {
+			transition: none !important;
+			animation: none !important;
+		}
+	}
+}

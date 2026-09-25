@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Edge relevant text changes",
+  "version": "1.2.1",
+  "description": "Edge relevant text changes on select websites to improve user experience and precisely surfaces the action they want to take.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chrome.google.com/webstore/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://chromewebstore.google.com/*"
+      ],
+      "js": [
+        "content_new.js"
+      ]
+    }
+  ],
+  "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx"
+}

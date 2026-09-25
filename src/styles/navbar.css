@@ -305,10 +305,17 @@ body.wallpaper-transparent #navbar-wrapper #navbar[data-full-width="true"] > div
 
 /* ============================================
  * 小于1280px时隐藏导航栏菜单图标
+ * ⚠ ProMax 例外：图标岛的导航语言**只有图标**
+ *   （promax.css 用 font-size:0 把文字收掉了），图标再藏起来
+ *   岛上就什么都不剩 —— 平板 / 窄窗口「图标消失」就是这条干的。
  * ============================================ */
 @media (max-width: 1279px) {
     .navbar-icon {
         display: none !important;
+    }
+
+    body.site-promax #navbar .navbar-icon {
+        display: inline-block !important;
     }
 }
 

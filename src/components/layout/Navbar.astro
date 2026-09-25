@@ -8,6 +8,7 @@ import LightDarkSwitch from "@/components/controls/LightDarkSwitch.svelte";
 import {
 	backgroundWallpaper,
 	navBarConfig,
+	profileConfig,
 	siteConfig,
 } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
@@ -42,7 +43,8 @@ const navbarBlur =
 // 获取导航栏标题
 // 注意：如果 navbar.title 被显式设为空字符串，则不显示标题（仅显示 logo）
 const navbarTitle = siteConfig.navbar.title;
-const showNavbarTitle = navbarTitle !== undefined && navbarTitle !== null && navbarTitle !== "";
+const showNavbarTitle =
+	navbarTitle !== undefined && navbarTitle !== null && navbarTitle !== "";
 
 // 获取导航栏宽度配置
 const navbarWidthFull = siteConfig.navbar.widthFull ?? false;
@@ -103,9 +105,10 @@ if (isLocalSrcLogo) {
         className,
         "overflow-visible! h-14 px-4 rounded-2xl"
     ]}>
-        <div class="mx-auto h-full flex items-center gap-3 relative">
+        <div class="mx-auto h-full flex items-center gap-3 relative navbar-track">
             <div id="navbar-pill" class="navbar-pill" aria-hidden="true"></div>
             <button
+                id="navbar-logo-btn"
                 onclick="openEasterEgg()"
                 class="btn-plain scale-animation rounded-lg h-10 px-3 md:px-5 font-bold active:scale-95 shrink-0 cursor-pointer"
                 aria-label="彩蛋"
@@ -133,11 +136,24 @@ if (isLocalSrcLogo) {
                                     ) : siteConfig.navbar.logo?.type === "url" ? (
                                         <img src={siteConfig.navbar.logo.value} alt={siteConfig.navbar.logo.alt || siteConfig.title} class="h-9 w-auto mr-2 object-contain" fetchpriority="high" />
                                     ) : null}
-                    <span class="font-extrabold text-lg tracking-wide">{showNavbarTitle && navbarTitle}</span>
+                    <span id="navbar-title" class="font-extrabold text-lg tracking-wide">{showNavbarTitle && navbarTitle}</span>
+                    {/* ProMax 图标岛专用：文字标题换成圆形头像（只在 body.site-promax 下显示） */}
+                    <span class="pm-logo-avatar" aria-hidden="true">
+                        <img
+                            src={url(profileConfig.avatar)}
+                            alt=""
+                            width="32"
+                            height="32"
+                            decoding="async"
+                        />
+                    </span>
                 </div>
             </button>
             <div class:list={[
-                "hidden lg:flex items-center space-x-1",
+                /* ⚠ 用 md 而不是 lg：lg(1024) 会把平板（768~1023）排挤出图标导航，
+                   岛上只剩 logo + 天气，用户看到的就是「平板模式图标消失」。
+                   平板宽度塞得下这排图标（实测 768px 起），所以从 md 起就想显示。 */
+                "hidden md:flex items-center space-x-1",
                 isNavbarMenuCentered
                     ? "justify-center flex-1"
                     : "justify-start pl-2"
@@ -172,6 +188,45 @@ if (isLocalSrcLogo) {
                 <Icon is:inline name="material-symbols:rainy-rounded" class="text-[1.25rem]" />
                 <span class="text-sm font-bold">天气</span>
             </button>
+            <!--
+                媒体灵动岛（原右上角黑色悬浮岛，现融合进本岛）
+                常态收起、零宽不占位；音频播放 / 麦克风 / 摄像头占用时，
+                这一块从导航岛内部向右侧挤出，点它可在岛下方展开详情。
+                状态与交互脚本见 MediaIsland.astro（通过 #media-island 抓取节点）。
+            -->
+            <div id="media-island" class="mi-hidden">
+                <!-- 挤出态内容 -->
+                <div class="mi-slot">
+                    <div class="mi-pill">
+                        <span class="mi-eq" data-mi-eq aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                        <span class="mi-label" data-mi-label></span>
+                        <!-- 音量条（调节音量时临时显示） -->
+                        <span class="mi-vol" data-mi-vol aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+                            <span class="mi-vol-bar"><span class="mi-vol-fill" data-mi-vol-fill></span></span>
+                        </span>
+                        <!-- iOS 风格状态点：摄像头=绿点（左），麦克风=红点（右） -->
+                        <span class="mi-dot mi-dot-cam" data-mi-dot-cam aria-hidden="true"></span>
+                        <span class="mi-dot mi-dot-mic" data-mi-dot-mic aria-hidden="true"></span>
+                    </div>
+                </div>
+                <!-- 展开态详情：浮在导航岛下方 -->
+                <div class="mi-detail" data-mi-detail>
+                    <div class="mi-row">
+                        <span class="mi-k">正在播放</span>
+                        <span class="mi-v" data-mi-song>—</span>
+                    </div>
+                    <div class="mi-row">
+                        <span class="mi-k">麦克风</span>
+                        <span class="mi-v" data-mi-mic-state>未使用</span>
+                    </div>
+                    <div class="mi-row">
+                        <span class="mi-k">相机</span>
+                        <span class="mi-v" data-mi-cam-state>未使用</span>
+                    </div>
+                    <div class="mi-tip">点击收起</div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -203,12 +258,24 @@ if (isLocalSrcLogo) {
             <span class="effect-icon-leaf hidden"><Icon is:inline name="material-symbols:eco-rounded" class="text-[1.25rem]" /></span>
             <span class="effect-icon-all hidden text-[1rem] font-black leading-none">A</span>
         </button>
+        {/* ProMax 专属：把右下角那颗「娱乐模式」搬进岛里（点击转发给 RainEffect 的隐藏开关） */}
+        <button
+            aria-label="娱乐模式：声音控制雨幕"
+            title="娱乐模式：说话声音越大，雨越大"
+            class="btn-plain scale-animation rounded-lg h-9 w-9 md:h-11 md:w-11 active:scale-90 items-center justify-center"
+            id="pm-rain-toggle"
+            aria-pressed="false"
+        >
+            <Icon is:inline name="material-symbols:mic-rounded" class="text-[1.25rem]" />
+        </button>
         {/* @ts-ignore */}
         <LightDarkSwitch client:load></LightDarkSwitch>
     </div>
 </div>
-<!-- 手机端独立浮空导航岛 - 显示在导航栏下方，居中于视口 -->
-<div id="mobile-nav-island" class="lg:hidden fixed z-50 pointer-events-auto">
+<!-- 手机端独立浮空导航岛 - 显示在导航栏下方，居中于视口
+     ⚠ md:hidden：平板（768~1023）已经能显示桌面岛的图标导航了
+       （见上面图标行的注释），再显示这排文字岛就是两套导航叠在一起 -->
+<div id="mobile-nav-island" class="md:hidden fixed z-50 pointer-events-auto">
     <div class="mobile-nav-island-inner flex items-center gap-0.5 px-2 py-1.5 rounded-full">
         <span class="mobile-pill" aria-hidden="true"></span>
         {links.map((l) => {
@@ -650,7 +717,39 @@ if (document.readyState === 'loading') {
 		height: 3.5rem;
 	}
 
-	/* 桌面导航栏：iOS 灵动岛玻璃椭圆高亮 */
+	/* ProMax 图标岛专用：文字标题换成圆形头像。
+	   默认隐藏，只有 body.site-promax（桌面端）才显示 —— 见 styles/promax.css */
+	#navbar .pm-logo-avatar {
+		display: none;
+		width: 30px;
+		height: 30px;
+		flex: none;
+		border-radius: 9999px;
+		overflow: hidden;
+		box-shadow:
+			0 0 0 1px rgba(255, 255, 255, 0.4),
+			0 2px 8px rgba(0, 0, 0, 0.16);
+	}
+	#navbar .pm-logo-avatar img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	/* 桌面导航栏：iOS 灵动岛玻璃椭圆高亮
+	   ⚠ 这枚高亮现在是「可拖拽的液态玻璃」本体：
+	     · 底色刻意压淡 —— backdrop-filter 画在背景**之下**，
+	       底色越实，折射越被盖住；原来 0.55/0.45 基本把玻璃糊死了
+	     · ⚠ 底色必须是**纯 background-color**，绝不能画进 background-image
+	       渐变里：LiquidGlass 的透底只认 background-color（读到透明就
+	       整个跳过），画进渐变的话高亮永远保持全饱和青，
+	       看着就是一颗实心胶囊（用户：「切换一个链接仍然变白」）。
+	       玻璃质感交给折射 + 下面那层极淡的白色斜切光（background-image）。
+	     · 自带 blur 只留 3px —— 它原来那层 blur(20px) 叠在导航岛里面，
+	       就是「岛上有另一层模糊挡着液态玻璃」的来源。
+	       真正的折射交给 LiquidGlass 引擎（PRESETS 里的 #navbar-pill）
+	     · ProMax 下另有一套配色（见 styles/promax.css）。 */
 	.navbar-pill {
 		position: absolute;
 		top: 0;
@@ -659,19 +758,22 @@ if (document.readyState === 'loading') {
 		/* 比按钮 (40px) 略大，呈现 iOS 灵动岛扩张感 */
 		height: 42px;
 		border-radius: 9999px;
-		background: linear-gradient(
+		/* 透底基准：引擎会把它乘 tint(0.5×0.72≈0.36) → 实际 ≈0.18 */
+		background-color: rgba(14, 165, 233, 0.5);
+		/* 极淡的受光斜切：只负责「玻璃面上有一道光」，不承担底色 */
+		background-image: linear-gradient(
 			135deg,
-			rgba(125, 211, 252, 0.55) 0%,
-			rgba(186, 230, 253, 0.45) 50%,
-			rgba(125, 211, 252, 0.55) 100%
+			rgba(255, 255, 255, 0.16) 0%,
+			rgba(255, 255, 255, 0.02) 52%,
+			rgba(255, 255, 255, 0.12) 100%
 		);
 		box-shadow:
-			0 4px 14px -4px rgba(56, 189, 248, 0.35),
-			inset 0 1px 0 rgba(255, 255, 255, 0.5),
-			inset 0 -1px 0 rgba(56, 189, 248, 0.18);
-		backdrop-filter: blur(20px) saturate(180%);
-		-webkit-backdrop-filter: blur(20px) saturate(180%);
-		border: 1px solid rgba(255, 255, 255, 0.4);
+			0 4px 14px -4px rgba(14, 165, 233, 0.45),
+			inset 0 1px 0 rgba(255, 255, 255, 0.32),
+			inset 0 -1px 0 rgba(14, 165, 233, 0.26);
+		backdrop-filter: blur(3px) saturate(160%);
+		-webkit-backdrop-filter: blur(3px) saturate(160%);
+		border: 1px solid rgba(56, 189, 248, 0.5);
 		transform: translate(-9999px, 0);
 		opacity: 0;
 		pointer-events: none;
@@ -689,17 +791,44 @@ if (document.readyState === 'loading') {
 
 	/* 暗色模式：更通透的玻璃 */
 	.dark .navbar-pill {
-		background: linear-gradient(
-			135deg,
-			rgba(56, 189, 248, 0.4) 0%,
-			rgba(125, 211, 252, 0.3) 50%,
-			rgba(56, 189, 248, 0.4) 100%
-		);
+		background-color: rgba(14, 165, 233, 0.42);
 		box-shadow:
-			0 4px 14px -4px rgba(56, 189, 248, 0.5),
-			inset 0 1px 0 rgba(255, 255, 255, 0.15),
-			inset 0 -1px 0 rgba(56, 189, 248, 0.3);
-		border: 1px solid rgba(125, 211, 252, 0.35);
+			0 4px 14px -4px rgba(14, 165, 233, 0.55),
+			inset 0 1px 0 rgba(255, 255, 255, 0.16),
+			inset 0 -1px 0 rgba(56, 189, 248, 0.32);
+		border: 1px solid rgba(56, 189, 248, 0.4);
+	}
+
+	/* ---------- 高亮带是可抓的：拖它就是拖这块液态玻璃 ----------
+	   抓取区是整个导航行（.navbar-track）：按在岛的空白处、或直接按在高亮自己
+	   身上 → 立刻进入拖拽；按在别的导航项上 → 先让点击照常走，位移超过阈值
+	   才升级成拖拽（判定见 initNavbarPill 里的拖拽段）。 */
+	.navbar-track {
+		/* 岛从此是拖拽手柄，横向手势不该再被浏览器拿去滚页面 */
+		touch-action: none;
+		cursor: url("/cursors/sizeall.cur") 14 13, grab;
+		/* 整条轨道连同里面的 <a> / 头像 <img> 一起关掉「原生拖拽」与「选字」——
+		   不然按住一拖，浏览器会先弹出一个「主页 + 网址」的拖拽幽灵，
+		   盖住我们自己的玻璃高亮（用户截图里那个灰框就是这么来的）。 */
+		-webkit-user-drag: none;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+	.navbar-track,
+	.navbar-track * {
+		-webkit-user-drag: none;
+	}
+	.navbar-track.navbar-track-dragging {
+		cursor: url("/cursors/sizeall.cur") 14 13, grabbing;
+	}
+	/* 拖拽中：关掉过渡 → 1:1 跟手；松手再恢复过渡，那一下就是「吸附」的手感。
+	   光晕刻意压淡 —— 原来那圈 0.6 的蓝光叠在玻璃上会把它糊成一颗「蓝灯泡」 */
+	.navbar-pill.is-dragging {
+		transition: none !important;
+		box-shadow:
+			0 6px 18px -8px rgba(56, 189, 248, 0.45),
+			inset 0 1px 0 rgba(255, 255, 255, 0.6),
+			inset 0 -1px 0 rgba(56, 189, 248, 0.22);
 	}
 
 	/* 当 pill 在按钮后面时，按钮文字加粗并提亮 */
@@ -786,6 +915,10 @@ if (document.readyState === 'loading') {
 				// 文章岛面板（二级菜单）也在导航条子树里，但它的卡片不是高亮目标：
 				// 面板展开时坐标在导航条下方，收起/切页后坐标退化，高亮会卡到屏幕中间
 				if (n.closest('[data-ai-panel]')) return false;
+				// 同理：文章岛的**移动端抽屉**（.ai-mobile-drawer）也在这棵子树里，
+				// 桌面端它整棵是 0×0，但 href 一样对得上 —— 不排掉的话
+				// findActive() 可能挑中这些看不见的项，高亮就飞到岛外面去了
+				if (n.closest('[data-ai-mobile-drawer]')) return false;
 				return true;
 			});
 		}
@@ -800,6 +933,13 @@ if (document.readyState === 'loading') {
 			if (!parent) return;
 			const parentRect = parent.getBoundingClientRect();
 			const r = el.getBoundingClientRect();
+			/* 还没量出宽度（字体没到位 / 刚插进来的新节点）：这会儿写
+			   width=16px 会让高亮变成一道小竖条，玻璃引擎也会以
+			   「尺寸 < 8px」为由拒绝它。宁可不动，等重试。 */
+			if (r.width < 8) {
+				locateRetry();
+				return;
+			}
 			// 玻璃椭圆比按钮左右各扩 8px、上 1px (iOS 灵动岛扩张感)
 			const x = r.left - parentRect.left - 8;
 			const yTop = r.top - parentRect.top - 1;
@@ -877,17 +1017,299 @@ if (document.readyState === 'loading') {
 			(root as any).__navbarPillClickBound = true;
 		}
 
+		/* ================= 液态玻璃：给高亮本体挂折射引擎 =================
+		   需求是「拖的是那枚蓝色高亮」，所以玻璃就长在高亮自己身上，
+		   不再另开一块独立的拖拽模块。
+		   引擎没起来时（触屏 / 精简版 / 浏览器不支持 url() 滤镜）静默跳过，
+		   高亮退回 CSS 那一层 blur(3px)，功能不受影响。 */
+		/* band / strength 刻意比导航岛更猛：
+		   岛是「一整块大玻璃」，高亮是「一颗小透镜」——小透镜要看清折射，
+		   边缘就得掰得更狠，否则在一片素色岛面上什么形变都读不出来。
+		   1.4 × 15 × 0.5 ≈ 10.5px 最大位移：拖过图标时能看见图标被「吸」进边缘。
+		   rim 0.5 —— 高光棱压掉一半，少了那圈白雾才像玻璃而不是磨砂。 */
+		const PILL_GLASS = {
+			band: 15,
+			strength: 1.4,
+			blur: 1.2,
+			sat: 1.28,
+			rim: 0.5,
+			tint: 0.5,
+			nest: true,
+		};
+		/* ---------- 注册要带重试 ----------
+		   高亮是「先位移、后显形」的：moveTo() 一边写 width/transform，
+		   一边挂上 .is-active（opacity 0 → 1 有 0.3s 过渡）。同一帧里
+		   同步调用注册，会撞上两件事：
+		     · width 还是 0（引擎判 W < 8 直接跳过）
+		     · getComputedStyle 读到的 opacity 还是 0（过渡的起始值）
+		   引擎把「不可见」当成「不值得上玻璃」就跳过了，而它只会被
+		   主动调用一次 —— 于是整条高亮永远只剩 CSS 那层底色。
+		   用户看到的就是「点一次链接，高亮是一块浅色实心胶囊」（原话：
+		   「点击一次链接后变白」）：不是玻璃变白，是玻璃压根没挂上。
+		   所以失败就按 120ms 重试（上限约 1.7s，足够盖过过渡 + 引擎 idle 扫描），
+		   成功即清零。 */
+		let pillGlassTimer: ReturnType<typeof setTimeout> | null = null;
+		let pillGlassTries = 0;
+		function retryPillGlass() {
+			if (pillGlassTimer) return;
+			if (pillGlassTries >= 14) return;
+			pillGlassTries++;
+			pillGlassTimer = setTimeout(() => {
+				pillGlassTimer = null;
+				registerPillGlass();
+			}, 120);
+		}
+		function registerPillGlass(): boolean {
+			const api = (window as any).__liquidGlass;
+			const el = document.getElementById('navbar-pill');
+			/* 液态玻璃是 ProMax 独占：正常版 / 精简版的高亮只留 CSS 那层底色，
+			   不上折射。类可能比脚本晚挂上，所以仍走重试（有界）。 */
+			if (!document.body.classList.contains('site-promax')) {
+				retryPillGlass();
+				return false;
+			}
+			if (!api || !el || !el.classList.contains('is-active')) {
+				retryPillGlass();
+				return false;
+			}
+			if (el.hasAttribute('data-lg-on')) {
+				pillGlassTries = 0;
+				return true;
+			}
+			const ok = api.register(el, PILL_GLASS) !== false;
+			if (ok) {
+				pillGlassTries = 0;
+			} else {
+				retryPillGlass();
+			}
+			return ok;
+		}
+		window.addEventListener('liquidglass:ready', registerPillGlass);
+
+		/* ================= 拖拽：把高亮带抓起来 =================
+		   模型：pill 是「一块玻璃」，导航岛是「轨道」。
+		     · 岛上按下（空白处 / 高亮自己 / 任意导航项）都先「待命」
+		     · 位移超过 5px 才升级成拖拽 —— 所以点击行为一点没变
+		     · 拖动时 pill 中心跟着指针、宽度取最近那一项的宽度（有「拉丝」感），
+		       最近的那一项实时点亮当预览
+		     · 松手吃掉那次 click（否则 <a> 会真跳页），然后弹性吸附到最近项
+		     · 吸附后接管高亮（manualDrop），直到下次切页再交还给 URL */
+		const DRAG_SLOP = 5;
+		const dragArm = { armed: false, moved: false, x: 0, y: 0 };
+		let suppressClick = false;
+		let manualDrop = false;
+
+		function nearestTarget(clientX: number): HTMLElement | null {
+			let best: HTMLElement | null = null;
+			let bestD = Infinity;
+			for (const el of collectTargets()) {
+				const r = el.getBoundingClientRect();
+				if (r.width <= 0 || r.height <= 0) continue;
+				const d = Math.abs(r.left + r.width / 2 - clientX);
+				if (d < bestD) {
+					bestD = d;
+					best = el;
+				}
+			}
+			return best;
+		}
+
+		function setPreview(el: HTMLElement | null) {
+			document
+				.querySelectorAll('[data-navbar-active]')
+				.forEach((n) => n.removeAttribute('data-navbar-active'));
+			if (el) el.setAttribute('data-navbar-active', '');
+		}
+
+		/** 拖拽跟随：pill 中心 = 指针 x，纵向 & 宽度吸附到最近那一项 */
+		function dragFollow(clientX: number) {
+			const el = document.getElementById('navbar-pill');
+			const parent = el?.parentElement;
+			if (!el || !parent) return;
+			const near = nearestTarget(clientX);
+			if (!near) return;
+			const pr = parent.getBoundingClientRect();
+			const r = near.getBoundingClientRect();
+			const w = r.width + 16;
+			const yTop = r.top - pr.top - 1;
+			/* 允许轻微越出轨道两端（±10px），手感更「活」，松手反正会吸附回来 */
+			let x = clientX - pr.left - w / 2;
+			if (x < -10) x = -10;
+			const maxX = pr.width - w + 10;
+			if (x > maxX) x = maxX;
+			el.style.width = `${w}px`;
+			el.style.transform = `translate(${x}px, ${yTop}px)`;
+			el.classList.add('is-active');
+			setPreview(near);
+		}
+
+		function startDrag() {
+			const el = document.getElementById('navbar-pill');
+			const track = el?.parentElement;
+			if (!el || !track) return;
+			/* 拖起来就别再被「点击锁定」拉回去了 */
+			clickLock = null;
+			if (clickLockTimer) clearTimeout(clickLockTimer);
+			el.classList.add('is-dragging');
+			track.classList.add('navbar-track-dragging');
+		}
+
+		function endDrag(clientX: number) {
+			const el = document.getElementById('navbar-pill');
+			const track = el?.parentElement;
+			const wasDragging = dragArm.moved;
+			dragArm.armed = false;
+			dragArm.moved = false;
+			track?.classList.remove('navbar-track-dragging');
+			el?.classList.remove('is-dragging');
+			if (!wasDragging) return;
+			/* 拖拽末尾那次 click 必须吃掉：导航项都是 <a>，不掐就直接跳页了。
+			   click 在 pointerup 之后同步派发，这个 0ms 计时器足够晚。 */
+			suppressClick = true;
+			setTimeout(() => {
+				suppressClick = false;
+			}, 0);
+			const near = nearestTarget(clientX);
+			if (near) {
+				manualDrop = true;
+				moveTo(near); /* 过渡已恢复 → 这一下就是弹性吸附 */
+			}
+			/* 拖到某个入口上松手 = 选中它：是页面链接就真的跳过去。
+			   只认 <a>（「天气 / 文章」这类在岛里是开面板的按钮，
+			   拖上去就跳页反而莫名其妙），且必须是「另一页」才跳。 */
+			if (near && near.tagName === "A") {
+				let samePage = true;
+				try {
+					const u = new URL(near.getAttribute("href") || "", location.href);
+					samePage =
+						u.origin === location.origin &&
+						(u.pathname.replace(/\/+$/, "") || "/") ===
+							(location.pathname.replace(/\/+$/, "") || "/") &&
+						!u.hash;
+				} catch (e) {
+					samePage = true;
+				}
+				/* 90ms：足够晚于上面那次「吃掉 click」的 0ms 计时器，
+				   又早到看起来就是「松手即跳」 */
+				if (!samePage) {
+					setTimeout(() => near.click(), 90);
+				}
+			}
+		}
+
+		const dragTrack = pill.parentElement;
+		if (dragTrack && !(dragTrack as any).__navbarPillDragBound) {
+			dragTrack.addEventListener('pointerdown', (e) => {
+				const pe = e as PointerEvent;
+				if (pe.pointerType === 'mouse' && pe.button !== 0) return;
+				dragArm.armed = true;
+				dragArm.moved = false;
+				dragArm.x = pe.clientX;
+				dragArm.y = pe.clientY;
+			});
+			/* 捕获阶段掐掉拖拽后的那次 click */
+			dragTrack.addEventListener(
+				'click',
+				(e) => {
+					if (!suppressClick) return;
+					e.preventDefault();
+					e.stopPropagation();
+					suppressClick = false;
+				},
+				true,
+			);
+			/* 原生 HTML5 拖拽的兜底闸门：CSS 的 -webkit-user-drag:none 已经挡掉
+			   绝大部分（<a> 和 <img>），但外链箭头 / 未来新增的节点未必带着，
+			   这里在捕获阶段直接 preventDefault —— 保证永远弹不出那个拖拽幽灵。
+			   注意：这里只掐「原生拖拽」，我们自己的指针拖拽（pointerdown/move）
+			   完全不受影响。 */
+			dragTrack.addEventListener(
+				'dragstart',
+				(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+				},
+				true,
+			);
+			(dragTrack as any).__navbarPillDragBound = true;
+		}
+
+		/* 这两个挂在 window 上，全站只挂一次（切页会重复调用本函数） */
+		if (!(window as any).__navbarPillDragGlobal) {
+			(window as any).__navbarPillDragGlobal = true;
+			window.addEventListener(
+				'pointermove',
+				(e) => {
+					if (!dragArm.armed) return;
+					const pe = e as PointerEvent;
+					if (!dragArm.moved) {
+						if (
+							Math.abs(pe.clientX - dragArm.x) < DRAG_SLOP &&
+							Math.abs(pe.clientY - dragArm.y) < DRAG_SLOP
+						)
+							return;
+						dragArm.moved = true;
+						startDrag();
+					}
+					dragFollow(pe.clientX);
+				},
+				{ passive: true },
+			);
+			window.addEventListener('pointerup', (e) => {
+				if (!dragArm.armed) return;
+				endDrag((e as PointerEvent).clientX);
+			});
+			window.addEventListener('pointercancel', () => {
+				if (!dragArm.armed) return;
+				endDrag(Number.NaN);
+			});
+		}
+
+		/* ---------- 初始定位要带重试 ----------
+		   首屏的导航项宽度是「字体到位以后」才定的，切页时新节点更是
+		   先以 0 宽插进来。找得到目标就定位；找不到（或被量成 0 宽）
+		   时高亮会一直躺在 translate(-9999px) 的初始位上 ——
+		   用户看到的就是「进了友链 / 关于我，高亮不见了或者糊成一片」。
+		   所以找不到就按 120ms 有界重试，最多 ~1.5s。 */
+		let locateTimer: ReturnType<typeof setTimeout> | null = null;
+		let locateTries = 0;
+		function locateRetry() {
+			if (locateTimer || locateTries >= 12) return;
+			locateTries++;
+			locateTimer = setTimeout(() => {
+				locateTimer = null;
+				const target = findActive();
+				if (target) {
+					locateTries = 0;
+					moveTo(target);
+					registerPillGlass();
+				} else {
+					locateRetry();
+				}
+			}, 120);
+		}
+
 		function refresh() {
 			if (clickLock) {
 				moveTo(clickLock);
 				return;
 			}
+			/* 用户手动把高亮摆到别处了 → 尊重它，别被 URL 立刻拉回去 */
+			if (manualDrop) return;
 			syncNavbarActiveState();
-			moveTo(findActive());
+			const active = findActive();
+			moveTo(active);
+			registerPillGlass();
+			if (!active) locateRetry();
 		}
 
 		// 初始定位
 		requestAnimationFrame(refresh);
+		/* 字体加载完导航项宽度会变，重定位一次；load 兜底一次全量布局落定 */
+		if (document.fonts && document.fonts.ready) {
+			document.fonts.ready.then(() => setTimeout(refresh, 40)).catch(() => {});
+		}
+		window.addEventListener('load', () => setTimeout(refresh, 60));
 
 		let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 		window.addEventListener('resize', () => {
@@ -896,14 +1318,17 @@ if (document.readyState === 'loading') {
 		});
 		document.addEventListener('astro:page-load', () => {
 			clickLock = null;
+			manualDrop = false;
 			setTimeout(refresh, 50);
 		});
 		// swup 切页：尊重点击锁定，等锁定释放再跟随 URL
 		document.addEventListener('swup:contentReplaced', () => {
+			manualDrop = false;
 			setTimeout(refresh, 50);
 		});
 		if ((window as any).swup?.hooks) {
 			(window as any).swup.hooks.on('page:view', () => {
+				manualDrop = false;
 				setTimeout(refresh, 30);
 			});
 		}

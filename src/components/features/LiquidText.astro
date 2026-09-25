@@ -1,0 +1,480 @@
+---
+// Liquid Text —— 让「文字本身」变成一块液态玻璃（ProMax 独占）
+//
+// 和 LiquidGlass 引擎的区别：引擎是把**元素的矩形边框盒**整体当玻璃（圆角矩形
+// 的 SDF 位移贴图，折射只发生在盒子边缘）。文字不吃这一套 —— 我们要的是
+// **字形**成为玻璃，笔画的每一处都在掰弯背景。
+//
+// 关键发现（headless 实测）：
+//   · backdrop-filter **不会**被 background-clip:text 裁掉 —— 它铺满整个盒子，
+//     拿到的是「一块方块」，不是字形。（所以不能走 background-clip 那条路）
+//   · backdrop-filter **会**被 `mask-image: url(#svgMask)` 裁掉，
+//     内联 SVG 里的 <mask><text> 能正确作用，且用户空间是**元素局部 px**（1:1）。
+//   · <mask> 里放 <foreignObject> **完全不渲染**（Chromium），别指望它自动继承排版。
+//     所以蒙版的基线/左边距必须自己量：Range.getClientRects() 拿文字行盒，
+//     canvas measureText 的 fontBoundingBoxAscent/Descent 拿字体上下沿。
+//
+// 门槛与 LiquidGlass 一致：不支持 url() backdrop-filter / 精简版或正常版 /
+// 触屏 / 低核机器 / prefers-reduced-motion —— 任一条命中就一行都不跑，
+// 文字老老实实保持原来的白字（绝不出现「看不见的字」）。
+---
+
+<!-- 字形折射用的一张静态滤镜：湍流噪声 + 位移，做出「液体在笔画里流动」的观感 -->
+<svg
+	id="lg-text-defs"
+	aria-hidden="true"
+	width="0"
+	height="0"
+	style="position:fixed;top:0;left:0;pointer-events:none;"
+>
+	<defs>
+		<filter
+			id="lg-text-refract"
+			filterUnits="objectBoundingBox"
+			x="-0.1"
+			y="-0.4"
+			width="1.2"
+			height="1.8"
+			color-interpolation-filters="sRGB"
+		>
+			<!-- 1) 透镜场：低频湍流 → 高斯 → feComponentTransfer 「压扁」到 0.5 附近，
+			     只留稀疏的鼓包。这一层配方（seed=17 / gamma 压扁 / 点光源高光）
+			     取自 lucasromerodb 的 macOS Liquid Glass 滤镜：它比裸湍流更像真玻璃 ——
+			     大部分区域位移 ≈ 0（背景保持原位），只有少数地方被掰成一小片透镜。 -->
+			<feTurbulence
+				type="fractalNoise"
+				baseFrequency="0.01 0.016"
+				numOctaves="2"
+				seed="5"
+				result="lgNoise"></feTurbulence>
+			<feGaussianBlur in="lgNoise" stdDeviation="7" result="lgSoft"></feGaussianBlur>
+			<feComponentTransfer in="lgSoft" result="lgMap">
+				<feFuncR type="gamma" amplitude="1" exponent="8" offset="0.44"></feFuncR>
+				<feFuncG type="gamma" amplitude="0.6" exponent="8" offset="0.38"></feFuncG>
+			</feComponentTransfer>
+			<!-- 2) 高光：拿同一张噪声（alpha 当高度图）打一盏点光源做镜面高光。
+			     这是「玻璃会反光」的那层 —— 背景再暗再花，字面上也有一道湿亮的光，
+			     单靠调亮背景是做不出来的。光位在左上，和「25」的受光方向一致。 -->
+			<feSpecularLighting
+				in="lgSoft"
+				surfaceScale="4"
+				specularConstant="0.75"
+				specularExponent="40"
+				lighting-color="#ffffff"
+				result="lgSpec">
+				<fePointLight x="-140" y="-190" z="230"></fePointLight>
+			</feSpecularLighting>
+			<!-- 3) 磨砂：把背景糊掉。必须排在位移**之前** ——
+			     反过来的话笔画边缘那圈折射会被高斯糊平，只剩一块普通毛玻璃。 -->
+			<feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="lgFrost"></feGaussianBlur>
+			<!-- 4) 位移：in=SourceGraphic 在 backdrop-filter 场景下就是被裁到字形的那块背景。
+			     位移要**克制**：玻璃是「清」的，掰太狠就把背景撕烂了。 -->
+			<feDisplacementMap
+				in="lgFrost"
+				in2="lgMap"
+				scale="16"
+				xChannelSelector="R"
+				yChannelSelector="G"
+				result="lgWarp"></feDisplacementMap>
+			<!-- 5) 把高光叠加到折射结果上（k2=k3=1 → 两者相加），再统一「聚色」 -->
+			<feComposite in="lgSpec" in2="lgWarp" operator="arithmetic" k1="0" k2="0" k3="1" k4="0" result="lgLit"></feComposite>
+			<feBlend in="lgLit" in2="lgWarp" mode="screen" result="lgShine"></feBlend>
+			<feColorMatrix in="lgShine" type="saturate" values="1.1"></feColorMatrix>
+		</filter>
+	</defs>
+</svg>
+
+<style is:global>
+	/* 只有脚本**确认**挂上了蒙版才会打这个标记。
+	   没挂上时元素完全不受影响 —— 这条是「原子性开关」，不是装饰。 */
+	[data-lg-text-on] {
+		background-repeat: no-repeat;
+		-webkit-mask-repeat: no-repeat;
+		mask-repeat: no-repeat;
+		-webkit-mask-position: 0 0;
+		mask-position: 0 0;
+		-webkit-mask-size: 100% 100%;
+		mask-size: 100% 100%;
+	}
+</style>
+
+<script is:inline>
+	(function () {
+		var d = document;
+		var NS = "http://www.w3.org/2000/svg";
+		var HOST_ID = "lg-text-defs";
+		var FILTER = 'url("#lg-text-refract")';
+		var SEL = "[data-lg-text]";
+
+		/* 观感参数，集中在这里方便调。基准 = WWDC25 那个「25」：
+		   一块**清透的厚玻璃**（乳白偏灰的身体 / 左上亮边 / 右下柔和灰影），
+		   绝不是一圈空心描边、也不是一块死白。 */
+		var MILK = "rgba(255, 255, 255, 0.1)"; /* 玻璃的「体积」：只靠描边就是空心字，身体必须有一层乳白 */
+		/* 斜切光带：左上最亮、中部几乎透明、右下转成灰 ——
+		   这是「25」那种左上受光的玻璃感，静态渐变就够（蒙版会裁进字形里）。 */
+		var SHEEN =
+			"linear-gradient(150deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.34) 18%, rgba(255,255,255,0.06) 44%, rgba(255,255,255,0) 58%, rgba(178,188,206,0.24) 78%, rgba(152,162,186,0.4) 100%)";
+		/* 折射 + 磨砂 + 轻微去色：玻璃会把底下的颜色「洗淡」一点，「25」就是中性灰调的。
+		   亮度几乎不动 —— 提亮是「白」，不是「玻璃」。 */
+		var BD = FILTER + " blur(0.6px) brightness(1.02) saturate(0.8) contrast(1.08)";
+		var STROKE = "1.9px rgba(255, 255, 255, 0.95)"; /* 字形轮廓的高光棱，也就是「玻璃的边」 */
+		/* 立体（「25」的关键）：左上打白光当受光棱，右下压一道灰影当背光棱，
+		   最外面再挂一层柔和灰影 —— 玻璃才像一块有厚度的东西浮在纸面上。 */
+		var SHADOW =
+			"-1.5px -1.5px 0 rgba(255,255,255,0.9), 1.5px 1.5px 0 rgba(122,130,148,0.38), 3px 9px 18px rgba(90,98,116,0.4)";
+		var DILATE_RATIO = 0.09; /* 蒙版外扩比例（按字号）：玻璃比字形胖一圈，厚度就是它 */
+
+		var uid = 0;
+		var made = []; /* { el, id, sig } */
+		var sigCache = Object.create(null);
+		var syncTimer = 0;
+		var bootRetry = 0;
+
+		function canRun() {
+			try {
+				if (!window.CSS || !CSS.supports) return false;
+				if (!CSS.supports("backdrop-filter", 'url("#x")')) return false;
+				if (!CSS.supports("mask-image", 'url("#x")')) return false;
+				if (!CSS.supports("-webkit-mask-image", 'url("#x")')) return false;
+			} catch (e) {
+				return false;
+			}
+			return !!d.createElementNS;
+		}
+
+		var SUPPORTED = canRun();
+
+		function host() {
+			return d.getElementById(HOST_ID);
+		}
+
+		/* 与 LiquidGlass 引擎同款门槛：ProMax 独占 + 桌面指针 + 机器扛得住 */
+		function allowed() {
+			if (!SUPPORTED) return false;
+			if (!d.body || !d.body.classList.contains("site-promax")) return false;
+			try {
+				if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+				if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return false;
+			} catch (e) {}
+			if ((navigator.hardwareConcurrency || 4) <= 2) return false;
+			return true;
+		}
+
+		var ctxCache = null;
+		function mctx() {
+			if (!ctxCache) {
+				try {
+					ctxCache = d.createElement("canvas").getContext("2d");
+				} catch (e) {
+					ctxCache = null;
+				}
+			}
+			return ctxCache;
+		}
+
+		/* ctx.measureText 的 fontBoundingBox* 是 CSS px 单位的字体上下沿，
+		   比「按 0.88em 猜」靠谱得多 —— 基线错 2px 就会把字头削掉。 */
+		function fontMetrics(cs, text) {
+			var fs = parseFloat(cs.fontSize) || 16;
+			var lh = cs.lineHeight === "normal" ? 0 : parseFloat(cs.lineHeight);
+			if (!isFinite(lh) || lh <= 0) lh = fs * 1.2;
+			var asc = fs * 0.88;
+			var desc = fs * 0.2;
+			var cx = mctx();
+			if (cx) {
+				var key = cs.fontStyle + "|" + cs.fontWeight + "|" + fs + "|" + cs.fontFamily;
+				var m = sigCache[key];
+				if (!m) {
+					try {
+						cx.font = cs.fontStyle + " " + cs.fontWeight + " " + fs + "px " + cs.fontFamily;
+						var t = cx.measureText(text || "汉");
+						if (isFinite(t.fontBoundingBoxAscent) && t.fontBoundingBoxAscent > 0) {
+							m = { a: t.fontBoundingBoxAscent, d: t.fontBoundingBoxDescent };
+							sigCache[key] = m;
+						}
+					} catch (e) {}
+				}
+				if (m) {
+					asc = m.a;
+					desc = m.d;
+				}
+			}
+			return { fs: fs, lh: lh, asc: asc, desc: desc };
+		}
+
+		/* 量出「文字那一行」在元素局部坐标系里的位置。
+		   用 Range 而不是 offsetLeft：行盒的 left/top/height 都是浏览器真排出来的。 */
+		function textBox(el) {
+			var node = null;
+			for (var i = 0; i < el.childNodes.length; i++) {
+				var n = el.childNodes[i];
+				if (n.nodeType === 3 && n.nodeValue && n.nodeValue.replace(/\s+/g, "")) {
+					node = n;
+					break;
+				}
+			}
+			if (!node) return null;
+			var text = node.nodeValue.replace(/\s+/g, " ").trim();
+			if (!text) return null;
+			var rng = d.createRange();
+			try {
+				rng.selectNodeContents(node);
+			} catch (e) {
+				return null;
+			}
+			var rects = rng.getClientRects();
+			if (!rects || !rects.length) return null;
+			/* 折成多行了：字形蒙版只能表达一行，放弃（宁可不动，也不要切错） */
+			if (rects.length > 1) return null;
+			var r = rects[0];
+			if (!r.width || !r.height) return null;
+			var er = el.getBoundingClientRect();
+			return {
+				text: text,
+				left: r.left - er.left,
+				top: r.top - er.top,
+				width: r.width,
+				height: r.height,
+			};
+		}
+
+		function buildMask(id, box, cs, fm) {
+			var defsHost = host();
+			if (!defsHost) return false;
+			var defs = defsHost.querySelector("defs") || defsHost;
+			var w = Math.max(1, Math.ceil(box.left + box.width + fm.fs * 0.6));
+			var h = Math.max(1, Math.ceil(box.top + box.height + fm.fs * 0.6));
+			var m = d.createElementNS(NS, "mask");
+			m.setAttribute("id", id);
+			m.setAttribute("maskUnits", "userSpaceOnUse");
+			m.setAttribute("x", "0");
+			m.setAttribute("y", "0");
+			m.setAttribute("width", String(w));
+			m.setAttribute("height", String(h));
+			var t = d.createElementNS(NS, "text");
+			t.setAttribute("x", String(box.left));
+			/* 行盒内基线的位置 = 行盒顶 + 半行距 + 上沿 */
+			t.setAttribute("y", String(box.top + (box.height - (fm.asc + fm.desc)) / 2 + fm.asc));
+			t.setAttribute("font-family", cs.fontFamily);
+			t.setAttribute("font-size", cs.fontSize);
+			t.setAttribute("font-weight", cs.fontWeight);
+			t.setAttribute("font-style", cs.fontStyle);
+			if (cs.letterSpacing && cs.letterSpacing !== "normal") t.setAttribute("letter-spacing", cs.letterSpacing);
+			t.setAttribute("fill", "#fff");
+			/* 外扩一圈：玻璃比字形胖一点，笔画的「厚度」就是这个外扩 */
+			t.setAttribute("stroke", "#fff");
+			t.setAttribute("stroke-width", String(fm.fs * DILATE_RATIO));
+			t.setAttribute("stroke-linejoin", "round");
+			t.textContent = box.text;
+			m.appendChild(t);
+			defs.appendChild(m);
+			return true;
+		}
+
+		/* 蒙版是「元素盒子」尺寸，但光带必须只在**文字那一行**里走一遍 ——
+		   盒子通常比字宽得多（标题是整行宽、字只占左边一小截），
+		   不校正的话那条渐变就退化成一整块死白，玻璃立刻变成白塑料。 */
+		function paintBox(el, box) {
+			var S = el.style;
+			/* background-origin 默认是 padding-box，而蒙版的用户空间是 border-box 原点 —— 必须对齐 */
+			S.setProperty("background-origin", "border-box", "important");
+			S.setProperty("background-size", box.width + "px " + box.height + "px", "important");
+			S.setProperty("background-position", box.left + "px " + box.top + "px", "important");
+			S.setProperty("background-repeat", "no-repeat", "important");
+		}
+
+		/* 量一次「文字 + 字体 + 宽度」的指纹，只用来判断要不要换蒙版 */
+		function sigOf(el, box, cs) {
+			return (
+				box.text +
+				"|" +
+				cs.fontSize +
+				"|" +
+				cs.fontFamily +
+				"|" +
+				cs.fontWeight +
+				"|" +
+				Math.round(box.width)
+			);
+		}
+
+		function recOf(el) {
+			for (var i = 0; i < made.length; i++) if (made[i].el === el) return made[i];
+			return null;
+		}
+
+		function apply(el) {
+			if (!el || el.nodeType !== 1) return false;
+			if (el.getAttribute("data-lg-text-on")) return true;
+			if (!el.offsetWidth || !el.offsetHeight) return false; /* 还没显形，等下一轮 */
+			var cs = getComputedStyle(el);
+			var box = textBox(el);
+			if (!box) return false;
+			var id = "lgtextmask-" + ++uid;
+			var fm = fontMetrics(cs, box.text);
+			if (!buildMask(id, box, cs, fm)) return false;
+
+			try {
+				var S = el.style;
+				S.setProperty("color", "transparent", "important");
+				S.setProperty("text-shadow", SHADOW, "important");
+				S.setProperty("-webkit-text-stroke", STROKE, "important");
+				S.setProperty("background-color", MILK, "important");
+				S.setProperty("background-image", SHEEN, "important");
+				S.setProperty("backdrop-filter", BD, "important");
+				S.setProperty("-webkit-backdrop-filter", BD, "important");
+				S.setProperty("mask-image", 'url("#' + id + '")', "important");
+				S.setProperty("-webkit-mask-image", 'url("#' + id + '")', "important");
+			} catch (e) {
+				return false;
+			}
+			paintBox(el, box);
+			el.setAttribute("data-lg-text-on", id);
+			made.push({ el: el, id: id, sig: sigOf(el, box, cs) });
+			return true;
+		}
+
+		function revert(el) {
+			if (!el) return;
+			var id = el.getAttribute("data-lg-text-on");
+			if (!id) return;
+			var S = el.style;
+			[
+				"color",
+				"text-shadow",
+				"-webkit-text-stroke",
+				"background-color",
+				"background-image",
+				"background-origin",
+				"background-size",
+				"background-position",
+				"background-repeat",
+				"backdrop-filter",
+				"-webkit-backdrop-filter",
+				"mask-image",
+				"-webkit-mask-image",
+			].forEach(function (p) {
+				S.removeProperty(p);
+			});
+			el.removeAttribute("data-lg-text-on");
+			var m = d.getElementById(id);
+			if (m && m.parentNode) m.parentNode.removeChild(m);
+			made = made.filter(function (r) {
+				return r.el !== el;
+			});
+		}
+
+		function revertAll() {
+			made.slice().forEach(function (r) {
+				revert(r.el);
+			});
+			made = [];
+		}
+
+		function sync() {
+			syncTimer = 0;
+			if (!allowed()) {
+				revertAll();
+				/* 版本门里的类可能比本脚本晚一丁点挂上（首屏竞态），有界重试 */
+				if (d.body && SUPPORTED && bootRetry < 4) {
+					bootRetry++;
+					setTimeout(function () {
+						scheduleSync(240);
+					}, 300);
+				}
+				return;
+			}
+			bootRetry = 0;
+			var list = d.querySelectorAll(SEL);
+			for (var i = 0; i < list.length; i++) {
+				var el = list[i];
+				var cur = el.getAttribute("data-lg-text-on");
+				if (!cur) {
+					apply(el);
+					continue;
+				}
+				/* 已经上了玻璃：文字/字体/尺寸变了就换一张蒙版（响应式字号会变） */
+				var cs = getComputedStyle(el);
+				var box = textBox(el);
+				if (!box) continue;
+				var rec = recOf(el);
+				if (!rec) continue;
+				var sig = sigOf(el, box, cs);
+				if (rec.sig === sig) continue;
+				var fm = fontMetrics(cs, box.text);
+				var old = d.getElementById(cur);
+				if (old && old.parentNode) old.parentNode.removeChild(old);
+				var nid = "lgtextmask-" + ++uid;
+				if (buildMask(nid, box, cs, fm)) {
+					rec.id = nid;
+					rec.sig = sig;
+					el.setAttribute("data-lg-text-on", nid);
+					el.style.setProperty("mask-image", 'url("#' + nid + '")', "important");
+					el.style.setProperty("-webkit-mask-image", 'url("#' + nid + '")', "important");
+					paintBox(el, box);
+				}
+			}
+		}
+
+		function scheduleSync(delay) {
+			if (syncTimer) return;
+			syncTimer = setTimeout(sync, delay || 60);
+		}
+
+		["swup:contentReplaced", "astro:page-load", "swup:pageView"].forEach(function (ev) {
+			d.addEventListener(ev, function () {
+				revertAll();
+				scheduleSync(160);
+			});
+		});
+		d.addEventListener("siteversionchange", function () {
+			revertAll();
+			scheduleSync(60);
+		});
+		window.addEventListener("load", function () {
+			scheduleSync(220);
+		});
+		try {
+			if (d.fonts && d.fonts.ready && d.fonts.ready.then) {
+				d.fonts.ready.then(function () {
+					revertAll();
+					scheduleSync(40);
+				});
+			}
+		} catch (e) {}
+
+		var rz = 0;
+		window.addEventListener(
+			"resize",
+			function () {
+				clearTimeout(rz);
+				rz = setTimeout(function () {
+					revertAll();
+					scheduleSync(60);
+				}, 220);
+			},
+			{ passive: true },
+		);
+
+		window.__liquidText = {
+			on: function () {
+				return made.length;
+			},
+			sync: function () {
+				scheduleSync(0);
+			},
+			reset: revertAll,
+			stats: function () {
+				return { applied: made.length, supported: SUPPORTED, allowed: allowed() };
+			},
+		};
+
+		if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", function () {
+			scheduleSync(80);
+		});
+		else scheduleSync(80);
+		try {
+			d.dispatchEvent(new CustomEvent("liquidtext:ready"));
+		} catch (e) {}
+	})();
+</script>

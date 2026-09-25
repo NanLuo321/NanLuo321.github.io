@@ -53,26 +53,50 @@ const triggerFinalHref = url(triggerHref);
 			<span class="ai-fi-title">{triggerName}</span>
 			<Icon is:inline name="material-symbols:keyboard-arrow-down-rounded" class="ai-fi-chev text-[1.2rem]" />
 		</div>
-		<div class="ai-fi-body">
-			{items.map((item, i) => (
-				<a
-					href={url(item.url)}
-					class="ai-fi-card"
-					data-ai-item
-					style={`--ai-i:${i}`}
-				>
-					<span class="ai-fi-icon">
-						<Icon is:inline name={item.icon} class="text-[1.15rem]" />
-					</span>
-					<span class="ai-fi-text">
-						<span class="ai-fi-name">{item.name}</span>
-						{item.desc && <span class="ai-fi-desc">{item.desc}</span>}
-					</span>
-					<Icon is:inline name="material-symbols:chevron-right-rounded" class="ai-fi-arrow" />
-				</a>
-			))}
-		</div>
+	<div class="ai-fi-body">
+		{items.map((item, i) => (
+			<a
+				href={url(item.url)}
+				class="ai-fi-card"
+				data-ai-item
+				style={`--ai-i:${i}`}
+			>
+				<span class="ai-fi-icon">
+					<Icon is:inline name={item.icon} class="text-[1.15rem]" />
+				</span>
+				<span class="ai-fi-text">
+					<span class="ai-fi-name">{item.name}</span>
+					{item.desc && <span class="ai-fi-desc">{item.desc}</span>}
+				</span>
+				<Icon is:inline name="material-symbols:chevron-right-rounded" class="ai-fi-arrow" />
+			</a>
+		))}
 	</div>
+	<!--
+		岛内浏览（仅 ProMax）：点「归档 / 分类 / 标签 …」不整页跳转，
+		面板原地切到目标页的链接清单（拉该页 HTML 抽 main 里的站内链接），
+		「‹ 返回」回到根列表；点清单里的条目才真正跳转。
+	-->
+	<div class="ai-fi-browse" data-ai-browse hidden>
+		<div class="ai-fi-browse-head">
+			<button type="button" class="ai-fi-back" data-ai-back>
+				<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+					<path
+						d="M14.5 6l-6 6 6 6"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+				<span>返回</span>
+			</button>
+			<span class="ai-fi-browse-title" data-ai-browse-title></span>
+		</div>
+		<div class="ai-fi-browse-list" data-ai-browse-list></div>
+	</div>
+</div>
 
 	<!-- 移动端提示 - 仅在手机端可见 -->
 	<div class="ai-mobile-hint" data-ai-mobile-hint>
@@ -139,7 +163,10 @@ const triggerFinalHref = url(triggerHref);
 		}
 	}
 
-	@media (max-width: 1023px) {
+	/* ⚠ 断点和导航图标行保持一致（md / 768）：平板也能显示桌面悬浮岛，
+	   只有真手机（<768）才退到抽屉。之前写 1023 的时候，
+	   平板上「文章」会退化成按钮 + 「建议使用 1080P 桌面端预览」提示条。 */
+	@media (max-width: 767px) {
 		.article-island {
 			width: auto;
 		}
@@ -211,11 +238,16 @@ const triggerFinalHref = url(triggerHref);
 		   所以「岛内那一行」不能再铺一层玻璃：两层 55% 玻璃叠在一起会发白，
 		   一眼就能看出和岛不是一块。这里用一道硬边渐变，只在岛的下沿以下铺玻璃。
 		   --ai-glass-top = 实测的岛高，由脚本写入。 */
+		/* 真正画底的是 --lg-tint-bg（液态玻璃引擎按岛同一档算出来的透底结果）；
+		   引擎还没接手时退回脚本抄来的 --ai-glass-bg，再退回样式表里的 55% 白。 */
 		background: linear-gradient(
 			to bottom,
 			transparent 0,
 			transparent var(--ai-glass-top, 0px),
-			var(--ai-glass-bg, color-mix(in oklch, var(--card-bg) calc(var(--opacity-55) * 100%), transparent))
+			var(
+					--lg-tint-bg,
+					var(--ai-glass-bg, color-mix(in oklch, var(--card-bg) calc(var(--opacity-55) * 100%), transparent))
+				)
 				var(--ai-glass-top, 0px)
 		);
 		/* 玻璃与岛是同一份配方：颜色/模糊/描边都由脚本从岛上抄来（见 syncGlass），
@@ -469,6 +501,131 @@ const triggerFinalHref = url(triggerHref);
 		opacity: 0.32;
 	}
 
+	/* ============================================================
+	 * 岛内浏览（仅 ProMax 沉底岛启用，见脚本 isDockBottom 分支）
+	 * 根列表 → 点「归档/分类/标签…」→ 面板原地换成该页的链接清单，
+	 * 「‹ 返回」回根列表；清单条目是真 <a>，点了才真正跳转。
+	 * 布局对齐 .ai-fi-body：flex:1 + min-height:0，超高走内部滚动。
+	 * ============================================================ */
+	:global(.ai-float-island .ai-fi-browse) {
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		gap: 2px;
+		min-height: 0;
+		box-sizing: border-box;
+	}
+	:global(.ai-float-island .ai-fi-browse[hidden]) {
+		display: none;
+	}
+	:global(.ai-float-island .ai-fi-browse-head) {
+		display: flex;
+		flex: none;
+		align-items: center;
+		gap: 10px;
+		padding: 4px 12px 0;
+	}
+	:global(.ai-float-island .ai-fi-back) {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 10px 4px 6px;
+		border-radius: 9999px;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		font-size: 0.72rem;
+		font-weight: 600;
+		cursor: pointer;
+		opacity: 0.72;
+		transition:
+			background 0.15s ease,
+			opacity 0.15s ease;
+	}
+	:global(.ai-float-island .ai-fi-back:hover) {
+		background: rgba(0, 0, 0, 0.055);
+		opacity: 1;
+	}
+	:global(.dark .ai-float-island .ai-fi-back:hover) {
+		background: rgba(255, 255, 255, 0.08);
+	}
+	:global(.ai-float-island .ai-fi-browse-title) {
+		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		white-space: nowrap;
+		opacity: 0.8;
+	}
+	:global(.ai-float-island .ai-fi-browse-list) {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding: 4px 10px 10px;
+	}
+	:global(.ai-float-island .ai-fi-browse-list::-webkit-scrollbar) {
+		width: 0;
+		height: 0;
+	}
+	:global(.ai-float-island .ai-fi-browse-row) {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		padding: 7px 10px;
+		border-radius: 11px;
+		color: inherit;
+		text-decoration: none;
+		opacity: 0;
+		transform: translateY(-5px);
+		animation: ai-browse-in 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+		animation-delay: calc(var(--ai-r, 0) * 26ms);
+	}
+	@keyframes ai-browse-in {
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+	:global(.ai-float-island .ai-fi-browse-row:hover) {
+		background: rgba(0, 0, 0, 0.055);
+	}
+	:global(.dark .ai-float-island .ai-fi-browse-row:hover) {
+		background: rgba(255, 255, 255, 0.08);
+	}
+	:global(.ai-float-island .ai-fi-browse-dot) {
+		flex: none;
+		width: 6px;
+		height: 6px;
+		margin: 0 12px 0 9px;
+		border-radius: 9999px;
+		background: color-mix(in oklch, currentColor 32%, transparent);
+	}
+	:global(.ai-float-island .ai-fi-browse-text) {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 0.78rem;
+		font-weight: 500;
+	}
+	:global(.ai-float-island .ai-fi-browse-go) {
+		flex: none;
+		opacity: 0.3;
+	}
+	:global(.ai-float-island .ai-fi-browse-loading) {
+		padding: 16px 10px;
+		text-align: center;
+		font-size: 0.74rem;
+		opacity: 0.6;
+	}
+	:global(.ai-float-island .ai-fi-browse-empty) {
+		padding: 16px 10px;
+		text-align: center;
+		font-size: 0.74rem;
+		opacity: 0.6;
+	}
+
 	/* --- 暗色模式 ---
 	   背景/描边不用再单独写：color-mix 里的 --card-bg 在暗色下是
 	   oklch(0.23 0.015 hue)，会自己变深，和岛同步。这里只补文字色与阴影档位 */
@@ -494,6 +651,81 @@ const triggerFinalHref = url(triggerHref);
 		border-bottom-color: rgba(255, 255, 255, 0.1);
 	}
 
+	/* ============================================================
+	 * ProMax 版（桌面端导航岛沉底）：整套几何上下镜像
+	 *
+	 * 正常版：顶边贴岛顶、玻璃铺在岛的下沿以下、只圆下两角、可长到视口底。
+	 * ProMax：底边贴岛底、玻璃铺在岛的上沿以上、只圆上两角、可长到视口顶。
+	 * 纵向尺寸与圆角由脚本按 isDockBottom() 写入（top ↔ bottom、圆角四值反转），
+	 * 这里负责样式层：锚点、渐变方向、描边、内容顺序、箭头语义。
+	 * ============================================================ */
+	@media (min-width: 768px) {
+		/* 面板本体 */
+		:global(body.site-promax) .ai-float-island {
+			top: auto;
+			bottom: 0;
+			/* 头部是第一个 DOM 子节点，反转顺序后它落到面板底部 = 岛内那一格 */
+			flex-direction: column-reverse;
+			background: linear-gradient(
+				to top,
+				transparent 0,
+				transparent var(--ai-glass-top, 0px),
+				var(
+						--lg-tint-bg,
+						var(--ai-glass-bg, color-mix(in oklch, var(--card-bg) calc(var(--opacity-55) * 100%), transparent))
+					)
+					var(--ai-glass-top, 0px)
+			);
+			/* 描边镜像：底边那条线在岛内，留不得 */
+			border-top-color: var(
+				--ai-glass-border,
+				color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent)
+			);
+			border-bottom-color: transparent;
+			transition:
+				bottom var(--ai-dur, 460ms) var(--ai-ease, cubic-bezier(0.32, 0.72, 0, 1)),
+				height var(--ai-dur, 460ms) var(--ai-ease, cubic-bezier(0.32, 0.72, 0, 1)),
+				border-radius var(--ai-dur, 460ms) var(--ai-ease, cubic-bezier(0.32, 0.72, 0, 1)),
+				opacity 220ms ease;
+		}
+
+		/* 头部与列表的分隔线：头部在下面，线要画在它的上边 */
+		:global(body.site-promax) .ai-float-island .ai-fi-head {
+			border-bottom-color: transparent;
+			border-top: 1px solid transparent;
+		}
+		:global(body.site-promax) .ai-float-island.is-expanded .ai-fi-head {
+			border-top-color: rgba(0, 0, 0, 0.06);
+		}
+		:global(.dark body.site-promax) .ai-float-island.is-expanded .ai-fi-head {
+			border-top-color: rgba(255, 255, 255, 0.1);
+		}
+
+		/* 内容体：留白镜像（下方贴着头部，上方留出呼吸） */
+		:global(body.site-promax) .ai-float-island .ai-fi-body {
+			padding: 10px 10px 6px;
+		}
+
+		/* 卡片错峰淡入的位移镜像：从下往上冒，而不是从上往下掉 */
+		:global(body.site-promax) .ai-float-island .ai-fi-card {
+			transform: translateY(6px);
+		}
+
+		/* 箭头语义镜像：收起时朝上（暗示往上方长），展开后朝下（点这里收回） */
+		:global(body.site-promax) .ai-float-island .ai-fi-chev {
+			transform: rotate(180deg);
+		}
+		:global(body.site-promax) .ai-float-island.is-expanded .ai-fi-chev {
+			transform: rotate(0deg);
+		}
+		:global(body.site-promax) .article-island .ai-trigger-arrow {
+			transform: rotate(180deg);
+		}
+		:global(body.site-promax) .article-island.open .ai-trigger-arrow {
+			transform: rotate(0deg);
+		}
+	}
+
 	/* 尊重「减弱动效」偏好：直接跳过两段式，落位即展开 */
 	@media (prefers-reduced-motion: reduce) {
 		:global(.ai-float-island),
@@ -513,8 +745,10 @@ const triggerFinalHref = url(triggerHref);
 		display: none;
 	}
 
-	@media (max-width: 1023px) {
-		/* 移动端：桌面悬浮岛失效，改走抽屉 */
+	@media (max-width: 767px) {
+		/* 移动端（真手机）：桌面悬浮岛失效，改走抽屉。
+		   ⚠ 断点和导航图标行（md/768）保持一致 —— 平板上岛里已经
+		   放得下「文章」触发器和悬浮面板了，不能再走抽屉。 */
 		:global(.ai-float-island) {
 			display: none !important;
 		}
@@ -923,12 +1157,31 @@ const triggerFinalHref = url(triggerHref);
 	const MS_CLOSE = 340; // 收起时长
 	const MS_CONTENT = 90; // 内容延迟淡入
 	const VIEW_KEEP = 80; // 视口两侧要留出的余量（对应 #navbar 的 max-w: 100vw-5rem）
+	const HEAD_H = 44; // 面板头部高度（ProMax「岛不拉伸」模式下它就是一条常规标题栏）
 
 	/** 存活中的岛 → 事件监听控制器。用 Map 而非 WeakMap，才能回收被 swup 重建掉的旧岛 */
 	const islandAborters = new Map<Element, AbortController>();
 	const islandInited = new WeakSet<Element>();
 
 	const isDesktop = () => window.innerWidth > MOBILE_MAX;
+
+	/**
+	 * 导航岛是不是沉在屏幕底部（ProMax 版 · 仅桌面端）。
+	 *
+	 * 面板的整套几何都建立在「岛在顶部、面板向下长」之上：顶边贴岛顶、玻璃铺在
+	 * 岛的下沿以下、只圆下两角、可长到视口底。ProMax 把岛沉到屏幕底部，于是这里
+	 * 的每一个方向都要镜像：底边贴岛底、玻璃铺在岛的上沿以上、只圆上两角、
+	 * 可长到视口顶。用这一个开关统一取值，避免散落一堆 window.innerWidth 判断。
+	 */
+	const isDockBottom = () => window.innerWidth > MOBILE_MAX && document.body.classList.contains("site-promax");
+
+	/** 四角圆角值的上下镜像（只圆「伸出去」的那两个角）：
+	 *  "0 0 20px 20px"（岛在顶部，圆下面两角） → "20px 20px 0 0" */
+	function mirrorRadius(r: string): string {
+		if (!isDockBottom()) return r;
+		const parts = r.trim().split(/\s+/);
+		return parts.length === 4 ? parts.reverse().join(" ") : r;
+	}
 
 	const prefersReducedMotion = () =>
 		window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -938,11 +1191,38 @@ const triggerFinalHref = url(triggerHref);
 	/**
 	 * 只写纵向与圆角：横向由「文章」那一列的宽度决定
 	 * （面板 CSS 是 left:0 / width:100%，列一撑开它就跟着向两边拉伸）
+	 *
+	 * 纵向锚点由「岛在哪」决定：岛在顶部时写 top（面板从岛顶往下挂），
+	 * ProMax 沉底时改写 bottom（面板从岛底往上长）。动画期间锚点本身不动，
+	 * 只有 height 在变，所以 bottom 不需要进过渡列表。
 	 */
 	function applyBox(panel: HTMLElement, box: Box): void {
-		panel.style.top = `${Math.round(box.y)}px`;
+		if (isDockBottom()) {
+			panel.style.top = "auto";
+			panel.style.bottom = `${Math.round(box.y)}px`;
+		} else {
+			panel.style.bottom = "auto";
+			panel.style.top = `${Math.round(box.y)}px`;
+		}
 		panel.style.height = `${Math.round(box.h)}px`;
-		panel.style.borderRadius = box.r;
+		panel.style.borderRadius = mirrorRadius(box.r);
+	}
+
+	/**
+	 * 「贴着岛」的那条边的描边由脚本接管：
+	 * 岛在顶部 → 顶边（顶边在岛内，多一道横线不好看）；ProMax 沉底 → 底边。
+	 * 分裂成整块玻璃时要把它补回来，收尾再交还样式表。
+	 */
+	function setIslandEdgeBorder(panel: HTMLElement, on: boolean): void {
+		const prop = isDockBottom() ? "border-bottom-color" : "border-top-color";
+		if (on) {
+			panel.style.setProperty(
+				prop,
+				"var(--ai-glass-border, color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent))",
+			);
+		} else {
+			panel.style.removeProperty(prop);
+		}
 	}
 
 	function setDuration(panel: HTMLElement, ms: number): void {
@@ -968,11 +1248,47 @@ const triggerFinalHref = url(triggerHref);
 		return (nav.querySelector(":scope > div") as HTMLElement) ?? null;
 	}
 
+	/**
+	 * 液态玻璃引擎接管了这块玻璃吗？
+	 *
+	 * 引擎把 `background-color` / `backdrop-filter` 写成元素上的**内联 !important**
+	 * （见 LiquidGlass 的 applyGlass）。那是它的地盘：组件这边一旦 removeProperty，
+	 * 抹掉的是同一个属性、连它的一起没了，而它的账本（__lgOn / data-lg-on）
+	 * 还以为玻璃挂着、不会再写第二遍 —— 岛就永久退回样式表那层 55% 白底。
+	 * 所以这类属性要么别碰，要么走 rebuildEngineGlass 请它重写。
+	 */
+	function engineOwns(el: Element | null): boolean {
+		return !!el && el.hasAttribute("data-lg-on");
+	}
+
+	/** 请引擎按它自己的配方把这块玻璃的内联值重写一遍（同步；没在岗就什么都不做） */
+	function rebuildEngineGlass(el: HTMLElement | null): void {
+		if (!el || !(el as any).__lgOn) return;
+		const lg = (window as any).__liquidGlass;
+		if (lg && typeof lg.rebuild === "function") lg.rebuild(el);
+	}
+
 	/** 兜底复位：把可能残留的内联高度还给样式表里的 h-14；
 	 *  顺带拆掉三胶囊分裂态（#navbar 上的类 + 框上的内联玻璃覆盖 + 左右胶囊） */
 	function clearFrame(frame: HTMLElement | null): void {
 		if (!frame) return;
-		const props = ["height", "--ai-frame-dur", "transition", "background", "border-color", "box-shadow", "backdrop-filter", "-webkit-backdrop-filter"];
+		/* ⚠ 玻璃的 background / backdrop-filter 归引擎所有（见 engineOwns）。
+		   这里顺手 removeProperty 不会让它重写 —— applyGlass 的账本校验以前只看
+		   __lgOn，一进门就 return true —— 岛于是永久退回 color-mix(--card-bg 55%)
+		   的白底 + blur(20px) 磨砂。这条路径挂在 swup:beforeContentReplace 上，
+		   所以表现就是「切换站内任意一个链接，左岛就变白」（右边那枚动作岛不在
+		   文章岛的子树里、没人复位它，所以只有左岛中招）。
+		   引擎在岗时只还「本组件自己写过的那几项」。 */
+		const props: string[] = ["height", "--ai-frame-dur", "transition"];
+		if (!engineOwns(frame)) {
+			props.push(
+				"background",
+				"border-color",
+				"box-shadow",
+				"backdrop-filter",
+				"-webkit-backdrop-filter",
+			);
+		}
 		for (const p of props) frame.style.removeProperty(p);
 		const nav = frame.closest("#navbar");
 		nav?.classList.remove("ai-island-split");
@@ -987,12 +1303,25 @@ const triggerFinalHref = url(triggerHref);
 	function resetPanel(panel: HTMLElement): void {
 		panel.classList.add("no-anim");
 		panel.classList.remove("is-shown", "is-expanded", "is-pill", "is-split");
+		// 岛内浏览态一并复位：回根列表、清空清单（下次展开从「文章」五项开始）
+		const browseEl = panel.querySelector<HTMLElement>("[data-ai-browse]");
+		if (browseEl) browseEl.hidden = true;
+		const bodyEl = panel.querySelector<HTMLElement>(".ai-fi-body");
+		if (bodyEl) bodyEl.hidden = false;
+		const listEl = panel.querySelector<HTMLElement>("[data-ai-browse-list]");
+		if (listEl) listEl.innerHTML = "";
+		// 「武装」标记（见 armBrowse）也必须摘掉：留着的话 swup 会一直放过这些卡片，
+		// 收起后再点就变成整页刷新而不是平滑切页
+		panel.querySelectorAll<HTMLElement>(".ai-fi-card[data-no-swup]").forEach((c) => {
+			c.removeAttribute("data-no-swup");
+		});
 		// 收起/复位即动画结束：雨幕解冻（见 RainEffect 的 ai-anim 钩子）
 		document.documentElement.classList.remove("ai-anim");
 		panel.style.opacity = "";
 		panel.style.removeProperty("--ai-dur");
 		panel.style.removeProperty("left");
 		panel.style.removeProperty("top");
+		panel.style.removeProperty("bottom");
 		panel.style.removeProperty("width");
 		panel.style.removeProperty("height");
 		panel.style.removeProperty("border-radius");
@@ -1001,9 +1330,15 @@ const triggerFinalHref = url(triggerHref);
 		panel.style.removeProperty("--ai-glass-border");
 		panel.style.removeProperty("--ai-glass-top");
 		panel.style.removeProperty("--ai-head-h");
+		// 贴岛那条边的描边（岛在顶部=顶边 / ProMax 沉底=底边）都交还样式表
 		panel.style.removeProperty("border-top-color");
-		panel.style.removeProperty("backdrop-filter");
-		panel.style.removeProperty("-webkit-backdrop-filter");
+		panel.style.removeProperty("border-bottom-color");
+		// 折射滤镜归引擎所有：它写的是内联 !important，我们摘掉它不会再写一遍，
+		// 面板下次展开就是一块「有白底、没折射」的磨砂板（见 engineOwns）
+		if (!engineOwns(panel)) {
+			panel.style.removeProperty("backdrop-filter");
+			panel.style.removeProperty("-webkit-backdrop-filter");
+		}
 		panel.style.removeProperty("box-shadow");
 		// 面板撤了，「文章」按钮可以回来了；玻璃高亮也一起回来
 		panel.closest<HTMLElement>("[data-article-island]")?.classList.remove("ai-live");
@@ -1021,31 +1356,84 @@ const triggerFinalHref = url(triggerHref);
 	 * 面板要和它「同一时刻、完全一致」才像同一块玻璃，所以直接读岛的计算值抄过来，
 	 * 只要岛变（用户调设置、切主题），下次展开又会同步一次。
 	 */
-	function syncGlass(frame: HTMLElement | null, panel: HTMLElement): void {
-		if (!frame) return;
-		const cs = getComputedStyle(frame);
+/**
+ * 面板是否已经被「液态玻璃引擎」接管（data-lg-on）。
+ *
+ * 引擎写的是 `backdrop-filter: url(#lg-n) ...` 且带 !important，但它和我们
+ * 后面的 `panel.style.backdropFilter = ...` 是**同一个属性的同一条内联声明** ——
+ * CSSOM 里一个属性只留一条声明，后写的会把先前那条（连同 !important）整条替换掉。
+ * 结果：面板明明挂上了折射滤镜，却在我们写完 blur 之后又变回一块磨砂白板。
+ * 所以引擎接手之后，面板的 backdrop-filter 一律不再由本组件碰。
+ */
+function engineOwnsGlass(panel: HTMLElement): boolean {
+	return panel.hasAttribute("data-lg-on");
+}
 
-		const bg = cs.backgroundColor;
-		// 岛在「全透明」阶段背景是真透明：此时照搬会让面板变成一片空玻璃，
-		// 列表文字糊在壁纸上。留个下限，这种情况退回样式表里的 55% 玻璃。
-		// （match 无捕获组，alpha 取 [0]；[1] 会是 undefined）
-		const alphaStr = (bg.match(/[\d.]+(?=\s*\)\s*$)/) || [])[0];
-		const alphaNum = Number(alphaStr);
-		const tooTransparent =
-			/^rgba?\(\s*0[,\s]+0[,\s]+0[,\s]+0\s*\)$/.test(bg) ||
-			(/^rgba?\(/.test(bg) && alphaNum < 0.12) ||
-			(/^oklch?\(/.test(bg) && !Number.isNaN(alphaNum) && alphaNum < 0.12);
-		if (!tooTransparent) panel.style.setProperty("--ai-glass-bg", bg);
+function syncGlass(frame: HTMLElement | null, panel: HTMLElement): void {
+	if (!frame) return;
+	const cs = getComputedStyle(frame);
 
-		const filter = cs.backdropFilter || (cs as unknown as { webkitBackdropFilter?: string }).webkitBackdropFilter || "";
-		if (filter && filter !== "none") {
-			panel.style.backdropFilter = filter;
-			panel.style.setProperty("-webkit-backdrop-filter", filter);
-		}
+	const bg = cs.backgroundColor;
+	// 岛在「全透明」阶段背景是真透明：此时照搬会让面板变成一片空玻璃，
+	// 列表文字糊在壁纸上。留个下限，这种情况退回样式表里的 55% 玻璃。
+	// （match 无捕获组，alpha 取 [0]；[1] 会是 undefined）
+	const alphaStr = (bg.match(/[\d.]+(?=\s*\)\s*$)/) || [])[0];
+	const alphaNum = Number(alphaStr);
+	const tooTransparent =
+		/^rgba?\(\s*0[,\s]+0[,\s]+0[,\s]+0\s*\)$/.test(bg) ||
+		(/^rgba?\(/.test(bg) && alphaNum < 0.12) ||
+		(/^oklch?\(/.test(bg) && !Number.isNaN(alphaNum) && alphaNum < 0.12);
+	if (!tooTransparent) panel.style.setProperty("--ai-glass-bg", bg);
+
+	const filter = cs.backdropFilter || (cs as unknown as { webkitBackdropFilter?: string }).webkitBackdropFilter || "";
+	// 岛上的 backdrop-filter 可能已经被「液态玻璃引擎」换成 url(#lg-x) 折射滤镜，
+	// 那是按岛自己的尺寸算的贴图，照搬到面板上会错位。这种情况跳过，
+	// 面板用自己的玻璃（CSS 里那份 + 引擎给面板单独算的折射）。
+	if (!engineOwnsGlass(panel) && filter && filter !== "none" && filter.indexOf("url(") === -1) {
+		panel.style.backdropFilter = filter;
+		panel.style.setProperty("-webkit-backdrop-filter", filter);
+	}
 
 		// 只描左/右/下三边（顶边在岛内，描了会在头部上方多一道横线）
 		panel.style.setProperty("--ai-glass-border", cs.borderLeftColor);
 		if (cs.boxShadow && cs.boxShadow !== "none") panel.style.boxShadow = cs.boxShadow;
+	}
+
+	/** 拉取某个栏目页，抽出 main 里前若干条站内链接（岛内浏览用）。
+	 *  解析失败/网络失败直接抛错，调用方退回整页跳转。 */
+	async function fetchSectionLinks(
+		pageUrl: string,
+	): Promise<{ href: string; text: string }[]> {
+		const res = await fetch(pageUrl, { credentials: "same-origin" });
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		const html = await res.text();
+		const doc = new DOMParser().parseFromString(html, "text/html");
+		const main = doc.querySelector("main") ?? doc.body;
+		// pageUrl 是站内相对路径（卡片 href，如 "/archive/"）—— 相对路径不能当
+		// new URL() 的基准，会直接抛错，结果每条链接都被 continue 掉、清单永远是空的。
+		// 先把它兜成绝对地址再作基准。
+		const base = new URL(pageUrl, location.href);
+		const seen = new Set<string>();
+		const out: { href: string; text: string }[] = [];
+		for (const a of Array.from(main.querySelectorAll("a[href]"))) {
+			const raw = a.getAttribute("href") || "";
+			if (!raw || raw.startsWith("#") || /^(mailto|tel|javascript):/i.test(raw)) continue;
+			let abs: URL;
+			try {
+				abs = new URL(raw, base);
+			} catch {
+				continue;
+			}
+			if (abs.origin !== location.origin) continue;
+			const key = abs.pathname + abs.search;
+			if (seen.has(key)) continue;
+			const text = (a.textContent || "").replace(/\s+/g, " ").trim();
+			if (!text) continue;
+			seen.add(key);
+			out.push({ href: key, text: text.slice(0, 64) });
+			if (out.length >= 20) break;
+		}
+		return out;
 	}
 
 	function initArticleIsland() {
@@ -1261,12 +1649,18 @@ const triggerFinalHref = url(triggerHref);
 				splitVisible = !!snap;
 				// 面板切换成「整块玻璃」：岛内那一格也铺上（之前透出的是岛的玻璃，岛玻璃要摘了）
 				panel.style.setProperty("--ai-glass-top", "0px");
-				panel.style.borderTopColor =
-					"var(--ai-glass-border, color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent))";
-				// 玻璃颜色换成「活配方」（留 var(--card-bg)），开着切主题会自己跟上
+				setIslandEdgeBorder(panel, true);
+				// 玻璃颜色换成「活配方」（留 var(--card-bg)），开着切主题会自己跟上。
+				// 引擎接管时底色的口径由它定（岛面被压到 ~0.20 的透底值）；
+				// 但面板里放的是 13px 正文，比岛上的图标更需要一点「托底」，
+				// 所以在岛的透底结果上放 1.6 倍（夹在 26%~72% 之间）。
+				// 太透 → 文字糊在壁纸结构上；太实 → 又回到那块发白的板子。
+				const tintPct = engineOwnsGlass(panel)
+					? Math.max(26, Math.min(72, Math.round((snap?.alphaPct ?? 20) * 1.6)))
+					: (snap?.alphaPct ?? 55);
 				panel.style.setProperty(
 					"--ai-glass-bg",
-					`color-mix(in oklch, var(--card-bg) ${snap?.alphaPct ?? 55}%, transparent)`,
+					`color-mix(in oklch, var(--card-bg) ${tintPct}%, transparent)`,
 				);
 				panel.style.setProperty(
 					"--ai-glass-border",
@@ -1276,8 +1670,10 @@ const triggerFinalHref = url(triggerHref);
 				panel.style.removeProperty("box-shadow");
 				setSplitClass(frame, true);
 				if (!snap) return; // 透明模式：玻璃本来就没有，分裂不可见
-				panel.style.backdropFilter = snap.filter;
-				panel.style.setProperty("-webkit-backdrop-filter", snap.filter);
+				if (!engineOwnsGlass(panel)) {
+					panel.style.backdropFilter = snap.filter;
+					panel.style.setProperty("-webkit-backdrop-filter", snap.filter);
+				}
 				ensureCaps(row);
 				for (const c of [capL, capR]) {
 					if (!c) continue;
@@ -1328,6 +1724,12 @@ const triggerFinalHref = url(triggerHref);
 							frame.style.removeProperty("box-shadow");
 							frame.style.removeProperty("backdrop-filter");
 							frame.style.removeProperty("-webkit-backdrop-filter");
+							/* ⚠ 上面这一抹是「一整组属性」，而 background / backdrop-filter
+							   归引擎所有：它在分裂时被 guardNavbarSplit 撤掉、又在这几微秒里
+							   按自己的配方写了回来（MutationObserver 跑在微任务里，早于本帧）。
+							   抹掉它不会再写第二遍 → 岛永久退回样式表白底（用户：
+							   「切换站内任意一个链接，左岛就变白」）。所以抹完立刻请它重写。 */
+							rebuildEngineGlass(frame);
 						});
 					}
 				}
@@ -1342,17 +1744,24 @@ const triggerFinalHref = url(triggerHref);
 				glassSnap = null;
 				// 面板交还「岛内透玻璃」模式：岛玻璃已经回来了，头部那一格交给它
 				panel.style.setProperty("--ai-glass-top", `${band}px`);
-				panel.style.removeProperty("border-top-color");
+				setIslandEdgeBorder(panel, false);
 			}
 
 			/**
 			 * 量出面板该占的位置与目标宽度。
-			 * 面板是 absolute、包含块是 .article-island（也就是「文章」那一列），
+			 *
+			 * 正常版：面板是 absolute、包含块是 .article-island（也就是「文章」那一列），
 			 * CSS 已经把它定成 left:0 / width:100%，所以横向不用算 —— 只要算出
 			 * 「这一列该撑到多宽」，面板就自动以按钮为中线向两边对称拉伸。
-			 *   - 纵向：顶边与导航岛顶边齐平 —— 面板的头部正好落在岛内那一格上，
+			 *   - 纵向：贴岛的那条边与岛的对应边齐平 —— 面板的头部正好落在岛内那一格上，
 			 *     原地取代「文章」按钮；岛内那一段不铺玻璃（见 CSS 的 --ai-glass-top），
-			 *     所以导航岛自己的玻璃直接透出来，两层不会叠白
+			 *     所以导航岛自己的玻璃直接透出来，两层不会叠白。
+			 *     岛在顶部 → 顶边贴岛顶、往下长；ProMax 沉底 → 底边贴岛底、往上长。
+			 *
+			 * ProMax（noStretch，岛沉底）：**岛原地不动**。列不撑宽、邻居不让位、
+			 * 也不做三胶囊分裂；面板自己算宽度与横向位置，改成「贴着岛的上沿往外长」
+			 * （底边落在岛的上沿，整块玻璃都在岛外面）。这样既没有「岛向两边拉伸」，
+			 * 面板（比岛宽）也不会盖住左右两边的导航项、把它们的点击吃掉。
 			 */
 			const measure = () => {
 				const tr = trigger.getBoundingClientRect();
@@ -1366,14 +1775,35 @@ const triggerFinalHref = url(triggerHref);
 				// scale-animation:hover 给到 1.15），拿它算会随鼠标位置漂。
 				const btnW = trigger.offsetWidth || tr.width;
 
-				// 这一列能撑多宽？导航岛自己还要留在视口内（#navbar 的
-				// max-w 是 100vw - 5rem），所以「岛宽 + 这一列长出来的部分」
-				// 不能超过那个上限。空间不够时就只能长多少算多少。
 				const navW = (frame && frame.offsetWidth) || fr.width;
-				const room = Math.max(0, vw - VIEW_KEEP - navW); // 岛左右还能长多少
-				const w = Math.round(
-					Math.max(btnW, Math.min(PANEL_TARGET_W, btnW + room - 4)),
-				);
+				const dockBottom = isDockBottom();
+				const noStretch = dockBottom; // ProMax 沉底岛：岛不拉伸
+				let w: number;
+				if (noStretch) {
+					/* 面板是 absolute，不吃行内空间 —— 不用再看「这一列还能长多宽」，
+					   直接取理想宽度，只保证两边留出 #navbar 那份 100vw-5rem 的余量。 */
+					w = Math.round(Math.max(btnW, Math.min(PANEL_TARGET_W, vw - VIEW_KEEP)));
+				} else {
+					// 这一列能撑多宽？导航岛自己还要留在视口内（#navbar 的
+					// max-w 是 100vw - 5rem），所以「岛宽 + 这一列长出来的部分」
+					// 不能超过那个上限。空间不够时就只能长多少算多少。
+					const room = Math.max(0, vw - VIEW_KEEP - navW); // 岛左右还能长多少
+					w = Math.round(Math.max(btnW, Math.min(PANEL_TARGET_W, btnW + room - 4)));
+				}
+
+				// 横向落点（相对「文章」那一列左缘的内联 left）：
+				// 以**导航岛**为中线铺开（比按「文章」那一格居中更稳：面板宽于岛，
+				// 居岛展开时左右各冒出一小截，读起来就是「岛往上长了一块」），
+				// 再整体夹回视口内
+				let leftInCol = 0;
+				if (noStretch) {
+					const cx = fr.left + fr.width / 2;
+					const minLeft = VIEW_KEEP / 2;
+					const maxLeft = vw - w - VIEW_KEEP / 2;
+					let left = Math.round(cx - w / 2);
+					left = maxLeft < minLeft ? minLeft : Math.max(minLeft, Math.min(maxLeft, left));
+					leftInCol = left - ir.left;
+				}
 
 				// 行高必须实测：h-14 跟着根字号走（桌面约 56px、窄屏约 49px），
 				// 写死会在小屏上错位。取玻璃框的直接子节点（就是那条导航行）。
@@ -1384,6 +1814,13 @@ const triggerFinalHref = url(triggerHref);
 				const framePad = 2;
 				const band = Math.round(rowH + framePad);
 				const absY = fr.top;
+				// 贴岛锚点（相对列自身的偏移，交给 applyBox 写成 top 或 bottom）
+				const anchorY = dockBottom ? ir.bottom - fr.bottom : absY - ir.top;
+				/* 岛不拉伸时的锚点：面板底边压在**岛的上沿**（fr.top）上 ——
+				   而不是岛内那一格（anchorY 会落到岛的下沿）。 */
+				const anchorOuter = ir.bottom - fr.top;
+				// 面板能长多高？岛在顶部时受视口下沿限制，沉底后改受视口上沿限制
+				const roomH = dockBottom ? absY - 16 : vh - absY - 16;
 
 				return {
 					frame,
@@ -1392,9 +1829,14 @@ const triggerFinalHref = url(triggerHref);
 					band,
 					btnW,
 					w,
-					y: absY - ir.top,
+					y: anchorY,
+					yOuter: anchorOuter,
+					leftInCol,
 					absY,
-					maxH: Math.max(140, vh - absY - 16),
+					dockBottom,
+					noStretch,
+					headH: HEAD_H,
+					maxH: Math.max(140, roomH),
 				};
 			};
 
@@ -1402,14 +1844,28 @@ const triggerFinalHref = url(triggerHref);
 			 * 展开态的自然高度：临时把面板按目标宽度撑开、高度 auto 量一次，
 			 * 全程 no-anim 不绘制。宽度必须先设成目标值，否则栅格列数算错、
 			 * 量出来的高度会偏。
+			 *
+			 * 注意这是「无损测量」：is-expanded / no-anim 可能是调用前就有的状态
+			 * （岛内浏览时面板本来就展开着、exitBrowse 量完还要做高度动画），
+			 * 无条件摘掉会把展开态和动画一起打没 —— 只还原成调用前的样子。
 			 */
 			const measureExpandedHeight = (g: ReturnType<typeof measure>): number => {
+				const wasExpanded = panel.classList.contains("is-expanded");
+				const hadNoAnim = panel.classList.contains("no-anim");
+				/* 宽度可能是调用前就有的内联值（ProMax 的「岛不拉伸」模式下，
+				   面板的 left/width 由脚本按岛的位置写死，width:100% 的 CSS 已经把
+				   主控权交给内联）—— 量完要还成原样，不能一律 removeProperty，
+				   否则面板会瞬间塌回「文章」那一格的宽度。 */
+				const keptW = panel.style.getPropertyValue("width");
+				const keptWP = panel.style.getPropertyPriority("width");
 				panel.classList.add("no-anim", "is-expanded");
 				panel.style.width = `${g.w}px`;
 				panel.style.height = "auto";
 				const h = panel.offsetHeight;
-				panel.classList.remove("is-expanded");
-				panel.style.removeProperty("width"); // 交还给 CSS 的 width:100%
+				if (!wasExpanded) panel.classList.remove("is-expanded");
+				if (!hadNoAnim) panel.classList.remove("no-anim");
+				if (keptW) panel.style.setProperty("width", keptW, keptWP);
+				else panel.style.removeProperty("width"); // 交还给 CSS 的 width:100%
 				void panel.offsetHeight;
 				return Math.max(96, Math.min(h, g.maxH));
 			};
@@ -1432,17 +1888,21 @@ const triggerFinalHref = url(triggerHref);
 
 				const g = measure();
 				// 设定「岛内那一格」的高度：面板头部就按它铺满岛内那一行，
-				// 同时也是玻璃的起始位（岛内不铺玻璃）
-				panel.style.setProperty("--ai-glass-top", `${g.band}px`);
-				panel.style.setProperty("--ai-head-h", `${g.band}px`);
+				// 同时也是玻璃的起始位（岛内不铺玻璃）。
+				// ProMax（岛不拉伸）例外：面板整块都在岛外面、玻璃铺满全高，
+				// 头部只是一条常规标题栏，所以给 HEAD_H 而不是岛高。
+				panel.style.setProperty("--ai-glass-top", g.noStretch ? "0px" : `${g.band}px`);
+				panel.style.setProperty("--ai-head-h", `${g.noStretch ? g.headH : g.band}px`);
 				const panelH = measureExpandedHeight(g);
 				// 先把岛此刻的玻璃抄到面板上：分割出来的那一块从第一帧起
 				// 就与岛同材质，不存在「先白一下再对上」的闪
 				syncGlass(frameOf(island), panel);
 				// 药丸阶段玻璃面为零（整块都在 --ai-glass-top 以上，岛玻璃本来就垫在
 				// 底下），先把面板的模糊关掉，少一块 backdrop-filter 面；
-				// startSplit 摘岛玻璃时会按岛的配方把模糊铺回来
-				if (snapshotGlass()) {
+				// startSplit 摘岛玻璃时会按岛的配方把模糊铺回来。
+				// ⚠ 引擎接手的面板（data-lg-on）不能碰它的内联 backdrop-filter ——
+				// 那是同一个属性，写了就把折射换成 blur，而且它不会再写回来。
+				if (!g.noStretch && snapshotGlass() && !engineOwns(panel)) {
 					panel.style.setProperty("backdrop-filter", "none");
 					panel.style.setProperty("-webkit-backdrop-filter", "none");
 				}
@@ -1450,36 +1910,56 @@ const triggerFinalHref = url(triggerHref);
 				// ① 分割：面板先按岛内那一格的大小出现 —— 位置就是「文章」按钮原位，
 				//    头部（● 文章 N ⌃）原地取代按钮，所以这一步是「形态变化」而不是
 				//    「外面掉下来一块」。此刻这一列还是按钮宽，邻居还没动。
+				//    ProMax（岛不拉伸）：岛连按钮都不动 —— 面板改在岛的上沿
+				//    长出一条 44px 高的玻璃条（头部），「文章」那颗按钮继续亮着。
 				panel.classList.add("no-anim");
 				panel.classList.remove("is-expanded");
 				panel.classList.add("is-pill");
 				panel.style.opacity = "";
-				island.style.width = `${g.btnW}px`; // 锁成 px，下一步才能过渡
 				setSlotDuration(island, 0);
-				applyBox(panel, { y: g.y, h: g.band, r: PILL_RADIUS });
+				if (g.noStretch) {
+					island.style.width = `${g.btnW}px`; // 与当前宽度一致，只为下一步能过渡
+					panel.style.left = `${g.leftInCol}px`;
+					panel.style.width = `${g.w}px`;
+					applyBox(panel, { y: g.yOuter, h: g.headH, r: PANEL_RADIUS });
+				} else {
+					island.style.width = `${g.btnW}px`; // 锁成 px，下一步才能过渡
+					applyBox(panel, { y: g.y, h: g.band, r: PILL_RADIUS });
+				}
 				void panel.offsetHeight;
 				panel.classList.remove("no-anim");
 				panel.classList.add("is-shown");
-				island.classList.add("ai-live"); // 隐去原按钮，避免和头部叠字
-				// 分裂期间淡出导航栏玻璃高亮（它会滑进面板头部底下、且越出左胶囊）
-				document.getElementById("navbar-pill")?.classList.add("ai-pill-hidden");
+				if (!g.noStretch) {
+					island.classList.add("ai-live"); // 隐去原按钮，避免和头部叠字
+					// 分裂期间淡出导航栏玻璃高亮（它会滑进面板头部底下、且越出左胶囊）
+					document.getElementById("navbar-pill")?.classList.add("ai-pill-hidden");
+				}
 
 			// ② 展开：「文章」那一列撑到面板宽（左右邻居被推向两边让位），
 			//    面板随之向两边拉伸，并从岛的下沿往下长出玻璃面 + 列表；
-			//    与此同时整条导航岛分裂成三枚胶囊（左/中/右，缝隙从 0 长出来）
+			//    与此同时整条导航岛分裂成三枚胶囊（左/中/右，缝隙从 0 长出来）。
+			//    ProMax（岛不拉伸）：上面这些一个都不做 —— 只有面板自己长高，
+			//    岛与它的邻居自始至终纹丝不动。
 				later(() => {
 					if (token !== state.token) return;
 					panel.classList.remove("is-pill");
 					setDuration(panel, MS_EXPAND);
 					setSlotDuration(island, MS_EXPAND);
-					island.style.width = `${g.w}px`;
-					applyBox(panel, { y: g.y, h: panelH, r: SPLIT_PANEL_RADIUS });
-					startSplit();
+					if (g.noStretch) {
+						island.style.width = `${g.btnW}px`;
+						applyBox(panel, { y: g.yOuter, h: panelH, r: PANEL_RADIUS });
+					} else {
+						island.style.width = `${g.w}px`;
+						applyBox(panel, { y: g.y, h: panelH, r: SPLIT_PANEL_RADIUS });
+						startSplit();
+					}
 
 					// ③ 内容错峰淡入：等面板长开一些再显字，避免被压扁
 					later(() => {
 						if (token !== state.token) return;
 						panel.classList.add("is-expanded");
+						// 展开完成 = 岛内浏览可用，「武装」根卡片
+						armBrowse();
 					}, MS_CONTENT);
 				}, MS_SPLIT);
 			};
@@ -1540,7 +2020,15 @@ const triggerFinalHref = url(triggerHref);
 					return;
 				}
 
-				applyBox(panel, { y: g.y, h: g.band, r: PILL_RADIUS });
+				/* 收窄的落点：
+				   正常版 → 收回「岛内那一格」（头部刚好铺满那一行，与按钮同款同位）
+				   ProMax（岛不拉伸）→ 收回岛沿上那条 44px 的标题条（面板本来就在岛外面） */
+				applyBox(
+					panel,
+					g.noStretch
+						? { y: g.yOuter, h: g.headH, r: PANEL_RADIUS }
+						: { y: g.y, h: g.band, r: PILL_RADIUS },
+				);
 
 				later(() => {
 					if (token !== state.token) return;
@@ -1647,12 +2135,176 @@ const triggerFinalHref = url(triggerHref);
 			});
 			signal.addEventListener("abort", () => themeWatch.disconnect());
 
-			const items = [
-				...Array.from(island.querySelectorAll("[data-ai-item]")),
-				...Array.from(panel.querySelectorAll("[data-ai-item]")),
-			];
+			// 面板本身就在岛的子树里，两次查询会拿到同一批卡片 —— 去重，
+			// 否则每张卡片被绑两次点击（enterBrowse 跑两遍、fetch 发两次）
+			const items = Array.from(
+				new Set([
+					...Array.from(island.querySelectorAll<HTMLElement>("[data-ai-item]")),
+					...Array.from(panel.querySelectorAll<HTMLElement>("[data-ai-item]")),
+				]),
+			);
+
+			/* ============================================================
+			 * 岛内浏览（仅 ProMax 沉底岛）：根列表项不整页跳转，
+			 * 面板原地切到目标页的链接清单；「‹ 返回」回根列表；
+			 * 清单条目是真 <a>，点了才跳转（并照常收起面板）。
+			 * ============================================================ */
+			let browseSeq = 0;
+
+			/** 面板高度动画到目标 px（面板是 absolute + 固定 px 高，height 可过渡） */
+			function animatePanelHeight(targetH: number): void {
+				setDuration(panel, MS_EXPAND);
+				panel.style.height = `${Math.round(targetH)}px`;
+			}
+
+			/** 浏览态的目标高度：视口的四成左右，上限受视口余量约束 */
+			function browseTargetHeight(): number {
+				const g = measure();
+				const want = Math.max(240, Math.round(window.innerHeight * 0.42));
+				return Math.min(want, g.maxH);
+			}
+
+			/**
+			 * 岛内浏览「武装」：给面板里的根卡片挂上 data-no-swup。
+			 *
+			 * 为什么非这么做不可：swup 的链接拦截挂在 document 的**捕获阶段**，
+			 * 它只检查 e.defaultPrevented —— 事件还没走到 <a>，我们根本没机会
+			 * preventDefault，于是它照样发起站内跳转：刚展开的浏览列表连同导航岛
+			 * 一起被换掉（astro:page-load 又会让 initArticleIsland 复位面板）。
+			 * 挂上 data-no-swup 后 swup 直接放过这个链接，导航闸门就只剩我们的
+			 * preventDefault；收起时（resetPanel）立刻摘掉，普通点击照旧走 swup 平滑切页。
+			 */
+			function armBrowse(): void {
+				if (!isDockBottom()) return;
+				panel.querySelectorAll<HTMLAnchorElement>(".ai-fi-card").forEach((c) => {
+					c.setAttribute("data-no-swup", "");
+				});
+			}
+
+			function exitBrowse(): void {
+				const browse = panel.querySelector<HTMLElement>("[data-ai-browse]");
+				const bodyEl = panel.querySelector<HTMLElement>(".ai-fi-body");
+				if (!browse || browse.hidden) return;
+				browseSeq++;
+				browse.hidden = true;
+				if (bodyEl) bodyEl.hidden = false;
+				// 高度回到根列表的自然高度（measure 会按当前 DOM 量）
+				animatePanelHeight(measureExpandedHeight(measure()));
+			}
+
+			/** 进入浏览态。面板还没展开完（分裂动画中）时返回 false，退回普通跳转。 */
+			async function enterBrowse(card: HTMLAnchorElement): Promise<boolean> {
+				const browse = panel.querySelector<HTMLElement>("[data-ai-browse]");
+				const bodyEl = panel.querySelector<HTMLElement>(".ai-fi-body");
+				const list = panel.querySelector<HTMLElement>("[data-ai-browse-list]");
+				const crumb = panel.querySelector<HTMLElement>("[data-ai-browse-title]");
+				if (!browse || !list) return false;
+				if (!panel.classList.contains("is-expanded")) return false;
+
+				const targetUrl = card.getAttribute("href") || "/";
+				const title =
+					card.querySelector(".ai-fi-name")?.textContent?.trim() || "文章";
+				const seq = ++browseSeq;
+
+				if (bodyEl) bodyEl.hidden = true;
+				browse.hidden = false;
+				if (crumb) crumb.textContent = title;
+				list.innerHTML = "";
+				const loading = document.createElement("div");
+				loading.className = "ai-fi-browse-loading";
+				loading.textContent = "正在读取…";
+				list.appendChild(loading);
+				animatePanelHeight(browseTargetHeight());
+
+				let links: { href: string; text: string }[] = [];
+				try {
+					links = await fetchSectionLinks(targetUrl);
+				} catch {
+					// 拉取失败：退回整页跳转，别把用户困在面板里
+					location.href = targetUrl;
+					return true;
+				}
+				if (seq !== browseSeq) return true; // 期间已返回/收起
+				list.innerHTML = "";
+				if (!links.length) {
+					const empty = document.createElement("div");
+					empty.className = "ai-fi-browse-empty";
+					empty.textContent = "这一页没有可列的链接";
+					list.appendChild(empty);
+					return true;
+				}
+				links.forEach((l, i) => {
+					const a = document.createElement("a");
+					a.className = "ai-fi-browse-row";
+					a.href = l.href;
+					a.style.setProperty("--ai-r", String(Math.min(i, 12)));
+					const dot = document.createElement("span");
+					dot.className = "ai-fi-browse-dot";
+					const txt = document.createElement("span");
+					txt.className = "ai-fi-browse-text";
+					txt.textContent = l.text;
+					const go = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+					go.setAttribute("class", "ai-fi-browse-go");
+					go.setAttribute("viewBox", "0 0 24 24");
+					go.setAttribute("width", "14");
+					go.setAttribute("height", "14");
+					go.setAttribute("aria-hidden", "true");
+					const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+					p.setAttribute("d", "M9 6l6 6-6 6");
+					p.setAttribute("fill", "none");
+					p.setAttribute("stroke", "currentColor");
+					p.setAttribute("stroke-width", "2.2");
+					p.setAttribute("stroke-linecap", "round");
+					p.setAttribute("stroke-linejoin", "round");
+					go.appendChild(p);
+					a.append(dot, txt, go);
+					a.addEventListener("click", () => later(close, 50), { signal });
+					list.appendChild(a);
+				});
+				return true;
+			}
+
+			panel
+				.querySelector("[data-ai-back]")
+				?.addEventListener(
+					"click",
+					(e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						exitBrowse();
+					},
+					{ signal },
+				);
+
 			items.forEach((item) => {
-				item.addEventListener("click", () => later(close, 50), { signal });
+				item.addEventListener(
+					"click",
+					(e) => {
+						// ProMax 沉底岛：面板里的根列表项 → 岛内浏览，不跳转不关门。
+						// 判断必须同步：enterBrowse 是 async，把 Promise 放 if 里恒真。
+						// 面板还在分裂动画中（未 is-expanded）就不拦，走普通跳转。
+						if (
+							isDockBottom() &&
+							panel.contains(item) &&
+							item.classList.contains("ai-fi-card") &&
+							panel.classList.contains("is-expanded")
+						) {
+							e.preventDefault();
+							enterBrowse(item as HTMLAnchorElement);
+							return;
+						}
+						// 兜底：卡片处于「武装」态（带 data-no-swup）时 swup 已放过它，
+						// 这里必须自己把跳转补上，否则会退化成浏览器整页加载
+						const href = (item as HTMLAnchorElement).getAttribute("href");
+						if (href && item.hasAttribute("data-no-swup")) {
+							const swup = (window as any).swup;
+							if (typeof swup?.navigate === "function") swup.navigate(href);
+							else location.href = href;
+						}
+						later(close, 50);
+					},
+					{ signal },
+				);
 			});
 		});
 	}

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh">
+	<head>
+		<meta charset="utf-8" />
+		<title>Liquid Glass Text Lab</title>
+		<style>
+			* { box-sizing: border-box; }
+			body { margin: 0; background: #fff; font-family: system-ui, "Segoe UI", sans-serif; }
+			h1 { font: 600 15px/1.4 system-ui; margin: 14px 16px 6px; color: #222; }
+			.ref { display: block; width: 660px; margin: 0 16px 10px; border: 1px solid #ddd; }
+			.strip { padding: 10px 16px 14px; }
+			.strip.light { background: #f1f2f4; }
+			.strip.busy { background: url("retro-games.jpg") center/cover; }
+			.strip h2 { font: 600 13px/1.4 system-ui; margin: 0 0 6px; color: #444; }
+			.strip.busy h2 { color: #fff; text-shadow: 0 1px 3px #000; }
+			.row { display: flex; gap: 10px; align-items: flex-start; }
+			.cap { font: 500 10px/1.4 system-ui; color: #777; white-space: pre-line; margin-top: 2px; width: 128px; }
+			.strip.busy .cap { color: #fff; text-shadow: 0 1px 3px #000; }
+			.g {
+				display: inline-block;
+				font-family: "Segoe UI", system-ui, sans-serif;
+				font-weight: 800;
+				font-size: 62px;
+				line-height: 1.15;
+				padding: 12px 16px;
+				color: transparent;
+				background-color: var(--milk);
+				background-image: var(--sheen);
+				-webkit-text-stroke: var(--stroke);
+				backdrop-filter: var(--bd);
+				-webkit-backdrop-filter: var(--bd);
+				text-shadow: var(--sh);
+			}
+			.g[data-on] {
+				background-repeat: no-repeat;
+				-webkit-mask-repeat: no-repeat;
+				mask-repeat: no-repeat;
+				-webkit-mask-position: 0 0;
+				mask-position: 0 0;
+				-webkit-mask-size: 100% 100%;
+				mask-size: 100% 100%;
+			}
+		</style>
+	</head>
+	<body>
+		<svg id="lg-defs" width="0" height="0" aria-hidden="true" style="position: fixed; top: 0; left: 0">
+			<defs>
+				<filter id="lgf" filterUnits="objectBoundingBox" x="-0.1" y="-0.4" width="1.2" height="1.8" color-interpolation-filters="sRGB">
+					<feTurbulence type="fractalNoise" baseFrequency="0.007 0.011" numOctaves="2" seed="17" result="n" />
+					<feGaussianBlur in="n" stdDeviation="9" result="soft" />
+					<feComponentTransfer in="soft" result="map">
+						<feFuncR type="gamma" amplitude="1" exponent="6" offset="0.42" />
+						<feFuncG type="gamma" amplitude="0.7" exponent="6" offset="0.36" />
+					</feComponentTransfer>
+					<feSpecularLighting in="soft" surfaceScale="5" specularConstant="0.9" specularExponent="34" lighting-color="#ffffff" result="spec">
+						<fePointLight x="-170" y="-210" z="260" />
+					</feSpecularLighting>
+					<feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="frost" />
+					<feDisplacementMap in="frost" in2="map" scale="30" xChannelSelector="R" yChannelSelector="G" result="warp" />
+					<feComposite in="spec" in2="warp" operator="arithmetic" k1="0" k2="0" k3="1" k4="0" result="lit" />
+					<feBlend in="lit" in2="warp" mode="screen" result="shine" />
+					<feColorMatrix in="shine" type="saturate" values="1.18" />
+				</filter>
+				<filter id="lgf2" filterUnits="objectBoundingBox" x="-0.1" y="-0.4" width="1.2" height="1.8" color-interpolation-filters="sRGB">
+					<feTurbulence type="fractalNoise" baseFrequency="0.01 0.016" numOctaves="2" seed="5" result="n" />
+					<feGaussianBlur in="n" stdDeviation="7" result="soft" />
+					<feComponentTransfer in="soft" result="map">
+						<feFuncR type="gamma" amplitude="1" exponent="8" offset="0.44" />
+						<feFuncG type="gamma" amplitude="0.6" exponent="8" offset="0.38" />
+					</feComponentTransfer>
+					<feSpecularLighting in="soft" surfaceScale="4" specularConstant="0.75" specularExponent="40" lighting-color="#ffffff" result="spec">
+						<fePointLight x="-140" y="-190" z="230" />
+					</feSpecularLighting>
+					<feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="frost" />
+					<feDisplacementMap in="frost" in2="map" scale="16" xChannelSelector="R" yChannelSelector="G" result="warp" />
+					<feComposite in="spec" in2="warp" operator="arithmetic" k1="0" k2="0" k3="1" k4="0" result="lit" />
+					<feBlend in="lit" in2="warp" mode="screen" result="shine" />
+					<feColorMatrix in="shine" type="saturate" values="1.1" />
+				</filter>
+			</defs>
+		</svg>
+
+		<h1>参考（Apple WWDC25 的「25」）</h1>
+		<img class="ref" src="wwdc-ref.png" alt="ref" />
+
+		<section class="strip light">
+			<h2>浅灰底（#f1f2f4）</h2>
+			<div class="row" id="rowLight"></div>
+		</section>
+
+		<section class="strip busy">
+			<h2>花壁纸（复古游戏）</h2>
+			<div class="row" id="rowBusy"></div>
+		</section>
+
+		<script>
+			(function () {
+				var NS = "http://www.w3.org/2000/svg";
+				var DEFS = document.querySelector("#lg-defs defs");
+
+				var white = function (a) { return "rgba(255,255,255," + a + ")"; };
+				var grey = function (a) { return "rgba(122,130,148," + a + ")"; };
+				var deep = function (a) { return "rgba(90,98,116," + a + ")"; };
+
+				/* 只调这五项：乳白 / 光带 / 折射 / 棱 / 影 */
+				var V = [
+					{
+						name: "G 乳白.10",
+						milk: white(0.1),
+						sheen: "linear-gradient(150deg," + white(0.72) + " 0%," + white(0.34) + " 18%," + white(0.06) + " 44%," + white(0) + " 58%,rgba(178,188,206,0.24) 78%,rgba(152,162,186,0.4) 100%)",
+						bd: 'url("#lgf2") blur(0.6px) brightness(1.02) saturate(0.8) contrast(1.08)',
+						stroke: "1.9px " + white(0.95),
+						sh: "-1.5px -1.5px 0 " + white(0.9) + ", 1.5px 1.5px 0 " + grey(0.38) + ", 3px 9px 18px " + deep(0.4),
+					},
+					{
+						name: "H 乳白.06",
+						milk: white(0.06),
+						sheen: "linear-gradient(150deg," + white(0.78) + " 0%," + white(0.3) + " 20%," + white(0.04) + " 46%," + white(0) + " 60%,rgba(170,180,200,0.26) 80%,rgba(150,160,184,0.42) 100%)",
+						bd: 'url("#lgf2") blur(0.4px) brightness(1.0) saturate(0.78) contrast(1.1)',
+						stroke: "2px " + white(0.95),
+						sh: "-2px -2px 0 " + white(0.95) + ", 2px 2px 0 " + grey(0.4) + ", 3px 10px 20px " + deep(0.42),
+					},
+					{
+						name: "I 灰身乳白",
+						milk: "rgba(214,220,232,0.2)",
+						sheen: "linear-gradient(150deg," + white(0.7) + " 0%," + white(0.28) + " 20%," + white(0.04) + " 46%," + white(0) + " 60%,rgba(170,180,200,0.26) 80%,rgba(150,160,184,0.42) 100%)",
+						bd: 'url("#lgf2") blur(0.6px) brightness(1.0) saturate(0.78) contrast(1.07)',
+						stroke: "1.8px " + white(0.92),
+						sh: "-1.5px -1.5px 0 " + white(0.9) + ", 1.5px 1.5px 0 " + grey(0.42) + ", 3px 9px 18px " + deep(0.4),
+					},
+					{
+						name: "J 清 + 提亮1.14",
+						milk: white(0.08),
+						sheen: "linear-gradient(150deg," + white(0.7) + " 0%," + white(0.3) + " 20%," + white(0.05) + " 46%," + white(0) + " 60%,rgba(178,188,206,0.24) 78%,rgba(152,162,186,0.38) 100%)",
+						bd: 'url("#lgf2") blur(0.6px) brightness(1.14) saturate(0.82) contrast(1.06)',
+						stroke: "1.9px " + white(0.95),
+						sh: "-1.5px -1.5px 0 " + white(0.9) + ", 1.5px 1.5px 0 " + grey(0.38) + ", 3px 9px 18px " + deep(0.4),
+					},
+					{
+						name: "K 左上更亮",
+						milk: white(0.12),
+						sheen: "linear-gradient(150deg," + white(0.95) + " 0%," + white(0.4) + " 16%," + white(0.06) + " 42%," + white(0) + " 56%,rgba(170,180,200,0.28) 78%,rgba(146,156,182,0.44) 100%)",
+						bd: 'url("#lgf2") blur(0.7px) brightness(1.03) saturate(0.8) contrast(1.08)',
+						stroke: "1.9px " + white(0.95),
+						sh: "-2px -2px 0 " + white(1) + ", 1.5px 1.5px 0 " + grey(0.36) + ", 3px 9px 18px " + deep(0.38),
+					},
+					{
+						name: "L 现在线上（对照）",
+						milk: white(0.16),
+						sheen: "linear-gradient(150deg," + white(0.72) + " 0%," + white(0.34) + " 18%," + white(0.06) + " 44%," + white(0) + " 58%,rgba(178,188,206,0.24) 78%,rgba(152,162,186,0.4) 100%)",
+						bd: 'url("#lgf2") blur(0.8px) brightness(1.02) saturate(0.86) contrast(1.06)',
+						stroke: "1.9px " + white(0.93),
+						sh: "-1.5px -1.5px 0 " + white(0.9) + ", 1.5px 1.5px 0 " + grey(0.38) + ", 3px 9px 18px " + deep(0.4),
+					},
+				];
+
+				function metrics(cs, text) {
+					var fs = parseFloat(cs.fontSize) || 16;
+					var cx = document.createElement("canvas").getContext("2d");
+					cx.font = cs.fontStyle + " " + cs.fontWeight + " " + fs + "px " + cs.fontFamily;
+					var t = cx.measureText(text);
+					return { fs: fs, asc: t.fontBoundingBoxAscent || fs * 0.88, desc: t.fontBoundingBoxDescent || fs * 0.2 };
+				}
+
+				function build(el, n) {
+					var node = null;
+					for (var i = 0; i < el.childNodes.length; i++) {
+						var c = el.childNodes[i];
+						if (c.nodeType === 3 && c.nodeValue.replace(/\s+/g, "")) { node = c; break; }
+					}
+					if (!node) return null;
+					var text = node.nodeValue.replace(/\s+/g, " ").trim();
+					var rng = document.createRange();
+					rng.selectNodeContents(node);
+					var r = rng.getClientRects()[0];
+					var er = el.getBoundingClientRect();
+					var cs = getComputedStyle(el);
+					var m = metrics(cs, text);
+					var left = r.left - er.left;
+					var top = r.top - er.top;
+					var id = "lm" + n;
+					var mask = document.createElementNS(NS, "mask");
+					mask.setAttribute("id", id);
+					mask.setAttribute("maskUnits", "userSpaceOnUse");
+					mask.setAttribute("x", "0");
+					mask.setAttribute("y", "0");
+					mask.setAttribute("width", String(Math.ceil(left + r.width + m.fs * 0.8)));
+					mask.setAttribute("height", String(Math.ceil(top + r.height + m.fs * 0.8)));
+					var t = document.createElementNS(NS, "text");
+					t.setAttribute("x", String(left));
+					t.setAttribute("y", String(top + (r.height - (m.asc + m.desc)) / 2 + m.asc));
+					t.setAttribute("font-family", cs.fontFamily);
+					t.setAttribute("font-size", cs.fontSize);
+					t.setAttribute("font-weight", cs.fontWeight);
+					t.setAttribute("fill", "#fff");
+					t.setAttribute("stroke", "#fff");
+					t.setAttribute("stroke-width", String(m.fs * 0.09));
+					t.setAttribute("stroke-linejoin", "round");
+					t.textContent = text;
+					mask.appendChild(t);
+					DEFS.appendChild(mask);
+					el.setAttribute("data-on", id);
+					el.style.setProperty("-webkit-mask-image", 'url("#' + id + '")');
+					el.style.setProperty("mask-image", 'url("#' + id + '")');
+					/* 光带只覆盖文字那一行（和生产版一致） */
+					el.style.setProperty("background-origin", "border-box");
+					el.style.setProperty("background-size", r.width + "px " + r.height + "px");
+					el.style.setProperty("background-position", left + "px " + top + "px");
+					return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)];
+				}
+
+				function fill(rowId) {
+					var row = document.getElementById(rowId);
+					var out = [];
+					V.forEach(function (v) {
+						var cell = document.createElement("div");
+						var g = document.createElement("div");
+						g.className = "g";
+						g.style.setProperty("--milk", v.milk);
+						g.style.setProperty("--sheen", v.sheen);
+						g.style.setProperty("--bd", v.bd);
+						g.style.setProperty("--stroke", v.stroke);
+						g.style.setProperty("--sh", v.sh);
+						g.textContent = "25";
+						var cap = document.createElement("div");
+						cap.className = "cap";
+						cap.textContent = v.name;
+						cell.appendChild(g);
+						cell.appendChild(cap);
+						row.appendChild(cell);
+						out.push(g);
+					});
+					return out;
+				}
+
+				function run() {
+					var all = fill("rowLight").concat(fill("rowBusy"));
+					window.__lab = all.map(function (el, i) { return build(el, i); });
+				}
+				if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { setTimeout(run, 80); });
+				else setTimeout(run, 220);
+			})();
+		</script>
+	</body>
+</html>

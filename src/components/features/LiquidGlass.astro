@@ -1,0 +1,1282 @@
+---
+// Liquid Glass —— 真实折射玻璃引擎
+//
+// 思路来自 shuding/liquid-glass 那套 SVG feDisplacementMap 折射，做了工程化改造：
+//
+//   · 位移贴图现场算：沿元素边缘取一条 band 宽的折射带，贴图 R/G 通道编码
+//     「向内采样多少像素」。元素多大、圆角多少，贴图就多大多圆。
+//   · 每个元素一张 <filter>，直接挂到 backdrop-filter: url(#id) 上，
+//     背景是真被掰弯的（实测 Chromium 支持 url() 形式的 backdrop-filter）。
+//   · 门槛（不满足就一行都不跑，站点原有毛玻璃照旧，绝不会「变透明」）：
+//       不支持 url() 滤镜 / prefers-reduced-motion / 触屏 / 低核机器 / 精简版
+//   · 成本控制：贴图按「尺寸+圆角」缓存复用；进视口才生成；同屏上限；
+//     元素尺寸变了用 ResizeObserver 防抖重建。
+//   · 视差叠玻璃会互相打架，所以祖先已经是玻璃的后代直接跳过。
+---
+
+<!-- 所有折射滤镜都挂在这个隐藏 svg 里 -->
+<svg
+	id="lg-defs"
+	aria-hidden="true"
+	width="0"
+	height="0"
+	style="position:fixed;top:0;left:0;pointer-events:none;"
+></svg>
+
+<style is:global>
+	/* 引擎给元素打的标记。真正的 backdrop-filter 由脚本写成**内联 !important**
+	   （见 applyGlass）。
+
+	   为什么必须内联 !important：
+	   站点里大量毛玻璃是这么写的 ——
+	     body.wallpaper-transparent #navbar[data-transparent-mode] > div { backdrop-filter: … !important }
+	     body:has(#wallpaper-wrapper) #navbar[data-transparent-mode="semi"][data-is-home="true"] > div { … !important }
+	   这些规则带 1~2 个 id、还带 !important，靠属性选择器无论堆多少层都压不过。
+	   作者级里唯一能稳压它们的就是内联 !important。
+
+	   另：不走「内联 --lg-bd + CSS var()」那条路，是因为 var() 解析失败时会
+	   让整条声明在计算值阶段变成 none，反而不如直接写值稳。 */
+	[data-lg-on] {
+		/* 只做标记用，不参与样式 */
+		--lg-mark: 1;
+	}
+</style>
+
+<script is:inline>
+	(function () {
+		"use strict";
+		if (window.__liquidGlass) return;
+
+		var NS = "http://www.w3.org/2000/svg";
+		var d = document;
+
+		/* ================= 门槛：不满足就整体不启用 ================= */
+		var mq = window.matchMedia;
+		var reducedMotion = false;
+		try {
+			reducedMotion = mq("(prefers-reduced-motion: reduce)").matches;
+		} catch (e) {}
+		/* 注意：**不因为 prefers-reduced-motion 就关掉玻璃**。
+		   折射是静态视觉效果，本身不产生任何动画，关掉只会让开了「减少动态效果」
+		   的用户（Windows 上很常见）整站看到一片素面朝天。
+		   真正会动的部分（拖拽惯性、触摸指针淡出）各自单独判 reducedMotion。 */
+
+		/* 折射贴图是在主线程上算的，触屏设备（多半是手机）不值得 */
+		if (!mq("(hover: hover) and (pointer: fine)").matches) return;
+		var lowCores = (navigator.hardwareConcurrency || 4) <= 2;
+		if ((navigator.hardwareConcurrency || 4) < 2) return;
+
+		var supportsUrl = false;
+		try {
+			supportsUrl =
+				!!(window.CSS && CSS.supports && CSS.supports("backdrop-filter", "url(#lg-probe)")) ||
+				!!(
+					window.CSS &&
+					CSS.supports &&
+					CSS.supports("-webkit-backdrop-filter", "url(#lg-probe)")
+				);
+		} catch (e) {}
+		if (!supportsUrl) return;
+
+		var defs = d.getElementById("lg-defs");
+		if (!defs) return;
+
+		/* ================= 参数 ================= */
+		var MAX_MAP_PX = 62000; /* 单张贴图像素上限（越小越省，越大越顺滑） */
+		/* 同屏最多几块玻璃。ProMax 要把内容区的文章卡片 + 侧栏卡片整片铺成玻璃
+		   （首页 19~21 块是常态），所以上限抬到 40；低核机器仍是 10，别硬撑。 */
+		var MAX_GLASS = lowCores ? 10 : 40;
+		var MIN_AREA = 2600; /* 小于这个面积不折腾（点名目标用 force 绕过） */
+		var REBUILD_DELAY = 300; /* 尺寸变化后多久重建 */
+		var SIZE_EPS = 6; /* 尺寸差多少才算变了 */
+
+		/* 精修目标：站点里「本来就该是玻璃」的那几块。
+		   band     折射带宽度（px）—— 玻璃「肉边」的厚度
+		   strength 边缘向内掰的力度（1 ≈ 掰进 band*0.5 px）
+		   blur     SVG 里的高斯模糊 stdDeviation —— 也就是磨砂程度，
+		            放在位移**之前**，边缘的折射才不会被糊平。
+		   sat      饱和度
+		   tint     透底系数：把元素自己的半透明底色的 alpha 再乘这个数。
+		            关键 —— backdrop-filter 画在元素背景**之下**，底色越实，
+		            折射越被盖住。岛原来的底是 55% 白，折射基本看不见；
+		            乘 0.5 之后就透出来了（这是「液态玻璃像失效」的真正原因）。
+
+		   数值口径（整体刻意偏「清」，宁可少磨砂也不要糊）：
+		     blur   1.2~2.6px —— 只去掉背景的锐利，不是把背景抹平
+		     bend   顶到 band*0.5*strength，导航岛 ≈ 11px，一眼能看出边缘发「肉」
+		   早期版本给到 blur 13 / strength 2.6，结果整块岛像蒙了一层白纱，
+		   折射全被糊掉、底色又厚，看着就是「失效」。 */
+		var PRESETS = [
+			{
+				sel: "#navbar > div",
+				band: 20,
+				strength: 1.15,
+				blur: 1.6,
+				sat: 1.18,
+				tint: 0.5,
+				force: true,
+			},
+			{
+				sel: ".navbar-actions-inner",
+				band: 20,
+				strength: 1.15,
+				blur: 1.6,
+				sat: 1.18,
+				tint: 0.5,
+				force: true,
+			},
+		/* 导航岛上那枚滑动高亮（#navbar-pill）：它才是「可拖拽的液态玻璃」本体。
+		   它住在已经上玻璃的导航岛内部，所以必须开 nest（见 applyGlass）。
+		   参数跟 Navbar.astro 里的 PILL_GLASS 保持一致 —— 预设先扫到就按这套来，
+		   脚本后来 register 也拿到同一套，谁先谁后结果都一样。
+		   比导航岛猛得多（岛是 band20/strength1.15）：小透镜周长/面积比大，
+		   边缘得掰得更狠才看得出形变；rim 0.5 把高光棱压掉一半，去掉那圈白雾。 */
+		{
+			sel: "#navbar-pill",
+			band: 15,
+			strength: 1.4,
+			blur: 1.2,
+			sat: 1.28,
+			rim: 0.5,
+			/* ⚠ tint 必须给：高亮带自己的青色底画在折射**之上**，
+			   不压淡的话它就是一颗实心青胶囊（用户：「切换一个链接仍然变白」）。
+			   0.5 → promax 里再 ×0.72 = 0.36，0.5 的底色落到 ~0.18，
+           和导航岛 (0.55→0.198) 一个透法。 */
+			tint: 0.5,
+			nest: true,
+			force: true,
+		},
+			{
+				/* ⚠ 必须 nest：面板住在**已经上了玻璃的导航岛内部**
+				   （.ai-float-island 是 #navbar > div 的后代）。不加 nest 的话
+				   applyGlass 的「玻璃上不再叠玻璃」规则会直接拒了它 ——
+				   面板于是永远只剩 CSS 那层 55% 白底 + blur(5px)，
+				   展开就是一大块发白的实心板（用户原话：
+				   「你自己看看展开是什么什么东西」）。 */
+				sel: ".ai-float-island",
+				band: 24,
+				strength: 1.2,
+				blur: 2.2,
+				sat: 1.2,
+				tint: 0.62,
+				nest: true,
+				force: true,
+			},
+		{
+			/* 屏幕上方那枚搜索胶囊（TopSearch.svelte，ProMax 桌面端）：
+			   它不在任何玻璃元素内部 —— 它就是那块玻璃本身，不用 nest。
+			   悬停 / 打开时这层会被 TopSearch 摘掉（引擎的 SDF 玻璃接管，
+			   同口径参数写在 TopSearch 的 CAP_LG_CFG，两边改要一起改）；
+			   blur/tint 抬了一档 —— 胶囊要的是参考实现那种烟灰感，
+			   不是岛面的通透。 */
+			sel: ".ts-capsule",
+			band: 20,
+			strength: 1.15,
+			blur: 10,
+			sat: 1.1,
+			tint: 0.62,
+			force: true,
+		},
+		{
+			/* 顶部搜索的结果面板：它是胶囊的**兄弟**（不是子节点），
+			   所以也不在玻璃里、不占 nest 名额 */
+			sel: ".ts-results-panel",
+			band: 24,
+			strength: 1.2,
+			blur: 2.2,
+			sat: 1.2,
+			tint: 0.62,
+			force: true,
+		},
+		{
+			/* 顶部那条「往下拖唤出搜索」的提示：小小一枚，跟着上玻璃。
+			   ⚠ tint 给满 1：提示是**深底白字**，被透底一压就成半透灰纱，
+			   字读不出来了。这里只要折射和棱线，底色保持它自己的。 */
+			sel: ".ts-hint",
+			band: 14,
+			strength: 0.9,
+			blur: 2.2,
+			sat: 1.18,
+			tint: 1,
+			force: true,
+		},
+		{
+			/* 同理：搜索结果面板在 #navbar-actions 的玻璃壳内部 */
+			sel: ".dis-results-panel",
+				band: 24,
+				strength: 1.2,
+				blur: 2.2,
+				sat: 1.2,
+				tint: 0.62,
+				nest: true,
+				force: true,
+			},
+			{
+				sel: "#media-island .mi-detail",
+				band: 18,
+				strength: 1.0,
+				blur: 2.2,
+				sat: 1.2,
+				tint: 0.62,
+				nest: true,
+				force: true,
+			},
+			{
+				sel: "#mobile-nav-island .mobile-nav-island-inner",
+				band: 18,
+				strength: 1.0,
+				blur: 2.4,
+				sat: 1.2,
+				tint: 0.6,
+				force: true,
+			},
+			{
+				sel: "#voice-rain-toggle",
+				band: 14,
+				strength: 0.9,
+				blur: 2.2,
+				sat: 1.2,
+				tint: 0.7,
+				force: true,
+			},
+			{
+				sel: ".profile-float",
+				band: 24,
+				strength: 1.2,
+				blur: 2.6,
+				sat: 1.2,
+				tint: 0.62,
+				force: true,
+			},
+			{ sel: "#kbd-hint", band: 14, strength: 0.9, blur: 2.2, sat: 1.18, force: true },
+			/* 内容区卡片（**仅 ProMax 生效**，引擎整体被版本门挡在 promax 里）。
+			   文章卡片 / 侧栏卡片跟导航岛用同一套「液态玻璃」口径：
+			   卡片面积大、底色本来就厚（0.4~0.55），所以 tint 只压到 0.62~0.68 ——
+			   再透正文就压不住壁纸了；但比自动升级那档（0.82）淡得多，
+			   折射和边缘高光棱才透得出来，一眼能从「磨砂白卡」变成「玻璃卡」。
+			   band 给到 22：卡片体量大，边缘那圈「肉」得够厚才看得见。 */
+			{
+				sel: ".glass-float-card",
+				band: 22,
+				strength: 1.05,
+				blur: 1.8,
+				sat: 1.16,
+				tint: 0.62,
+				force: true,
+			},
+			{
+				/* 排除浮动小圆钮（#back-to-top 那几颗也是 card-base）——
+				   44×44 的圆钮整颗都是「边缘」，套卡片的 band/strength 会糊成一团白 */
+				sel: ".card-base:not(.floating-btn)",
+				band: 20,
+				strength: 1.0,
+				blur: 1.8,
+				sat: 1.16,
+				tint: 0.68,
+				force: true,
+			},
+			/* 展开后的搜索输入框：它在导航岛（已上玻璃）内部，必须 nest。
+			   原来那层 rgba(0,0,0,0.04) 底 + 岛内的玻璃，读出来是一块「发白的
+			   实心药丸」——用户原话「点一下搜索也变白」。上了玻璃之后它才是
+			   岛面上开的一扇小玻璃窗。 */
+			{
+				sel: ".dis-input-container",
+				band: 14,
+				strength: 1.0,
+				blur: 1.6,
+				sat: 1.2,
+				tint: 0.5,
+				rim: 0.7,
+				nest: true,
+				force: true,
+			},
+		];
+
+		/* 「全站所有表面」：内容区里**已经在用 backdrop-filter** 的表面
+		   自动跟着升级 —— 不用逐个去猜卡片的类名。
+		   同一套「清」的口径：卡片底色本来就淡（0.4~0.5），
+		   所以只轻微透底，别把卡片读成透明。 */
+		var AUTO_CFG = { band: 20, strength: 1.0, blur: 2, sat: 1.12, tint: 0.76 };
+		var AUTO_ROOTS = ["#main-grid", ".footer", "#category-bar-wrapper"];
+
+		/* ================= 几何 ================= */
+		function clamp01(v) {
+			return v < 0 ? 0 : v > 1 ? 1 : v;
+		}
+
+		/* 圆角矩形有符号距离场：内部为负，边界为 0 */
+		function sdRoundRect(px, py, hw, hh, r) {
+			var qx = Math.abs(px) - (hw - r);
+			var qy = Math.abs(py) - (hh - r);
+			var inner = qx > qy ? qx : qy;
+			if (inner > 0) inner = 0;
+			var ax = qx > 0 ? qx : 0;
+			var ay = qy > 0 ? qy : 0;
+			return inner + Math.sqrt(ax * ax + ay * ay) - r;
+		}
+
+		/**
+		 * 生成两张贴图（同一尺寸，一起缓存）：
+		 *   map  位移贴图 —— R = 横向位移、G = 纵向位移（0.5 为中点），给 feDisplacementMap
+		 *   spec 高光贴图 —— 沿内边缘一圈的白色高光（上亮下暗），叠在最后当「玻璃的棱」
+		 *
+		 * 为什么要 spec：折射只在背景有结构的地方才看得出来。沉底导航岛身后
+		 * 往往是一片平滑渐变，光靠位移根本看不出玻璃 —— 加上这圈高光，
+		 * 无论背景多素，一眼就是块玻璃。
+		 *
+		 * rimScale 是高光总强度的倍率（默认 1）：
+		 *   大块玻璃（导航岛）用 1 —— 需要那圈棱线把轮廓定出来；
+		 *   小透镜（可拖拽高亮）用 0.5 —— 它周长/面积比大得多，同样强度会糊成
+		 *   一团白雾，读起来是磨砂不是玻璃。
+		 */
+		function buildMap(W, H, radius, band, strength, rimScale) {
+			var dpi = Math.min(1, Math.sqrt(MAX_MAP_PX / Math.max(1, W * H)));
+			if (dpi < 0.34) dpi = 0.34;
+			var w = Math.max(3, Math.round(W * dpi));
+			var h = Math.max(3, Math.round(H * dpi));
+
+			var cv = d.createElement("canvas");
+			cv.width = w;
+			cv.height = h;
+			var ctx = cv.getContext("2d");
+			if (!ctx) return null;
+			var img = ctx.createImageData(w, h);
+			var data = img.data;
+
+			var hw = W / 2;
+			var hh = H / 2;
+			var rr = Math.max(0, Math.min(radius, Math.min(hw, hh)));
+			var sx = W / w;
+			var sy = H / h;
+			var offs = new Float32Array(w * h * 2);
+			var spec = new Uint8ClampedArray(w * h * 4);
+			var maxOff = 0;
+			var idx = 0;
+			var sidx = 0;
+			/* 高光带的宽度：跟着磨砂带一起走，但收窄一点，免得糊成一片白。
+			   收窄还有一层意义 —— 高光越宽越像「蒙了层纱」，
+			   和「降低模糊」的诉求正好相反。 */
+			var rimBand = Math.max(2, band * 0.34);
+			var rimK = rimScale === undefined || rimScale === null ? 1 : rimScale;
+
+			for (var y = 0; y < h; y++) {
+				var cy = (y + 0.5) * sy - hh;
+				for (var x = 0; x < w; x++) {
+					var cx = (x + 0.5) * sx - hw;
+					var sd = sdRoundRect(cx, cy, hw, hh, rr);
+					var depth = -sd; /* >0 表示在形状内部 */
+					var t = 1 - clamp01(depth / band); /* 边界 1 → 带内递减到 0 */
+					var ox = 0;
+					var oy = 0;
+					var alpha = 0;
+
+					if (depth > 0) {
+						/* --- 高光：最外那道棱线 + 往内衰减的一圈光晕 --- */
+						var edgeLine = 1 - clamp01(depth / 1.6);
+						var rim = Math.pow(1 - clamp01(depth / rimBand), 1.7);
+						var up = 0.5; /* 上边缘 1、下边缘 0（光从上面来） */
+						if (t > 0.001) {
+							var bend = strength * band * 0.5 * Math.pow(t, 1.7);
+							/* 外法线用数值梯度求，指向形状外侧 */
+							var e = 1;
+							var gx =
+								sdRoundRect(cx + e, cy, hw, hh, rr) - sdRoundRect(cx - e, cy, hw, hh, rr);
+							var gy =
+								sdRoundRect(cx, cy + e, hw, hh, rr) - sdRoundRect(cx, cy - e, hw, hh, rr);
+							var gl = Math.sqrt(gx * gx + gy * gy) || 1;
+							/* 向内采样：背景在边缘被「吸」进去，读起来就是一块玻璃 */
+							ox = -(gx / gl) * bend;
+							oy = -(gy / gl) * bend;
+							var mAbs = Math.abs(ox) > Math.abs(oy) ? Math.abs(ox) : Math.abs(oy);
+							if (mAbs > maxOff) maxOff = mAbs;
+							up = clamp01(0.5 - (gy / gl) * 0.5);
+						}
+						alpha =
+							(0.16 * rim * (0.3 + 0.7 * up) + 0.32 * edgeLine * (0.45 + 0.55 * up)) *
+							rimK;
+						if (alpha > 1) alpha = 1;
+					}
+
+					offs[idx++] = ox;
+					offs[idx++] = oy;
+					spec[sidx++] = 255;
+					spec[sidx++] = 255;
+					spec[sidx++] = 255;
+					spec[sidx++] = (alpha * 255) | 0;
+				}
+			}
+
+			if (maxOff < 0.05) return null; /* 一点位移都没有 → 不值得挂滤镜 */
+
+			var j = 0;
+			for (var k = 0; k < data.length; k += 4) {
+				data[k] = ((offs[j++] / maxOff) * 127.5 + 127.5) | 0;
+				data[k + 1] = ((offs[j++] / maxOff) * 127.5 + 127.5) | 0;
+				data[k + 2] = 128;
+				data[k + 3] = 255;
+			}
+			ctx.putImageData(img, 0, 0);
+			var mapUrl = cv.toDataURL();
+
+			/* 同一块 canvas 复用一次，再把高光图导出来 */
+			var specImg = ctx.createImageData(w, h);
+			specImg.data.set(spec);
+			ctx.putImageData(specImg, 0, 0);
+			var specUrl = cv.toDataURL();
+
+			return { url: mapUrl, scale: maxOff * 2, spec: specUrl };
+		}
+
+		/* ================= 滤镜 =================
+		   链序刻意是「先磨砂、后掰弯、最后压高光」：
+		     feImage(map) → feGaussianBlur(SourceGraphic) → feDisplacementMap
+		                  → saturate → feComposite(spec, over)
+		   如果先掰弯再磨砂，边缘那圈折射会被高斯糊平，
+		   看起来就只是一块普通的毛玻璃 —— 这正是「看不出液态玻璃」的原因。 */
+		function makeFilter(id, map, frostPx, sat) {
+			var f = d.createElementNS(NS, "filter");
+			f.setAttribute("id", id);
+			/* 区域刻意用 objectBoundingBox(0,0,1,1) —— 就是「元素的边框盒本身」。
+			   别写死成 userSpaceOnUse + W/H：元素的尺寸一变（展开搜索、面板开合、
+			   松手吸附这些动画），滤镜区域还停在旧尺寸，**超出区域的那截 backdrop
+			   完全不被过滤**，画面上就是一道硬边的深色块（实测能看到）。
+			   用 bbox 的话区域随元素一起变：动画期间顶多是位移贴图被横向拉伸一下，
+			   过渡结束再换成新尺寸的贴图，全程没有断口。 */
+			f.setAttribute("filterUnits", "objectBoundingBox");
+			f.setAttribute("x", "0");
+			f.setAttribute("y", "0");
+			f.setAttribute("width", "1");
+			f.setAttribute("height", "1");
+			f.setAttribute("color-interpolation-filters", "sRGB");
+
+			function feImageInto(href, result) {
+				var im = d.createElementNS(NS, "feImage");
+				im.setAttribute("href", href);
+				/* 不写 x/y/width/height：默认就是「铺满整个滤镜区域」，
+				   于是贴图也自动跟着 bbox 走。 */
+				im.setAttribute("preserveAspectRatio", "none");
+				im.setAttribute("result", result);
+				return im;
+			}
+
+			var img = feImageInto(map.url, "lgmap");
+			/* 高光图：沿内边缘一圈白棱，单靠位移在素背景上是看不出玻璃的 */
+			var spec = map.spec ? feImageInto(map.spec, "lgspec") : null;
+
+			/* 1) 磨砂：把背景糊掉。放在位移之前，边缘的折射才保得住。 */
+			var bl = d.createElementNS(NS, "feGaussianBlur");
+			bl.setAttribute("in", "SourceGraphic");
+			bl.setAttribute("stdDeviation", String(frostPx));
+			bl.setAttribute("result", "lgfrost");
+
+			/* 2) 掰弯：用位移贴图在玻璃边缘把糊过的背景「吸」进去 */
+			var dm = d.createElementNS(NS, "feDisplacementMap");
+			dm.setAttribute("in", "lgfrost");
+			dm.setAttribute("in2", "lgmap");
+			dm.setAttribute("xChannelSelector", "R");
+			dm.setAttribute("yChannelSelector", "G");
+			dm.setAttribute("scale", String(map.scale));
+			dm.setAttribute("result", "lgdisp");
+
+			/* 3) 提饱和：玻璃会「聚色」，这一步让它比背景更鲜艳一点 */
+			var cm = d.createElementNS(NS, "feColorMatrix");
+			cm.setAttribute("in", "lgdisp");
+			cm.setAttribute("type", "saturate");
+			cm.setAttribute("values", String(sat));
+			cm.setAttribute("result", "lgcol");
+
+			f.appendChild(img);
+			f.appendChild(bl);
+			f.appendChild(dm);
+			f.appendChild(cm);
+
+			/* 4) 压上高光棱（over：spec 在上，玻璃本体在下） */
+			if (spec) {
+				var comp = d.createElementNS(NS, "feComposite");
+				comp.setAttribute("in", "lgspec");
+				comp.setAttribute("in2", "lgcol");
+				comp.setAttribute("operator", "over");
+				f.appendChild(spec);
+				f.appendChild(comp);
+			}
+			return f;
+		}
+
+		/* ================= 目标发现 ================= */
+		var cache = Object.create(null);
+		var applied = []; /* { el, id } */
+		var watchers = new Map(); /* el -> { cfg, ro, timer, w, h } */
+		var uid = 0;
+		var io = null;
+		var scheduled = false;
+		var bootRetry = 0;
+
+		/* 滤镜复用缓存：key → <filter> 的 id。
+		   同一尺寸 + 同一套参数的玻璃反复出现时（搜索展开/收起、面板开关、
+		   一排等宽的卡片）直接复用同一个 <filter>。省掉的正是最贵的那一步：
+		   新建滤镜图 → Chromium 重新编译滤镜链并把整块 backdrop 重画一遍。
+		   「展开搜索卡一下」就是这个开销。 */
+		var filterCache = Object.create(null);
+		var filterCacheOrder = [];
+		var FILTER_CACHE_MAX = 24;
+
+		function isCachedFilter(id) {
+			for (var k in filterCache) {
+				if (filterCache[k] === id) return true;
+			}
+			return false;
+		}
+
+		/* 同一 id 的滤镜可能被多块同尺寸玻璃共用 —— 撤掉其中一块时不能删节点，
+		   否则剩下的那些会瞬间裸奔。 */
+		function filterInUse(id, except) {
+			for (var i = 0; i < applied.length; i++) {
+				var e = applied[i];
+				if (e !== except && e.__lgOn && e.__lgOn.id === id) return true;
+			}
+			return false;
+		}
+
+		function radiusOf(cs, W, H) {
+			var raw = cs.borderTopLeftRadius || "0px";
+			var r = parseFloat(raw) || 0;
+			if (raw.indexOf("%") >= 0) r = (parseFloat(raw) / 100) * Math.min(W, H);
+			/* rounded-full 在 Tailwind v4 是 calc(infinity * 1px)，clamp 掉 */
+			var lim = Math.min(W, H) / 2;
+			return Math.max(0, Math.min(r, lim));
+		}
+
+		/* 取颜色里的 alpha（computed 值可能是 rgb()/oklch()/color(srgb …)） */
+		function alphaOf(colorStr) {
+			if (!colorStr) return 1;
+			if (colorStr === "transparent") return 0;
+			var m = colorStr.match(/^rgba?\(([^)]*)\)$/);
+			if (m) {
+				var p = m[1].split(/[,\s/]+/).filter(Boolean);
+				return p.length >= 4 ? parseFloat(p[3]) : 1;
+			}
+			var slash = colorStr.match(/\/\s*([\d.]+)(%?)\s*\)\s*$/);
+			if (slash) return slash[2] ? parseFloat(slash[1]) / 100 : parseFloat(slash[1]);
+			return 1;
+		}
+
+		/* 空盒子不值得上玻璃：既没有半透明底、也没有渐变底，就跳过
+		   （典型是「全透明」状态的导航岛 —— 那本来就是不该有玻璃的形态） */
+		function hasGlassBackdrop(cs) {
+			if (cs.backgroundImage && cs.backgroundImage !== "none") return true;
+			return alphaOf(cs.backgroundColor) >= 0.04;
+		}
+
+		/**
+		 * 精确取「这个元素 CSS 本来的底色」。
+		 *
+		 * 为什么要绕这一圈：导航岛这类元素的 background 上挂着 0.36s 的过渡
+		 * （主题切换 / 沉底状态切换）。直接「撤掉内联值 → 立刻读 computed」，
+		 * 拿到的是**过渡途中的插值**，每次都不一样（实测同一元素跑出过
+		 * 0.53 / 0.55 / 0.88 三个基准值）。基准不同 → 透出来的深浅每次刷新
+		 * 都不同，还会在多次重建里越乘越淡。
+		 *
+		 * 做法：临时把 transition 压成 none + 强制一次样式冲洗，读到真正的
+		 * 落点值，读完立刻还原。只在「还没有基准」时算一次，不常走这条路。
+		 */
+		function baseBgOf(el) {
+			var t = el.style.getPropertyValue("transition");
+			var tp = el.style.getPropertyPriority("transition");
+			var kept = el.style.getPropertyValue("background-color");
+			var kp = el.style.getPropertyPriority("background-color");
+			el.style.setProperty("transition", "none", "important");
+			if (kept) el.style.removeProperty("background-color");
+			void el.offsetWidth; /* 强制样式冲洗，拿到不带过渡的落点值 */
+			var base = getComputedStyle(el).backgroundColor;
+			if (kept) el.style.setProperty("background-color", kept, kp);
+			if (t) el.style.setProperty("transition", t, tp);
+			else el.style.removeProperty("transition");
+			return base;
+		}
+
+		/**
+		 * 账本之外还要「验货」：引擎写在这元素上的内联值还在不在。
+		 *
+		 * 别的组件（典型是文章岛的复位逻辑）会用 style.removeProperty 把
+		 * `background` / `backdrop-filter` 从玻璃面上抹掉 —— 它们和引擎写的是
+		 * **同一个属性**，一 remove 就一起没了；可引擎的账本（`__lgOn` +
+		 * `data-lg-on`）并不知道这事。于是 applyGlass 一进门就 `return true`，
+		 * 再也不会重写一遍：岛永久退回样式表那层 55% 白底 + blur(20px) 磨砂。
+		 * 用户看到的就是「切换站内任意一个链接，左岛就变白」（右边那枚动作岛
+		 * 不在文章岛的子树里、没人复位它，所以只有左岛中招）。
+		 * 有了这层校验，任何把内联值抹掉的组件都不再能把玻璃弄丢。
+		 */
+		function glassInlineIntact(el) {
+			if (!el.style.getPropertyValue("backdrop-filter")) return false;
+			if (el.__lgTinted && !el.style.getPropertyValue("background-color")) return false;
+			return true;
+		}
+
+		function applyGlass(el, cfg) {
+			var skipped = el.getAttribute("data-lg-skip") !== null;
+			if (el.__lgOn) {
+				/* 账本说「已上玻璃」——但内联值才是真的：验货。
+				   被显式跳过（分裂期）时不插手，维持原有语义。 */
+				if (skipped || glassInlineIntact(el)) return true;
+				/* 账本在、内联被抹了 → 整块重来（底色基准保留，不用重测） */
+				revertGlass(el);
+			} else if (skipped) {
+				return false;
+			}
+			/* 默认不在玻璃上再叠玻璃（折射会互相打架）；
+			   cfg.nest 是白名单：导航岛里那枚高亮带就住在玻璃岛内部，
+			   它要的恰恰是「在岛的玻璃之上再当一块小透镜」（掰弯身下的图标）。 */
+			if (!cfg.nest && el.closest("[data-lg-on]")) return false;
+			if (applied.length >= MAX_GLASS) return false;
+
+			var rect = el.getBoundingClientRect();
+			var W = Math.round(rect.width);
+			var H = Math.round(rect.height);
+			if (W < 8 || H < 8) return false;
+			/* 显式点名的目标（PRESETS / 脚本 register）不受面积门槛限制 ——
+			   角落那几颗 44×44 的圆钮本来就只有 1936px²，但它们是主角 */
+			if (!cfg.force && W * H < MIN_AREA) return false;
+
+			var cs = getComputedStyle(el);
+			if (cs.display === "none" || cs.visibility === "hidden") {
+				/* 点名目标「现在收起来了」≠「以后不需要玻璃」—— 文章面板就是
+				   每次展开都要有一块按当下尺寸新算的折射。这里补挂一次显隐观察者：
+				   它一露头就自动上玻璃（watchReveal 上一次成功后自摘，所以要重挂）。
+				   少这一步会漏掉这条链：展开(上玻璃) → 收起（面板缩回时
+				   ResizeObserver 触发 rebuild → 撤旧玻璃 → 重上时它已经
+				   visibility:hidden → 失败，且此后没人再管）→ 再展开就是一块白板。 */
+				if (cfg.force) watchReveal(el, cfg);
+				return false;
+			}
+			/* 「正在淡入」不等于「不可见」：显式点名的目标（force）不看 opacity。
+			   导航岛那枚高亮是从 opacity 0 → 1 过渡显形的，同步注册时同一帧
+			   读到的还是 0 —— 按「不可见就跳过」处理，它这辈子都拿不到玻璃，
+			   视觉上就是「点一下高亮，出现一块浅色实心片」（用户原话：
+			   「点击一次链接后变白」）。自发现的目标仍按老规矩跳过。 */
+			if (!cfg.force && cs.opacity === "0") return false;
+			if (!hasGlassBackdrop(cs)) return false;
+
+			var band = Math.min(cfg.band, Math.min(W, H) / 2);
+			var radius = radiusOf(cs, W, H);
+			var rimK = cfg.rim === undefined ? 1 : cfg.rim;
+			/* ProMax 的岛面比其它档位亮（纯图标 + 更透的壁纸层），
+			   同一份 tint 在那边读出来就是「一片白纱」而不是玻璃，
+			   所以额外再透一档 —— 底色越淡，backdrop 的折射越透得出来。 */
+			var tint = cfg.tint;
+			if (tint && d.body && d.body.classList.contains("site-promax")) tint *= 0.72;
+			var key =
+				W +
+				"x" +
+				H +
+				"r" +
+				Math.round(radius) +
+				"b" +
+				Math.round(band) +
+				"s" +
+				cfg.strength +
+				"m" +
+				rimK;
+			var map = cache[key];
+			if (map === undefined) {
+				map = buildMap(W, H, radius, band, cfg.strength, rimK);
+				cache[key] = map;
+			}
+			if (!map) return false;
+
+			/* 尺寸/参数完全相同就用缓存里的滤镜 —— 每次重建都新建一个
+			   <filter> 会让 Chromium 重编译滤镜链并重画整块 backdrop，
+			   那是「展开搜索卡一下」的主因。 */
+			var fkey = key + "|f" + cfg.blur + "|t" + cfg.sat;
+			var id = filterCache[fkey];
+			if (!id || !d.getElementById(id)) {
+				id = "lg-" + ++uid;
+				defs.appendChild(makeFilter(id, map, cfg.blur, cfg.sat));
+				filterCache[fkey] = id;
+				filterCacheOrder.push(fkey);
+				/* 尺寸被反复拖拽会攒下一堆滤镜；超上限就把最老的挤出缓存，
+				   被挤出的节点会在对应元素 revert 时顺手删掉。 */
+				while (filterCacheOrder.length > FILTER_CACHE_MAX) {
+					delete filterCache[filterCacheOrder.shift()];
+				}
+			}
+
+			/* saturate 已经由滤镜里的 feColorMatrix 做过一次了，CSS 侧只补一点
+			   brightness（玻璃会稍微提亮背景），重复 saturate 会把颜色烧掉。
+			   CSS 侧不再叠 blur —— 磨砂已经在滤镜里、且在位移之前。 */
+			var value = 'url("#' + id + '") brightness(1.04)';
+			el.style.setProperty("--lg-bd", value); /* 便于调试 / 被别的脚本读到 */
+			el.style.setProperty("backdrop-filter", value, "important");
+			el.style.setProperty("-webkit-backdrop-filter", value, "important");
+
+			/* 透底：元素的半透明底色画在 backdrop-filter **之上**，
+			   底色越实，折射越被盖住 —— 导航岛原本是 55% 白底，
+			   折射几乎全被这层白纱吃掉，看上去就是「液态玻璃没生效」。
+			   这里把底色的 alpha 再乘一个系数（cfg.tint），让玻璃透出来。
+			   用 color-mix 在 oklch 里混透明：预乘插值保证只降 alpha、不改色相。 */
+			if (cfg.tint && tint < 1) {
+				/* ⚠ 基准底色只能记一次，且必须是「CSS 本来的底色」。
+				   绝不能基于当下读到的 computed 值再乘一遍：元素上基本都挂着
+				   background 过渡（岛是 0.36s），revertGlass 撤掉内联值之后
+				   立刻读 computed，拿到的还是过渡中的旧值（≈ 上一次透过的结果），
+				   于是 0.55 → 0.198 → 0.071 → 0.026 —— 每重建一次就淡一档，
+				   几次之后导航岛只剩一层白雾、图标对比度一起塌掉。
+				   这就是用户报的「点到友链 / 点一下搜索就变白变模糊」。
+				   主题或版本切换时 revertAll() 会清掉这份缓存，重新按新底色记。 */
+				if (el.__lgBaseBg === undefined) {
+					/* 完全没有底色的元素不值得为它强制一次布局冲洗 */
+					var rawBase =
+						alphaOf(cs.backgroundColor) > 0.02 ? baseBgOf(el) : cs.backgroundColor;
+					/* ⚠ 读到 transparent 时**绝不能定格**。首屏 / 切页那几百毫秒里，
+					   壁纸层与 navbar 的底色规则是渐次到位的（body 上的
+					   wallpaper-transparent、:has() 规则、0.36s 过渡……），
+					   这时候量到的可能是「还没有底色的空盒子」。把它当成基准记下来，
+					   就再也不会重算 —— 岛于是永远停在 CSS 那层 0.55 的白底上，
+					   看着就是「一进友链 / 关于我，导航岛变白变糊」。
+					   所以：拿不到就留个待办标记，交给 tintSweep 补算。 */
+					if (rawBase && rawBase !== "transparent" && alphaOf(rawBase) > 0.02) {
+						el.__lgBaseBg = rawBase;
+					} else {
+						el.__lgNeedTint = 1;
+					}
+				}
+				var bgc = el.__lgBaseBg;
+				if (bgc && bgc !== "transparent" && alphaOf(bgc) > 0.02) {
+					var tinted =
+						"color-mix(in oklch, " + bgc + " " + Math.round(tint * 100) + "%, transparent)";
+					el.style.setProperty("background-color", tinted, "important");
+					/* 有些玻璃面**不用 background-color 画底**，而是把它塞进
+					   background-image 那条渐变的某个色标里（文章面板
+					   .ai-float-island 就是：渐变里写的是 --ai-glass-bg）。
+					   那种情况下改 background-color 是看不见的 —— 整块面板会
+					   比岛白一倍。所以把算好的透底结果同时挂成一个变量，
+					   让那类元素自己选择优先用它。 */
+					el.style.setProperty("--lg-tint-bg", tinted);
+					el.__lgTinted = true;
+					el.__lgNeedTint = 0;
+					/* 排进复读队列：首屏那几百毫秒里量到的底色可能还没落定 */
+					el.__lgRecheck = TINT_RECHECK;
+				} else {
+					tintSweep();
+				}
+			}
+
+			el.setAttribute("data-lg-on", "");
+			el.__lgOn = { id: id, w: W, h: H, cfg: cfg };
+			applied.push(el);
+			watch(el, cfg);
+			return true;
+		}
+
+		function revertGlass(el) {
+			var info = el.__lgOn;
+			if (!info) return;
+			/* 还在复用缓存里、或被别的同尺寸玻璃共用的滤镜不能删
+			   （删了对方会瞬间失去玻璃）。只有真正没人用的节点才回收。 */
+			if (!isCachedFilter(info.id) && !filterInUse(info.id, el)) {
+				var node = d.getElementById(info.id);
+				if (node && node.parentNode) node.parentNode.removeChild(node);
+			}
+			el.style.removeProperty("--lg-bd");
+			el.style.removeProperty("backdrop-filter");
+			el.style.removeProperty("-webkit-backdrop-filter");
+			if (el.__lgTinted) {
+				el.style.removeProperty("background-color");
+				el.style.removeProperty("--lg-tint-bg");
+				el.__lgTinted = false;
+			}
+			el.removeAttribute("data-lg-on");
+			el.__lgOn = null;
+			/* 撤掉后要允许重新被自动发现（版本切回来 / 缩放重建） */
+			el.__lgScanned = 0;
+			var w = watchers.get(el);
+			if (w) {
+				if (w.ro) w.ro.disconnect();
+				if (w.timer) clearTimeout(w.timer);
+				watchers.delete(el);
+			}
+			var i = applied.indexOf(el);
+			if (i >= 0) applied.splice(i, 1);
+			if (io) io.unobserve(el);
+		}
+
+		function revertAll() {
+			applied.slice().forEach(function (el) {
+				/* 主题 / 版本换了 → 底色的基准也跟着变，缓存作废重记一次 */
+				el.__lgBaseBg = undefined;
+				el.__lgNeedTint = 0;
+				el.__lgRecheck = 0;
+				revertGlass(el);
+			});
+			if (io) io.disconnect();
+			watchers.clear();
+			frameCfgBackup = null;
+			cache = Object.create(null);
+		}
+
+		/* 元素尺寸变了（窗口缩放 / 面板展开动画结束）→ 防抖重建 */
+		function watch(el, cfg) {
+			if (watchers.has(el) || !window.ResizeObserver) return;
+			var entry = { cfg: cfg, ro: null, timer: 0, busy: false };
+
+			var rebuildNow = function () {
+				if (!el.__lgOn || !el.isConnected) return;
+				var r = el.getBoundingClientRect();
+				if (
+					Math.abs(r.width - el.__lgOn.w) < SIZE_EPS &&
+					Math.abs(r.height - el.__lgOn.h) < SIZE_EPS
+				)
+					return;
+				revertGlass(el);
+				applyGlass(el, cfg);
+			};
+
+			entry.ro = new ResizeObserver(function () {
+				if (entry.timer) clearTimeout(entry.timer);
+				entry.timer = setTimeout(function () {
+					entry.timer = 0;
+					if (!el.__lgOn) return;
+					if (entry.busy) return;
+					var r = el.getBoundingClientRect();
+					if (
+						Math.abs(r.width - el.__lgOn.w) < SIZE_EPS &&
+						Math.abs(r.height - el.__lgOn.h) < SIZE_EPS
+					)
+						return;
+					/* 尺寸还在动（展开/收起动画没跑完）就先别重建：
+					   一次 0.35s 的展开动画里 RO 会连打好几次，每次都重建成
+					   「新建滤镜 + Chromium 重画整块 backdrop」，叠加起来就是
+					   用户感觉的「卡一下」。这里等到动画真的结束再一把重建，
+					   动画期间沿用旧滤镜。 */
+					var anims = null;
+					if (el.getAnimations) {
+						try {
+							anims = el.getAnimations({ subtree: true });
+						} catch (e) {
+							anims = el.getAnimations();
+						}
+					}
+					if (anims && anims.length) {
+						var finite = [];
+						for (var i = 0; i < anims.length; i++) {
+							var t = null;
+							try {
+								t = anims[i].effect && anims[i].effect.getComputedTiming();
+							} catch (e) {}
+							/* 无限循环的动画永远不会 finished，别等它 */
+							if (!t || t.iterations === Infinity || t.endTime === Infinity) continue;
+							finite.push(anims[i].finished);
+						}
+						if (finite.length) {
+							entry.busy = true;
+							Promise.allSettled(finite).then(function () {
+								entry.busy = false;
+								rebuildNow();
+							});
+							return;
+						}
+					}
+					rebuildNow();
+				}, REBUILD_DELAY);
+			});
+			entry.ro.observe(el);
+			watchers.set(el, entry);
+		}
+
+		function inView(el, pad) {
+			var r = el.getBoundingClientRect();
+			var vh = window.innerHeight || 800;
+			return r.bottom > -(pad || 240) && r.top < vh + (pad || 240);
+		}
+
+		function ensureIO() {
+			if (io || !window.IntersectionObserver) return;
+			io = new IntersectionObserver(
+				function (entries) {
+					entries.forEach(function (en) {
+						if (!en.isIntersecting) return;
+						var el = en.target;
+						var rec = watchers.get(el);
+						io.unobserve(el);
+						if (rec && !el.__lgOn) applyGlass(el, rec.cfg);
+					});
+				},
+				{ rootMargin: "260px 0px" },
+			);
+		}
+
+		function collect() {
+			var items = [];
+			PRESETS.forEach(function (p) {
+				var list;
+				try {
+					list = d.querySelectorAll(p.sel);
+				} catch (e) {
+					return;
+				}
+				for (var i = 0; i < list.length; i++) items.push({ el: list[i], cfg: p, prio: 0 });
+			});
+			AUTO_ROOTS.forEach(function (rootSel) {
+				var root = d.querySelector(rootSel);
+				if (!root) return;
+				var all = root.querySelectorAll("*");
+				var budget = 1600; /* 单次扫描上限，避免超大页面卡一下 */
+				for (var i = 0; i < all.length && budget-- > 0; i++) {
+					var el = all[i];
+					if (el.__lgOn || el.__lgScanned) continue;
+					if (el.getAttribute("data-lg-skip") !== null) continue;
+					if (el.closest("[data-lg-on]")) continue;
+					var r = el.getBoundingClientRect();
+					/* 布局还没就绪（尺寸为 0）时**不要盖章** —— 否则这一轮
+					   「没量出来」会被记成「这元素不需要玻璃」，之后就再也不会
+					   重扫了。首页卡片偶发不上玻璃就是这个竞态。 */
+					if (r.width < 2 || r.height < 2) continue;
+					/* 量到了、且明确不达标 → 盖章，避免每次 run 都全量算样式 */
+					el.__lgScanned = 1;
+					if (r.width * r.height < 12000) continue;
+					var bd = "";
+					try {
+						bd = getComputedStyle(el).backdropFilter || "";
+					} catch (e2) {}
+					if (!bd || bd === "none" || bd.indexOf("url(") >= 0) continue;
+					items.push({ el: el, cfg: AUTO_CFG, prio: 1 });
+				}
+			});
+			return items;
+		}
+
+		/* 首屏布局是「渐次落定」的：字体加载、壁纸初始化、侧栏折叠、
+		   卡片进场动画……引擎第一次跑的时候，有些卡片还是 0×0 或者还没
+		   拿到背景色，会被当成「不达标」直接跳过 —— 它们不是不需要玻璃，
+		   只是还没准备好。于是「点名的目标」里若还剩「看得见、尺寸够、
+		   却没能上玻璃」的，就有界地再跑几轮（约 2s 内收敛）。 */
+		var runRetry = 0;
+		function settleRun() {
+			if (runRetry >= 8) return;
+			runRetry++;
+			setTimeout(function () {
+				schedule(20);
+			}, 260);
+		}
+
+		/* 值得重跑的点名目标：可见、有尺寸、不在别的玻璃里、也没被显式跳过
+		 *
+		 * ⚠ cfg 必须传进来：「住在别的玻璃里」这条判据对 nest 目标是不成立的 ——
+		 *   文章面板 .ai-float-island 整个就长在导航岛（已上玻璃）内部，
+		 *   它要的正是「在岛的玻璃上再叠一块自己的玻璃」。
+		 *   早先这里无脑 `el.closest("[data-lg-on]")`，于是面板被自己的祖先判出局：
+		 *   首屏它 visibility:hidden 上不了玻璃 → run() 给它挂了显隐观察者 →
+		 *   用户点「文章」、面板露头、观察者醒来 → 又在这里被判 false →
+		 *   观察者既不上玻璃也不自摘，面板从此永远停在 CSS 那层白底上
+		 *   （用户原话：「做成液态玻璃」「你看图片这是什么」——就是那块白板）。 */
+		function isReadyTarget(el, cfg) {
+			if (el.getAttribute("data-lg-skip") !== null) return false;
+			if (!(cfg && cfg.nest) && el.closest("[data-lg-on]")) return false;
+			var cs = getComputedStyle(el);
+			if (cs.display === "none" || cs.visibility === "hidden") return false;
+			var r = el.getBoundingClientRect();
+			return r.width >= 8 && r.height >= 8;
+		}
+
+		/* ================= 透底基准的补算 =================
+		   上玻璃那一刻读不到底色（读到 transparent）的元素会留一枚
+		   __lgNeedTint 标记，这里按 220ms 的节奏有界补算，直到读到真底色。
+		   为什么不在 applyGlass 里直接 setTimeout 重试：同一轮里可能有
+		   好几块玻璃（导航岛 + 高亮 + 搜索面板 + 文章面板）都缺基准，
+		   打成一个 sweep 只跑一遍遍历，省得每块各起一个定时器。 */
+		var tintPump = 0;
+		var TINT_RECHECK = 3; /* 基准要复读几次才算「落定」 */
+		function tintSweep() {
+			if (tintPump >= 10) return;
+			tintPump++;
+			setTimeout(function () {
+				var again = false;
+				applied.slice().forEach(function (el) {
+					if (!el.__lgOn) return;
+					var cfg = el.__lgOn.cfg;
+					var tint = cfg.tint;
+					if (!tint || tint >= 1) {
+						el.__lgNeedTint = 0;
+						el.__lgRecheck = 0;
+						return;
+					}
+					if (d.body && d.body.classList.contains("site-promax")) tint *= 0.72;
+					/* 两种待办：① 压根还没拿到基准 ② 拿到了，但要复读确认没读错 */
+					var missing = !el.__lgTinted || el.__lgNeedTint;
+					var recheck = !missing && el.__lgRecheck > 0;
+					if (!missing && !recheck) return;
+					var cs = getComputedStyle(el);
+					var raw =
+						alphaOf(cs.backgroundColor) > 0.02 ? baseBgOf(el) : cs.backgroundColor;
+					if (!raw || raw === "transparent" || alphaOf(raw) <= 0.02) {
+						if (missing) again = true;
+						else el.__lgRecheck = 0;
+						return;
+					}
+					if (recheck) {
+						/* 基准是「页面初始化过程中的中间态」时（比如岛还没进
+						   wallpaper 透明模式，量到的是 0.88 那种实底），
+						   透底结果会停在偏实的 0.32 而不是 0.198。
+						   复读几次，一变就按新基准重算。 */
+						el.__lgRecheck--;
+						if (Math.abs(alphaOf(raw) - alphaOf(el.__lgBaseBg)) <= 0.04) {
+							if (el.__lgRecheck > 0) again = true;
+							return;
+						}
+					}
+					el.__lgBaseBg = raw;
+					var tintedLate =
+						"color-mix(in oklch, " + raw + " " + Math.round(tint * 100) + "%, transparent)";
+					el.style.setProperty("background-color", tintedLate, "important");
+					el.style.setProperty("--lg-tint-bg", tintedLate);
+					el.__lgTinted = true;
+					el.__lgNeedTint = 0;
+					el.__lgRecheck = 0;
+				});
+				if (again) tintSweep();
+				else tintPump = 0;
+			}, 220);
+		}
+
+		/* ================= 还没显形的点名目标：一露头就补玻璃 =================
+		   典型是文章面板（.ai-float-island）：它在 SSR 里就是
+		   visibility:hidden，引擎首屏扫到它时只能跳过；而它只会在用户
+		   点「文章」时才显形 —— 没有人会在这时候再喊一次引擎，所以
+		   面板一直是纯 CSS 的那层白底（用户原话：「你自己看看展开是什么
+		   什么东西」）。
+		   这里给这类目标挂一个只盯显隐的 MutationObserver，一显形立刻
+		   补上玻璃并自摘观察者；找不到就保留到页面卸载（最多几十个节点）。 */
+		var revealWatch = new Map();
+		function watchReveal(el, cfg) {
+			if (revealWatch.has(el) || !window.MutationObserver || !el.isConnected) return;
+			var mo = new MutationObserver(function () {
+				if (!isReadyTarget(el, cfg)) return;
+				mo.disconnect();
+				revealWatch.delete(el);
+				applyGlass(el, cfg);
+			});
+			mo.observe(el, { attributes: true, attributeFilter: ["class", "style"] });
+			revealWatch.set(el, mo);
+		}
+
+		function run() {
+			scheduled = false;
+			if (!d.body) return;
+			/* 液态玻璃是 **ProMax 独占**：
+			   · 精简版本来就没什么动效，不该有折射；
+			   · 正常版是「图形原样」档，导航岛只需要那枚 CSS 高亮带，
+			     不需要引擎接管 backdrop-filter（用户明确要求：
+			     「正常版的岛不需要液态玻璃，只有 promax 的才有」）。
+			   不在 promax 时就保持「引擎没来过」的状态。 */
+			if (!d.body.classList.contains("site-promax")) {
+				revertAll();
+				/* 版本门里的类可能比本脚本晚一丁点挂上（首屏竞态），
+				   有界重试几次；之后靠 siteversionchange 事件唤醒。 */
+				if (bootRetry < 4) {
+					bootRetry++;
+					setTimeout(function () {
+						schedule(20);
+					}, 300);
+				}
+				return;
+			}
+			bootRetry = 0;
+			var items = collect();
+			var near = [];
+			var far = [];
+			items.forEach(function (it) {
+				(inView(it.el) ? near : far).push(it);
+			});
+			var pending = 0;
+			near.forEach(function (it) {
+				var ok = applyGlass(it.el, it.cfg);
+				if (it.prio !== 0) return;
+				if (ok) return;
+				/* 点名目标这一轮没上成，分两种：
+				   · 已经可见、只是还没长开 → 交给 settleRun 有界重跑
+				   · 还没显形（display:none / visibility:hidden / opacity:0）→
+				     挂一个显隐观察者，它露头的那一刻直接补上（文章面板就是这种） */
+				if (isReadyTarget(it.el, it.cfg)) pending++;
+				else watchReveal(it.el, it.cfg);
+			});
+			watchNavbar();
+			if (window.IntersectionObserver && far.length) {
+				ensureIO();
+				far.forEach(function (it) {
+					/* 只为「还没上玻璃」的元素注册监听 */
+					if (!it.el.__lgOn && !watchers.has(it.el)) {
+						watchers.set(it.el, { cfg: it.cfg, ro: null, timer: 0 });
+						io.observe(it.el);
+					}
+				});
+			}
+			if (pending > 0) settleRun();
+			else runRetry = 0;
+		}
+
+		function schedule(delay) {
+			if (scheduled) return;
+			scheduled = true;
+			/* 早先用的是 requestIdleCallback（超时 900ms）—— 首屏一堆远程壁纸
+			   在加载时它可能被推迟得很久，表现就是「进友链 / 关于我，导航岛
+			   还是一块白底、高亮也没就位」。改成固定 60ms 的定时器：
+			   代价是可能落在一次布局中途，但那时不达标的元素会被
+			   settleRun / watchReveal / tintSweep 补上，正确性不再依赖时机。 */
+			setTimeout(function () {
+				run();
+			}, delay || 60);
+		}
+
+		/* ================= 文章岛分裂态特例 =================
+		   点「文章」时站点会把导航岛的玻璃整块摘掉（改由左右两枚胶囊接管），
+		   用的是 backdrop-filter: none !important。我们的内联 !important 权重更高，
+		   不特殊处理的话岛中间会残留一条折射带。所以分裂期间主动撤掉、收回来再补上。 */
+		var FRAME_CFG = PRESETS[0];
+		var frameCfgBackup = null;
+		var navMO = null;
+
+		function guardNavbarSplit() {
+			var nav = d.getElementById("navbar");
+			if (!nav) return;
+			var frame = nav.querySelector(":scope > div");
+			if (!frame) return;
+			if (nav.classList.contains("ai-island-split")) {
+				if (frame.__lgOn) frameCfgBackup = frame.__lgOn.cfg;
+				frame.setAttribute("data-lg-skip", "");
+				if (frame.__lgOn) revertGlass(frame);
+			} else if (frame.getAttribute("data-lg-skip") !== null) {
+				frame.removeAttribute("data-lg-skip");
+				var cfg = frameCfgBackup || FRAME_CFG;
+				frameCfgBackup = null;
+				applyGlass(frame, cfg);
+			}
+		}
+
+		function watchNavbar() {
+			if (navMO) return;
+			var nav = d.getElementById("navbar");
+			if (!nav || !window.MutationObserver) return;
+			navMO = new MutationObserver(guardNavbarSplit);
+			navMO.observe(nav, { attributes: true, attributeFilter: ["class"] });
+		}
+
+		/* ================= 生命周期 ================= */
+		/* 亮/暗主题切换必须整块重来：
+		   tint 读的是「当下算出来的底色」，还会内联写死。主题一换，
+		   亮色那层白纱就被锁在暗色主题里了（导航岛会白得离谱）。
+		   只盯 <html> 的 class / data-theme，并且只在**真的换主题**时重建，
+		   免得被 is-page-transitioning 之类的无关 class 变化带得频繁重算。 */
+		function isDarkNow() {
+			var html = d.documentElement;
+			return html.classList.contains("dark") || html.getAttribute("data-theme") === "dark"
+				? 1
+				: 0;
+		}
+		var lastDark = isDarkNow();
+		if (window.MutationObserver) {
+			new MutationObserver(function () {
+				var now = isDarkNow();
+				if (now === lastDark) return;
+				lastDark = now;
+				revertAll();
+				schedule(40);
+			}).observe(d.documentElement, {
+				attributes: true,
+				attributeFilter: ["class", "data-theme", "style"],
+			});
+		}
+		try {
+			var colorMQ = window.matchMedia("(prefers-color-scheme: dark)");
+			var onScheme = function () {
+				revertAll();
+				schedule(40);
+			};
+			if (colorMQ.addEventListener) colorMQ.addEventListener("change", onScheme);
+			else if (colorMQ.addListener) colorMQ.addListener(onScheme);
+		} catch (e) {}
+
+		var lastW = window.innerWidth;
+		var rtimer = 0;
+		window.addEventListener(
+			"resize",
+			function () {
+				/* 只有宽度变化才需要重建（高度变化一般是地址栏收放） */
+				if (Math.abs(window.innerWidth - lastW) < 12) return;
+				lastW = window.innerWidth;
+				if (rtimer) clearTimeout(rtimer);
+				rtimer = setTimeout(function () {
+					revertAll();
+					schedule();
+				}, 320);
+			},
+			{ passive: true },
+		);
+
+		/* swup / astro 切页：新节点要补上 */
+		["swup:contentReplaced", "astro:page-load", "swup:pageView"].forEach(function (ev) {
+			d.addEventListener(ev, function () {
+				schedule(200);
+			});
+		});
+		d.addEventListener("siteversionchange", function () {
+			revertAll();
+			schedule(60);
+		});
+		window.addEventListener("load", function () {
+			schedule(300);
+		});
+
+		window.__liquidGlass = {
+			run: run,
+			reset: function () {
+				revertAll();
+				schedule(30);
+			},
+			stats: function () {
+				return {
+					applied: applied.length,
+					maps: Object.keys(cache).length,
+					el: applied.slice(),
+				};
+			},
+			/* 外部组件手动注册一块玻璃 —— 手动指定的一律开 force。
+			   同样受版本门限制：非 ProMax 直接拒绝（导航高亮那边会据此停止重试）。 */
+			register: function (el, cfg) {
+				if (!d.body || !d.body.classList.contains("site-promax")) return false;
+				var c = cfg || AUTO_CFG;
+				if (!c.force) {
+					c = {
+						band: c.band,
+						strength: c.strength,
+						blur: c.blur,
+						sat: c.sat,
+						tint: c.tint,
+						rim: c.rim,
+						nest: c.nest,
+						sel: c.sel,
+						force: true,
+					};
+				}
+				return applyGlass(el, c);
+			},
+			unregister: function (el) {
+				revertGlass(el);
+			},
+			rebuild: function (el) {
+				var info = el.__lgOn;
+				var cfg = info ? info.cfg : AUTO_CFG;
+				if (info) revertGlass(el);
+				return applyGlass(el, cfg);
+			},
+		};
+		try {
+			d.dispatchEvent(new CustomEvent("liquidglass:ready"));
+		} catch (e) {}
+
+		schedule(80);
+		if (d.readyState === "loading") {
+			d.addEventListener("DOMContentLoaded", function () {
+				schedule(140);
+			});
+		}
+	})();
+</script>

@@ -1,0 +1,486 @@
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProxy environment variables detected. We'll use your proxy for fetch requests.[0m
+
+
+(node:6324) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2m05:54:21[22m [34m[content][39m Syncing content
+[2m05:54:22[22m [34m[content][39m Synced content
+[2m05:54:22[22m [34m[types][39m Generated [2m1.27s[22m
+[2m05:54:22[22m [34m[check][39m Getting diagnostics for Astro files in E:\NanLuo321.github.io-main...
+[96msrc/components/RainEffect.astro[0m:[93m175[0m:[93m47[0m - [93mwarning[0m[90m ts(2568): [0mProperty 'webkitAudioContext' may not exist on type 'Window & typeof globalThis'. Did you mean 'AudioContext'?
+
+[7m175[0m      const AC = window.AudioContext || window.webkitAudioContext;
+[7m   [0m [93m                                              ~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/components/features/RainformWeather.astro[0m:[93m1043[0m:[93m24[0m - [93mwarning[0m[90m ts(6385): [0m'webkitUserSelect' is deprecated.
+
+[7m1043[0m    document.body.style.webkitUserSelect = "";
+[7m    [0m [93m                       ~~~~~~~~~~~~~~~~[0m
+[96msrc/components/features/RainformWeather.astro[0m:[93m1019[0m:[93m24[0m - [93mwarning[0m[90m ts(6385): [0m'webkitUserSelect' is deprecated.
+
+[7m1019[0m    document.body.style.webkitUserSelect = "none";
+[7m    [0m [93m                       ~~~~~~~~~~~~~~~~[0m
+[96msrc/components/features/RainformWeather.astro[0m:[93m540[0m:[93m11[0m - [93mwarning[0m[90m ts(6133): [0m'isSnowCode' is declared but its value is never read.
+
+[7m540[0m  function isSnowCode(code) {
+[7m   [0m [93m          ~~~~~~~~~~[0m
+
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m20[0m:[93m7[0m - [93mwarning[0m[90m ts(6133): [0m'triggerFinalHref' is declared but its value is never read.
+
+[7m20[0m const triggerFinalHref = url(triggerHref);
+[7m  [0m [93m      ~~~~~~~~~~~~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1821[0m:[93m53[0m - [91merror[0m[90m ts(2339): [0mProperty 'type' does not exist on type 'PerformanceEntry'.
+
+[7m1821[0m    if (navEntries && navEntries[0] && navEntries[0].type === "reload") {
+[7m    [0m [91m                                                    ~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1464[0m:[93m25[0m - [91merror[0m[90m ts(2345): [0mArgument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.
+  Type 'null' is not assignable to type 'HTMLElement'.
+
+[7m1464[0m     setIslandEdgeBorder(panel, false);
+[7m    [0m [91m                        ~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1463[0m:[93m5[0m - [91merror[0m[90m ts(18047): [0m'panel' is possibly 'null'.
+
+[7m1463[0m     panel.style.setProperty("--ai-glass-top", `${band}px`);
+[7m    [0m [91m    ~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1399[0m:[93m5[0m - [91merror[0m[90m ts(18047): [0m'panel' is possibly 'null'.
+
+[7m1399[0m     panel.style.setProperty("-webkit-backdrop-filter", snap.filter);
+[7m    [0m [91m    ~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1398[0m:[93m5[0m - [91merror[0m[90m ts(18047): [0m'panel' is possibly 'null'.
+
+[7m1398[0m     panel.style.backdropFilter = snap.filter;
+[7m    [0m [91m    ~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1395[0m:[93m5[0m - [91merror[0m[90m ts(18047): [0m'panel' is possibly 'null'.
+
+[7m1395[0m     panel.style.removeProperty("box-shadow");
+[7m    [0m [91m    ~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1390[0m:[93m5[0m - [91merror[0m[90m ts(18047): [0m'panel' is possibly 'null'.
+
+[7m1390[0m     panel.style.setProperty(
+[7m    [0m [91m    ~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1386[0m:[93m5[0m - [91merror[0m[90m ts(18047): [0m'panel' is possibly 'null'.
+
+[7m1386[0m     panel.style.setProperty(
+[7m    [0m [91m    ~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1384[0m:[93m25[0m - [91merror[0m[90m ts(2345): [0mArgument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.
+  Type 'null' is not assignable to type 'HTMLElement'.
+
+[7m1384[0m     setIslandEdgeBorder(panel, true);
+[7m    [0m [91m                        ~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1383[0m:[93m5[0m - [91merror[0m[90m ts(18047): [0m'panel' is possibly 'null'.
+
+[7m1383[0m     panel.style.setProperty("--ai-glass-top", "0px");
+[7m    [0m [91m    ~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m1096[0m:[93m8[0m - [91merror[0m[90m ts(2339): [0mProperty 'style' does not exist on type 'Element'.
+
+[7m1096[0m   nav?.style.removeProperty("transition");
+[7m    [0m [91m       ~~~~~[0m
+[96msrc/components/layout/ArticleIsland.astro[0m:[93m988[0m:[93m8[0m - [93mwarning[0m[90m ts(6133): [0m'PANEL_RADIUS' is declared but its value is never read.
+
+[7m988[0m  const PANEL_RADIUS = "0 0 24px 24px"; // 展开态（未分裂：顶边藏在岛里）
+[7m   [0m [93m       ~~~~~~~~~~~~[0m
+
+[96msrc/components/layout/DropdownMenu.astro[0m:[93m257[0m:[93m62[0m - [93mwarning[0m[90m ts(6133): [0m'menu' is declared but its value is never read.
+
+[7m257[0m  function closeDropdown(dropdown: Element, trigger: Element, menu: Element) {
+[7m   [0m [93m                                                             ~~~~[0m
+[96msrc/components/layout/DropdownMenu.astro[0m:[93m252[0m:[93m61[0m - [93mwarning[0m[90m ts(6133): [0m'menu' is declared but its value is never read.
+
+[7m252[0m  function openDropdown(dropdown: Element, trigger: Element, menu: Element) {
+[7m   [0m [93m                                                            ~~~~[0m
+
+[96msrc/components/layout/Navbar.astro[0m:[93m409[0m:[93m13[0m - [91merror[0m[90m ts(18047): [0m'pill' is possibly 'null'.
+
+[7m409[0m             pill.classList.remove('is-active');
+[7m   [0m [91m            ~~~~[0m
+
+[96msrc/layouts/Layout.astro[0m:[93m3372[0m:[93m15[0m - [91merror[0m[90m ts(18047): [0m'loader' is possibly 'null'.
+
+[7m3372[0m               loader.style.opacity = flashCount % 2 === 0 ? "0.3" : "1";
+[7m    [0m [91m              ~~~~~~[0m
+[96msrc/layouts/Layout.astro[0m:[93m3364[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'progressBar' is possibly 'null'.
+
+[7m3364[0m           progressBar.classList.add("error");
+[7m    [0m [91m          ~~~~~~~~~~~[0m
+[96msrc/layouts/Layout.astro[0m:[93m3363[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'progressNumber' is possibly 'null'.
+
+[7m3363[0m           progressNumber.classList.add("error");
+[7m    [0m [91m          ~~~~~~~~~~~~~~[0m
+[96msrc/layouts/Layout.astro[0m:[93m3362[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'progressBar' is possibly 'null'.
+
+[7m3362[0m           progressBar.style.width = "36%";
+[7m    [0m [91m          ~~~~~~~~~~~[0m
+[96msrc/layouts/Layout.astro[0m:[93m3361[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'progressNumber' is possibly 'null'.
+
+[7m3361[0m           progressNumber.textContent = "36";
+[7m    [0m [91m          ~~~~~~~~~~~~~~[0m
+[96msrc/layouts/Layout.astro[0m:[93m3349[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'progressBar' is possibly 'null'.
+
+[7m3349[0m           progressBar.style.width = progress + "%";
+[7m    [0m [91m          ~~~~~~~~~~~[0m
+[96msrc/layouts/Layout.astro[0m:[93m3348[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'progressNumber' is possibly 'null'.
+
+[7m3348[0m           progressNumber.textContent = String(progress);
+[7m    [0m [91m          ~~~~~~~~~~~~~~[0m
+
+[96msrc/pages/contact.astro[0m:[93m26[0m:[93m798[0m - [93mwarning[0m[90m ts(6387): [0mThe signature '(commandId: string, showUI?: boolean | undefined, value?: string | undefined): boolean' of 'document.execCommand' is deprecated.
+
+[7m26[0m                 <a href="javascript:void(0)" onclick="(function(){var e='NanLuo111@outlook.com';if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(e).then(function(){var t=document.createElement('span');t.textContent='已复制!';t.style.cssText='position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:4px 12px;border-radius:6px;font-size:14px;white-space:nowrap;pointer-events:none;opacity:1;transition:opacity 0.3s;z-index:99;';this.style.position='relative';this.appendChild(t);setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove()},300)},1500)}.bind(this)).catch(function(){})}else{var ta=document.createElement('textarea');ta.value=e;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(err){}document.body.removeChild(ta)}return false}).call(this)"
+[7m  [0m [93m                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ~~~~~~~~~~~[0m
+
+[96msrc/pages/friends.astro[0m:[93m2[0m:[93m10[0m - [93mwarning[0m[90m ts(6133): [0m'getCollection' is declared but its value is never read.
+
+[7m2[0m import { getCollection, getEntry, render } from "astro:content";
+[7m [0m [93m         ~~~~~~~~~~~~~[0m
+
+[96msrc/pages/pi.astro[0m:[93m694[0m:[93m50[0m - [91merror[0m[90m ts(2322): [0mType '{ children: any[]; class: string; id: string; title: string; viewBox: string; xmlns: string; style: string; }' is not assignable to type 'SVGAttributes'.
+  Property 'title' does not exist on type 'SVGAttributes'.
+
+[7m694[0m         <svg class="no-signal-icon" id="tvIcon1" title="点我开启摄像头" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" style="width:3rem;height:3rem;">
+[7m   [0m [91m                                                 ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m723[0m:[93m89[0m - [93mwarning[0m[90m ts(6385): [0m'event' is deprecated.
+
+[7m723[0m       <div class="monitor-record-dot" id="monitorDot2" title="点我？" onclick="showWhoText(event, false)"></div>
+[7m   [0m [93m                                                                                        ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m718[0m:[93m65[0m - [93mwarning[0m[90m ts(6385): [0m'event' is deprecated.
+
+[7m718[0m         <div class="monitor-dot-btn close" onclick="showWhoText(event, true)"></div>
+[7m   [0m [93m                                                                ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m690[0m:[93m89[0m - [93mwarning[0m[90m ts(6385): [0m'event' is deprecated.
+
+[7m690[0m       <div class="monitor-record-dot" id="monitorDot1" title="点我？" onclick="showWhoText(event, false)"></div>
+[7m   [0m [93m                                                                                        ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m685[0m:[93m65[0m - [93mwarning[0m[90m ts(6385): [0m'event' is deprecated.
+
+[7m685[0m         <div class="monitor-dot-btn close" onclick="showWhoText(event, true)"></div>
+[7m   [0m [93m                                                                ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1210[0m:[93m40[0m - [91merror[0m[90m ts(2339): [0mProperty 'startHorror' does not exist on type 'Window & typeof globalThis'.
+
+[7m1210[0m         if (window.startHorror) window.startHorror();
+[7m    [0m [91m                                       ~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1210[0m:[93m20[0m - [91merror[0m[90m ts(2339): [0mProperty 'startHorror' does not exist on type 'Window & typeof globalThis'.
+
+[7m1210[0m         if (window.startHorror) window.startHorror();
+[7m    [0m [91m                   ~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1208[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'warning' is possibly 'null'.
+
+[7m1208[0m           warning.style.display = 'none';
+[7m    [0m [91m          ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1206[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'warning' is possibly 'null'.
+
+[7m1206[0m         warning.style.opacity = '0';
+[7m    [0m [91m        ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1205[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'warning' is possibly 'null'.
+
+[7m1205[0m         warning.style.transition = 'opacity 0.4s ease';
+[7m    [0m [91m        ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1165[0m:[93m48[0m - [91merror[0m[90m ts(2551): [0mProperty 'webkitAudioContext' does not exist on type 'Window & typeof globalThis'. Did you mean 'AudioContext'?
+
+[7m1165[0m         var AC = window.AudioContext || window.webkitAudioContext;
+[7m    [0m [91m                                               ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1157[0m:[93m35[0m - [91merror[0m[90m ts(18047): [0m'ghost' is possibly 'null'.
+
+[7m1157[0m           setTimeout(function() { ghost.classList.remove('show'); }, 130 + Math.random() * 180);
+[7m    [0m [91m                                  ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1156[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'ghost' is possibly 'null'.
+
+[7m1156[0m           ghost.classList.add('show');
+[7m    [0m [91m          ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1155[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'ghost' is possibly 'null'.
+
+[7m1155[0m           ghost.style.transform = 'scale(' + scale + ')';
+[7m    [0m [91m          ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1154[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'ghost' is possibly 'null'.
+
+[7m1154[0m           ghost.style.top = y + '%';
+[7m    [0m [91m          ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1153[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'ghost' is possibly 'null'.
+
+[7m1153[0m           ghost.style.left = x + '%';
+[7m    [0m [91m          ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1140[0m:[93m35[0m - [91merror[0m[90m ts(18047): [0m'flash' is possibly 'null'.
+
+[7m1140[0m           setTimeout(function() { flash.classList.remove('flash'); }, 65);
+[7m    [0m [91m                                  ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1139[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'flash' is possibly 'null'.
+
+[7m1139[0m           flash.classList.add('flash');
+[7m    [0m [91m          ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1128[0m:[93m37[0m - [91merror[0m[90m ts(18047): [0m'vig' is possibly 'null'.
+
+[7m1128[0m             setTimeout(function() { vig.classList.remove('beat'); }, 170);
+[7m    [0m [91m                                    ~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1127[0m:[93m13[0m - [91merror[0m[90m ts(18047): [0m'vig' is possibly 'null'.
+
+[7m1127[0m             vig.classList.add('beat');
+[7m    [0m [91m            ~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1125[0m:[93m35[0m - [91merror[0m[90m ts(18047): [0m'vig' is possibly 'null'.
+
+[7m1125[0m           setTimeout(function() { vig.classList.remove('beat'); }, 170);
+[7m    [0m [91m                                  ~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1124[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'vig' is possibly 'null'.
+
+[7m1124[0m           vig.classList.add('beat');
+[7m    [0m [91m          ~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1106[0m:[93m11[0m - [91merror[0m[90m ts(7005): [0mVariable 'eyes' implicitly has an 'any[]' type.
+
+[7m1106[0m           eyes.forEach(function(item) {
+[7m    [0m [91m          ~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1099[0m:[93m11[0m - [91merror[0m[90m ts(18047): [0m'eyesLayer' is possibly 'null'.
+
+[7m1099[0m           eyesLayer.appendChild(eye);
+[7m    [0m [91m          ~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1090[0m:[93m13[0m - [91merror[0m[90m ts(7034): [0mVariable 'eyes' implicitly has type 'any[]' in some locations where its type cannot be determined.
+
+[7m1090[0m         var eyes = [];
+[7m    [0m [91m            ~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1079[0m:[93m12[0m - [91merror[0m[90m ts(2339): [0mProperty 'startHorror' does not exist on type 'Window & typeof globalThis'.
+
+[7m1079[0m     window.startHorror = function() {
+[7m    [0m [91m           ~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1074[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'layer' is possibly 'null'.
+
+[7m1074[0m         layer.innerHTML = '';
+[7m    [0m [91m        ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1073[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'layer' is possibly 'null'.
+
+[7m1073[0m         layer.style.background = '';
+[7m    [0m [91m        ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1072[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'layer' is possibly 'null'.
+
+[7m1072[0m         layer.style.transition = '';
+[7m    [0m [91m        ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1071[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'layer' is possibly 'null'.
+
+[7m1071[0m         layer.style.opacity = '';
+[7m    [0m [91m        ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1070[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'layer' is possibly 'null'.
+
+[7m1070[0m         layer.style.display = 'none';
+[7m    [0m [91m        ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1067[0m:[93m11[0m - [91merror[0m[90m ts(7005): [0mVariable 'whoAutoHideTimer' implicitly has an 'any' type.
+
+[7m1067[0m       if (whoAutoHideTimer) clearTimeout(whoAutoHideTimer);
+[7m    [0m [91m          ~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1061[0m:[93m13[0m - [91merror[0m[90m ts(18047): [0m'layer' is possibly 'null'.
+
+[7m1061[0m             layer.appendChild(text);
+[7m    [0m [91m            ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1015[0m:[93m38[0m - [91merror[0m[90m ts(7006): [0mParameter 'isClose' implicitly has an 'any' type.
+
+[7m1015[0m     window.showWhoText = function(e, isClose) {
+[7m    [0m [91m                                     ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1015[0m:[93m35[0m - [91merror[0m[90m ts(7006): [0mParameter 'e' implicitly has an 'any' type.
+
+[7m1015[0m     window.showWhoText = function(e, isClose) {
+[7m    [0m [91m                                  ~[0m
+[96msrc/pages/pi.astro[0m:[93m1015[0m:[93m12[0m - [91merror[0m[90m ts(2339): [0mProperty 'showWhoText' does not exist on type 'Window & typeof globalThis'.
+
+[7m1015[0m     window.showWhoText = function(e, isClose) {
+[7m    [0m [91m           ~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m1013[0m:[93m9[0m - [91merror[0m[90m ts(7034): [0mVariable 'whoAutoHideTimer' implicitly has type 'any' in some locations where its type cannot be determined.
+
+[7m1013[0m     var whoAutoHideTimer = null;
+[7m    [0m [91m        ~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m993[0m:[93m13[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m993[0m             backBtn.style.transition = 'all 0.3s ease';
+[7m   [0m [91m            ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m992[0m:[93m13[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m992[0m             backBtn.style.borderColor = '#ff006e';
+[7m   [0m [91m            ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m991[0m:[93m13[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m991[0m             backBtn.style.color = '#ff006e';
+[7m   [0m [91m            ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m990[0m:[93m13[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m990[0m             backBtn.textContent = '你不应该在这里';
+[7m   [0m [91m            ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m986[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m986[0m         backBtn.style.bottom = 'auto';
+[7m   [0m [91m        ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m985[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m985[0m         backBtn.style.transform = 'none';
+[7m   [0m [91m        ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m984[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m984[0m         backBtn.style.top = currentY + 'px';
+[7m   [0m [91m        ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m983[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m983[0m         backBtn.style.left = currentX + 'px';
+[7m   [0m [91m        ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m982[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m982[0m         backBtn.style.transition = 'left 0.2s ease-out, top 0.2s ease-out, color 0.3s, border-color 0.3s, box-shadow 0.3s';
+[7m   [0m [91m        ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m959[0m:[93m25[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m959[0m         const btnRect = backBtn.getBoundingClientRect();
+[7m   [0m [91m                        ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m944[0m:[93m22[0m - [91merror[0m[90m ts(18047): [0m'backBtn' is possibly 'null'.
+
+[7m944[0m         const rect = backBtn.getBoundingClientRect();
+[7m   [0m [91m                     ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m911[0m:[93m14[0m - [91merror[0m[90m ts(7005): [0mVariable 'dragTarget' implicitly has an 'any' type.
+
+[7m911[0m         if (!dragTarget) return;
+[7m   [0m [91m             ~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m906[0m:[93m22[0m - [91merror[0m[90m ts(2322): [0mType 'number' is not assignable to type 'string'.
+
+[7m906[0m           if (other) other.style.zIndex = 200;
+[7m   [0m [91m                     ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m904[0m:[93m11[0m - [91merror[0m[90m ts(2322): [0mType 'number' is not assignable to type 'string'.
+
+[7m904[0m           dragTarget.style.zIndex = 300;
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m899[0m:[93m27[0m - [91merror[0m[90m ts(2339): [0mProperty 'touches' does not exist on type 'Event'.
+
+[7m899[0m           const touch = e.touches[0];
+[7m   [0m [91m                          ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m896[0m:[93m48[0m - [91merror[0m[90m ts(2345): [0mArgument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+
+[7m896[0m           dragTarget = document.getElementById(winId);
+[7m   [0m [91m                                               ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m893[0m:[93m24[0m - [91merror[0m[90m ts(2339): [0mProperty 'closest' does not exist on type 'EventTarget'.
+
+[7m893[0m           if (e.target.closest('.monitor-dots')) return;
+[7m   [0m [91m                       ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m893[0m:[93m15[0m - [91merror[0m[90m ts(18047): [0m'e.target' is possibly 'null'.
+
+[7m893[0m           if (e.target.closest('.monitor-dots')) return;
+[7m   [0m [91m              ~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m892[0m:[93m24[0m - [91merror[0m[90m ts(2339): [0mProperty 'classList' does not exist on type 'EventTarget'.
+
+[7m892[0m           if (e.target.classList.contains('monitor-record-dot')) return;
+[7m   [0m [91m                       ~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m892[0m:[93m15[0m - [91merror[0m[90m ts(18047): [0m'e.target' is possibly 'null'.
+
+[7m892[0m           if (e.target.classList.contains('monitor-record-dot')) return;
+[7m   [0m [91m              ~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m868[0m:[93m14[0m - [91merror[0m[90m ts(7005): [0mVariable 'dragTarget' implicitly has an 'any' type.
+
+[7m868[0m         if (!dragTarget) return;
+[7m   [0m [91m             ~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m861[0m:[93m22[0m - [91merror[0m[90m ts(2322): [0mType 'number' is not assignable to type 'string'.
+
+[7m861[0m           if (other) other.style.zIndex = 200;
+[7m   [0m [91m                     ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m859[0m:[93m11[0m - [91merror[0m[90m ts(2322): [0mType 'number' is not assignable to type 'string'.
+
+[7m859[0m           dragTarget.style.zIndex = 300;
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m856[0m:[93m23[0m - [91merror[0m[90m ts(2339): [0mProperty 'clientY' does not exist on type 'Event'.
+
+[7m856[0m           offsetY = e.clientY - rect.top;
+[7m   [0m [91m                      ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m855[0m:[93m23[0m - [91merror[0m[90m ts(2339): [0mProperty 'clientX' does not exist on type 'Event'.
+
+[7m855[0m           offsetX = e.clientX - rect.left;
+[7m   [0m [91m                      ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m851[0m:[93m48[0m - [91merror[0m[90m ts(2345): [0mArgument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+
+[7m851[0m           dragTarget = document.getElementById(winId);
+[7m   [0m [91m                                               ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m848[0m:[93m24[0m - [91merror[0m[90m ts(2339): [0mProperty 'closest' does not exist on type 'EventTarget'.
+
+[7m848[0m           if (e.target.closest('.monitor-dots')) return;
+[7m   [0m [91m                       ~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m848[0m:[93m15[0m - [91merror[0m[90m ts(18047): [0m'e.target' is possibly 'null'.
+
+[7m848[0m           if (e.target.closest('.monitor-dots')) return;
+[7m   [0m [91m              ~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m847[0m:[93m24[0m - [91merror[0m[90m ts(2339): [0mProperty 'classList' does not exist on type 'EventTarget'.
+
+[7m847[0m           if (e.target.classList.contains('monitor-record-dot')) return;
+[7m   [0m [91m                       ~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m847[0m:[93m15[0m - [91merror[0m[90m ts(18047): [0m'e.target' is possibly 'null'.
+
+[7m847[0m           if (e.target.classList.contains('monitor-record-dot')) return;
+[7m   [0m [91m              ~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m840[0m:[93m11[0m - [91merror[0m[90m ts(7034): [0mVariable 'dragTarget' implicitly has type 'any' in some locations where its type cannot be determined.
+
+[7m840[0m       let dragTarget = null;
+[7m   [0m [91m          ~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m827[0m:[93m30[0m - [91merror[0m[90m ts(2339): [0mProperty 'srcObject' does not exist on type 'HTMLElement'.
+
+[7m827[0m             if (video) video.srcObject = stream;
+[7m   [0m [91m                             ~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m784[0m:[93m26[0m - [91merror[0m[90m ts(2339): [0mProperty 'height' does not exist on type 'HTMLElement'.
+
+[7m784[0m         const h = canvas.height;
+[7m   [0m [91m                         ~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m784[0m:[93m19[0m - [91merror[0m[90m ts(18047): [0m'canvas' is possibly 'null'.
+
+[7m784[0m         const h = canvas.height;
+[7m   [0m [91m                  ~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m783[0m:[93m26[0m - [91merror[0m[90m ts(2339): [0mProperty 'width' does not exist on type 'HTMLElement'.
+
+[7m783[0m         const w = canvas.width;
+[7m   [0m [91m                         ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m783[0m:[93m19[0m - [91merror[0m[90m ts(18047): [0m'canvas' is possibly 'null'.
+
+[7m783[0m         const w = canvas.width;
+[7m   [0m [91m                  ~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m777[0m:[93m25[0m - [91merror[0m[90m ts(18047): [0m'canvas' is possibly 'null'.
+
+[7m777[0m         canvas.height = canvas.offsetHeight;
+[7m   [0m [91m                        ~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m777[0m:[93m16[0m - [91merror[0m[90m ts(2339): [0mProperty 'height' does not exist on type 'HTMLElement'.
+
+[7m777[0m         canvas.height = canvas.offsetHeight;
+[7m   [0m [91m               ~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m777[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'canvas' is possibly 'null'.
+
+[7m777[0m         canvas.height = canvas.offsetHeight;
+[7m   [0m [91m        ~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m776[0m:[93m24[0m - [91merror[0m[90m ts(18047): [0m'canvas' is possibly 'null'.
+
+[7m776[0m         canvas.width = canvas.offsetWidth;
+[7m   [0m [91m                       ~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m776[0m:[93m16[0m - [91merror[0m[90m ts(2339): [0mProperty 'width' does not exist on type 'HTMLElement'.
+
+[7m776[0m         canvas.width = canvas.offsetWidth;
+[7m   [0m [91m               ~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m776[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'canvas' is possibly 'null'.
+
+[7m776[0m         canvas.width = canvas.offsetWidth;
+[7m   [0m [91m        ~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m773[0m:[93m26[0m - [91merror[0m[90m ts(2339): [0mProperty 'getContext' does not exist on type 'HTMLElement'.
+
+[7m773[0m       const ctx = canvas.getContext('2d');
+[7m   [0m [91m                         ~~~~~~~~~~[0m
+[96msrc/pages/pi.astro[0m:[93m807[0m:[93m11[0m - [93mwarning[0m[90m ts(6133): [0m'camStream' is declared but its value is never read.
+
+[7m807[0m       var camStream = null;
+[7m   [0m [93m          ~~~~~~~~~[0m
+
+[96msrc/pages/series.astro[0m:[93m8[0m:[93m33[0m - [91merror[0m[90m ts(2551): [0mProperty 'publish' does not exist on type '{ title: string; published: Date; draft: boolean; description: string; image: string; tags: string[]; category: string | null; lang: string; pinned: boolean; author: string; sourceLink: string; ... 9 more ...; updated?: Date | undefined; }'. Did you mean 'published'?
+
+[7m8[0m  (p) => !p.data.draft && p.data.publish !== false
+[7m [0m [91m                                ~~~~~~~[0m
+
+[96msrc/utils/setting-utils.ts[0m:[93m879[0m:[93m10[0m - [93mwarning[0m[90m ts(6133): [0m'isFullscreenHome' is declared but its value is never read.
+
+[7m879[0m    const isFullscreenHome = checkIsHomePage(window.location.pathname);
+[7m   [0m [93m         ~~~~~~~~~~~~~~~~[0m
+[96msrc/utils/setting-utils.ts[0m:[93m878[0m:[93m10[0m - [93mwarning[0m[90m ts(6133): [0m'isFullscreenMobile' is declared but its value is never read.
+
+[7m878[0m    const isFullscreenMobile = window.innerWidth < 1024;
+[7m   [0m [93m         ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/utils/setting-utils.ts[0m:[93m622[0m:[93m8[0m - [93mwarning[0m[90m ts(6133): [0m'isMobile' is declared but its value is never read.
+
+[7m622[0m  const isMobile = window.innerWidth < 1024;
+[7m   [0m [93m       ~~~~~~~~[0m
+
+Result (201 files): 
+- 96 errors
+- 0 warnings
+- 18 hints
+

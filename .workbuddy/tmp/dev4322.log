@@ -1,0 +1,11 @@
+Another astro dev server is already running.
+
+  URL:  http://localhost:4321
+  PID:  4196
+
+Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
+  [1mLocation:[22m
+    [4mE:\NanLuo321.github.io-main\node_modules\.pnpm\astro@7.1.3_@astrojs+markdown-remark@7.2.1_@emnapi+core@1.11.1_@emnapi+runtime@1.11.1_@types+_c3xdaund4wenpxoh56wdpnxvxq\node_modules\astro\dist\cli\dev\index.js:153:13[24m
+  [1mStack trace:[22m
+[2m    at dev (file:///E:/NanLuo321.github.io-main/node_modules/.pnpm/astro@7.1.3_@astrojs+markdown-remark@7.2.1_@emnapi+core@1.11.1_@emnapi+runtime@1.11.1_@types+_c3xdaund4wenpxoh56wdpnxvxq/node_modules/astro/dist/cli/dev/index.js:153:13)
+    at async cli (file:///E:/NanLuo321.github.io-main/node_modules/.pnpm/astro@7.1.3_@astrojs+markdown-remark@7.2.1_@emnapi+core@1.11.1_@emnapi+runtime@1.11.1_@types+_c3xdaund4wenpxoh56wdpnxvxq/node_modules/astro/dist/cli/index.js:220:5)[22m

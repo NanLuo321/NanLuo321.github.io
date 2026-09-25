@@ -8,6 +8,9 @@ import FancyboxManager from "@components/features/FancyboxManager.astro";
 import FontSetup from "@components/features/FontSetup.astro";
 import MusicManager from "@components/features/MusicManager.astro";
 import CustomCursor from "@components/features/CustomCursor.astro";
+import DragGlass from "@components/features/DragGlass.astro";
+import LiquidGlass from "@components/features/LiquidGlass.astro";
+import LiquidText from "@components/features/LiquidText.astro";
 import PageLoader from "@components/features/PageLoader.astro";
 import RainEffect from "@components/RainEffect.astro";
 import LeafEffect from "@components/LeafEffect.astro";
@@ -721,6 +724,16 @@ const siteLang = lang.replace("_", "-");
     <PageLoader />
 
     <CustomCursor />
+
+    {/* 液态玻璃：把站点里所有玻璃表面（导航岛 / 浮层 / 卡片）升级成真实折射。
+        导航岛上那枚可拖拽的「蓝色高亮」也在这个引擎里（PRESETS: #navbar-pill），
+        不再有独立的拖拽模块 —— 要拖的就是高亮本体。 */}
+    <LiquidGlass />
+
+    {/* 液态玻璃（文字版）：把横幅标题的**字形**本身做成玻璃 ——
+        用 SVG 文本蒙版把背景折射裁进笔画里。同样 ProMax 独占，
+        没挂上就原样保留白字（见 components/features/LiquidText.astro）。 */}
+    <LiquidText />
 
     {/* 卡片样式：根据 localStorage 覆盖默认配置 */}
     <script is:inline define:vars={{
@@ -3065,6 +3078,12 @@ function disableAnimation() {
   });
 
   /* ========== 全屏壁纸模式导航岛切换 ========== */
+  /** 导航岛是否沉在屏幕底部（ProMax 版 · ≥768px 与 promax.css 的沉底档对齐，
+      —— 旧值 1024 会让平板（768~1023）上箭头朝向反过来）——决定收起方向与箭头语义 */
+  function isNavbarDockedBottom() {
+    return document.body.classList.contains("site-promax") && window.innerWidth >= 768;
+  }
+
   function toggleFullscreenNavbar() {
     const navbarWrapper = document.getElementById("navbar-wrapper");
     const toggleBtn = document.getElementById("fullscreen-navbar-toggle");
@@ -3075,35 +3094,41 @@ function disableAnimation() {
 
     const isHidden = navbarWrapper.classList.contains("navbar-manual-hidden");
 
+    // 岛在顶部：收起 = 向上飞，常态箭头朝上、收起后朝下
+    // 岛沉到底部（ProMax）：方向镜像，常态箭头朝下、收起后朝上
+    const docked = isNavbarDockedBottom();
+    const idleIcon = docked ? iconDown : iconUp;
+    const hideIcon = docked ? iconUp : iconDown;
+
     if (isHidden) {
       // 显示导航岛 - 图标旋转切换
       navbarWrapper.classList.remove("navbar-manual-hidden");
       toggleBtn.classList.remove("navbar-is-hidden");
       toggleBtn.setAttribute("aria-label", "隐藏导航栏");
-      if (iconUp) {
-        iconUp.style.transform = "rotate(0deg)";
-        iconUp.style.opacity = "1";
-        setTimeout(() => iconUp.classList.remove("hidden"), 50);
+      if (idleIcon) {
+        idleIcon.style.transform = "rotate(0deg)";
+        idleIcon.style.opacity = "1";
+        setTimeout(() => idleIcon.classList.remove("hidden"), 50);
       }
-      if (iconDown) {
-        iconDown.style.transform = "rotate(-90deg)";
-        iconDown.style.opacity = "0";
-        setTimeout(() => iconDown.classList.add("hidden"), 200);
+      if (hideIcon) {
+        hideIcon.style.transform = "rotate(-90deg)";
+        hideIcon.style.opacity = "0";
+        setTimeout(() => hideIcon.classList.add("hidden"), 200);
       }
     } else {
       // 隐藏导航岛 - 图标旋转切换
       navbarWrapper.classList.add("navbar-manual-hidden");
       toggleBtn.classList.add("navbar-is-hidden");
       toggleBtn.setAttribute("aria-label", "显示导航栏");
-      if (iconUp) {
-        iconUp.style.transform = "rotate(90deg)";
-        iconUp.style.opacity = "0";
-        setTimeout(() => iconUp.classList.add("hidden"), 200);
+      if (idleIcon) {
+        idleIcon.style.transform = "rotate(90deg)";
+        idleIcon.style.opacity = "0";
+        setTimeout(() => idleIcon.classList.add("hidden"), 200);
       }
-      if (iconDown) {
-        iconDown.style.transform = "rotate(0deg)";
-        iconDown.style.opacity = "1";
-        setTimeout(() => iconDown.classList.remove("hidden"), 50);
+      if (hideIcon) {
+        hideIcon.style.transform = "rotate(0deg)";
+        hideIcon.style.opacity = "1";
+        setTimeout(() => hideIcon.classList.remove("hidden"), 50);
       }
     }
   }
@@ -3122,17 +3147,24 @@ function disableAnimation() {
       toggleBtn.classList.remove("navbar-is-hidden");
       toggleBtn.setAttribute("aria-label", "隐藏导航栏");
     }
-    if (iconUp) {
-      iconUp.classList.remove("hidden");
-      iconUp.style.transform = "rotate(0deg)";
-      iconUp.style.opacity = "1";
+    // 与 toggleFullscreenNavbar 同一套箭头语义（见那里的注释）
+    const docked = isNavbarDockedBottom();
+    const idleIcon = docked ? iconDown : iconUp;
+    const hideIcon = docked ? iconUp : iconDown;
+    if (idleIcon) {
+      idleIcon.classList.remove("hidden");
+      idleIcon.style.transform = "rotate(0deg)";
+      idleIcon.style.opacity = "1";
     }
-    if (iconDown) {
-      iconDown.classList.add("hidden");
-      iconDown.style.transform = "rotate(-90deg)";
-      iconDown.style.opacity = "0";
+    if (hideIcon) {
+      hideIcon.classList.add("hidden");
+      hideIcon.style.transform = "rotate(-90deg)";
+      hideIcon.style.opacity = "0";
     }
   }
+
+  // 版本门实时切换 ProMax 时也要重建图标语义
+  (window as any).resetFullscreenNavbarState = resetFullscreenNavbarState;
 
   // Swup页面切换后重置导航岛状态
   function bindFullscreenNavbarReset() {

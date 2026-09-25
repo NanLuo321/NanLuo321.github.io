@@ -1,47 +1,18 @@
 ---
 /**
- * 灵动岛媒体指示器（右上角，iPhone Dynamic Island 风格）
+ * 灵动岛媒体指示器 —— 本体已并入导航栏中间的大岛（markup 见 Navbar.astro 的 #media-island）
  *
- * 常态隐藏；音频播放 / 麦克风 / 相机占用时任一情况滑入显示。
- * 点击岛 → 展开详情（当前歌曲、麦克风/相机状态），再点收起。
+ * 常态收起不占位；音频播放 / 麦克风 / 相机占用时从导航岛内部挤出那一块，
+ * 点击该块 → 在其下方展开详情（当前歌曲、麦克风/相机状态），再点收起。
  * 当前歌曲读自音乐挂件的 .music-title / .music-artist。
  *
- * 调试台：Ctrl+Shift+E 开关，可模拟 音频播放 / 麦克风 / 相机 占用。
+ * 本组件保留：状态监测与展开收起脚本、调试台（Ctrl+Shift+E）、
+ * 左上角的快捷键提示（进站弹一次，教访客怎么调音量）。
+ * 音量反馈统一走导航岛内的音量条（.mi-vol），不再单独弹左上角 HUD。
  */
-import { Icon } from "astro-icon/components";
 ---
 
-<div id="media-island" class="mi-hidden">
-	<!-- 收起态内容 -->
-	<div class="mi-pill">
-		<span class="mi-eq" data-mi-eq aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-		<span class="mi-label" data-mi-label></span>
-		<!-- 音量条（调节音量时临时显示） -->
-		<span class="mi-vol" data-mi-vol aria-hidden="true">
-			<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
-			<span class="mi-vol-bar"><span class="mi-vol-fill" data-mi-vol-fill></span></span>
-		</span>
-		<!-- iOS 风格状态点：摄像头=绿点（左），麦克风=红点（右） -->
-		<span class="mi-dot mi-dot-cam" data-mi-dot-cam aria-hidden="true"></span>
-		<span class="mi-dot mi-dot-mic" data-mi-dot-mic aria-hidden="true"></span>
-	</div>
-	<!-- 展开态详情 -->
-	<div class="mi-detail" data-mi-detail>
-		<div class="mi-row">
-			<span class="mi-k">正在播放</span>
-			<span class="mi-v" data-mi-song>—</span>
-		</div>
-		<div class="mi-row">
-			<span class="mi-k">麦克风</span>
-			<span class="mi-v" data-mi-mic-state>未使用</span>
-		</div>
-		<div class="mi-row">
-			<span class="mi-k">相机</span>
-			<span class="mi-v" data-mi-cam-state>未使用</span>
-		</div>
-		<div class="mi-tip">点击收起</div>
-	</div>
-</div>
+<!-- #media-island 本体已迁移至 Navbar.astro（导航岛内部），见下方样式的内嵌态定义 -->
 
 <!-- 调试台（Ctrl+Shift+E 开关） -->
 <div id="mi-debug" hidden>
@@ -56,12 +27,7 @@ import { Icon } from "astro-icon/components";
 	<div class="mid-real" data-mid-real></div>
 </div>
 
-<!-- 音量 HUD（左上角）：Ctrl+Shift+↑/↓ 调节时弹出，片刻后收起 -->
-<div id="vol-hud" aria-hidden="true">
-	<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
-	<span class="vh-pct" data-vol-hud-pct>50%</span>
-	<span class="vh-bar"><span class="vh-fill" data-vol-hud-fill></span></span>
-</div>
+<!-- 音量反馈已并入导航岛内的音量条（.mi-vol），左上角不再弹 HUD -->
 
 <!-- 快捷键提示（左上角）：进站后弹一次，告诉访客怎么调音量；点击关闭 -->
 <div id="kbd-hint" aria-hidden="true">
@@ -70,54 +36,61 @@ import { Icon } from "astro-icon/components";
 </div>
 
 <style>
-	/* ================= 灵动岛本体 ================= */
+	/* ================= 灵动岛本体（内嵌在导航岛里，从岛内挤出） ================= */
 	:global(#media-island) {
-		position: fixed;
-		top: 0.85rem;
-		/* 让开右上角的圆形进度环 */
-		right: 6.2rem;
-		z-index: 61;
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		background: rgba(10, 10, 12, 0.9);
-		-webkit-backdrop-filter: blur(16px) saturate(170%);
-		backdrop-filter: blur(16px) saturate(170%);
-		border: 1px solid rgba(255, 255, 255, 0.09);
-		box-shadow:
-			0 6px 22px rgba(0, 0, 0, 0.32),
-			inset 0 1px 0 rgba(255, 255, 255, 0.07);
-		color: rgb(245, 245, 247);
-		border-radius: 9999px;
-		overflow: hidden;
+		position: relative;
+		align-self: center;
+		/* grid 0fr → 1fr：零宽收起，展开时从导航岛内平滑挤出 */
+		display: grid;
+		grid-template-columns: 0fr;
+		/* 收起时抵消导航岛行内的 gap-3，完全不占位 */
+		margin-left: -0.75rem;
+		opacity: 0;
+		pointer-events: none;
 		cursor: pointer;
 		user-select: none;
+		color: inherit;
 		transition:
-			transform 0.55s cubic-bezier(0.32, 0.72, 0, 1),
-			opacity 0.35s cubic-bezier(0.32, 0.72, 0, 1),
-			border-radius 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+			grid-template-columns 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+			margin-left 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+			opacity 0.32s ease;
+	}
+	:global(#media-island:not(.mi-hidden)) {
+		grid-template-columns: 1fr;
+		margin-left: 0;
+		opacity: 1;
+		pointer-events: auto;
+	}
+	/* 收起待裁切层：宽度动画的载体 */
+	:global(#media-island .mi-slot) {
+		overflow: hidden;
+		min-width: 0;
 	}
 
-	/* ---------- 收起态胶囊（加大版） ---------- */
+	/* ---------- 挤出态胶囊：与导航岛同一份玻璃，只做一层浅槽 ------ */
 	:global(#media-island .mi-pill) {
 		display: flex;
 		align-items: center;
-		gap: 9px;
-		height: 38px;
-		padding: 0 18px;
+		gap: 8px;
+		height: 36px;
+		padding: 0 12px;
+		border-radius: 9999px;
+		background: color-mix(in oklch, var(--card-bg) 55%, transparent);
+		border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 35%, transparent);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 		font-size: 0.78rem;
 		font-weight: 600;
 		letter-spacing: 0.02em;
 		white-space: nowrap;
+		transform-origin: left center;
+		/* 展开方向：从 0.9 弹回 1，跟导航岛的挤出同步 */
+		transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
 	}
-	/* 展开时胶囊顶部变方 */
+	:global(:root.dark #media-island .mi-pill) {
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
 	:global(#media-island.is-expanded .mi-pill) {
-		border-radius: 0;
-	}
-
-	/* ---------- 展开态：圆角矩形（非胶囊椭圆） ---------- */
-	:global(#media-island.is-expanded) {
-		border-radius: 24px;
+		background: color-mix(in oklch, var(--card-bg) 78%, transparent);
 	}
 
 	/* ---------- 音频均衡器 ---------- */
@@ -149,8 +122,8 @@ import { Icon } from "astro-icon/components";
 	:global(#media-island .mi-label) {
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
-		opacity: 0.94;
-		max-width: 220px;
+		opacity: 0.9;
+		max-width: 170px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
@@ -173,81 +146,20 @@ import { Icon } from "astro-icon/components";
 		width: 70px;
 		height: 4px;
 		border-radius: 2px;
-		background: rgba(255, 255, 255, 0.18);
+		/* 跟随导航岛文字色，深浅主题自动适配 */
+		background: color-mix(in oklch, currentColor 18%, transparent);
 		overflow: hidden;
 	}
 	:global(#media-island .mi-vol-fill) {
 		display: block;
 		height: 100%;
-		background: rgb(245, 245, 247);
+		background: currentColor;
 		border-radius: 2px;
 		transition: width 0.15s ease;
 	}
 
-	/* ---------- 左上角音量 HUD（Ctrl+Shift+↑/↓ 调节时弹出） ---------- */
-	:global(#vol-hud) {
-		position: fixed;
-		top: 1.25rem;
-		left: 1.25rem;
-		z-index: 99990;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		height: 40px;
-		padding: 0 14px 0 12px;
-		border-radius: 9999px;
-		background: color-mix(in oklch, var(--card-bg, #fff) 55%, transparent);
-		-webkit-backdrop-filter: blur(20px) saturate(180%);
-		backdrop-filter: blur(20px) saturate(180%);
-		border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 30%, transparent);
-		box-shadow: var(--shadow-navbar, 0 4px 16px rgba(0, 0, 0, 0.08));
-		color: rgb(23, 23, 23);
-		font-size: 0.75rem;
-		font-weight: 600;
-		line-height: 1;
-		opacity: 0;
-		transform: translateY(-12px) scale(0.9);
-		pointer-events: none;
-		transition:
-			opacity 0.22s ease,
-			transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
-	}
-	:global(#vol-hud.show) {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-	:global(#vol-hud svg) {
-		width: 1rem;
-		height: 1rem;
-		flex: none;
-	}
-	:global(#vol-hud .vh-pct) {
-		min-width: 30px;
-		text-align: center;
-		white-space: nowrap;
-	}
-	:global(#vol-hud .vh-bar) {
-		width: 72px;
-		height: 4px;
-		border-radius: 9999px;
-		background: rgba(0, 0, 0, 0.12);
-		overflow: hidden;
-	}
-	:global(#vol-hud .vh-fill) {
-		display: block;
-		height: 100%;
-		border-radius: 9999px;
-		background: var(--primary, rgb(59, 130, 246));
-		transition: width 0.15s ease;
-	}
-	:global(.dark #vol-hud) {
-		color: rgb(245, 245, 247);
-	}
-	:global(.dark #vol-hud .vh-bar) {
-		background: rgba(255, 255, 255, 0.18);
-	}
-
-	/* ---------- 左上角快捷键提示（进站弹一次，教访客调音量） ---------- */
+	/* ---------- 左上角只保留快捷键提示（进站弹一次，教访客调音量） ----------
+	   音量 HUD 已移除：音量反馈统一由导航岛内的音量条（.mi-vol）承担。 */
 	:global(#kbd-hint) {
 		position: fixed;
 		top: 1.25rem;
@@ -328,22 +240,49 @@ import { Icon } from "astro-icon/components";
 		box-shadow: 0 0 6px rgba(48, 209, 88, 0.8);
 	}
 
-	/* ---------- 展开态详情 ---------- */
+	/* ---------- 展开态详情：浮在导航岛下方，与导航岛同一份玻璃材质 ---------- */
 	:global(#media-island .mi-detail) {
-		max-height: 0;
-		opacity: 0;
-		overflow: hidden;
-		padding: 0 18px;
+		position: absolute;
+		top: calc(100% + 0.85rem);
+		right: -0.25rem;
+		z-index: 5;
+		width: 262px;
+		max-width: calc(100vw - 2rem);
+		padding: 8px 16px 12px;
+		border-radius: 20px;
+		/* 透明玻璃：跟随主题（亮色透白 / 暗色透黑），不再是实心黑块 */
+		background: color-mix(in oklch, var(--card-bg) calc(var(--opacity-55, 0.55) * 100%), transparent);
+		-webkit-backdrop-filter: blur(var(--navbar-glass-blur, 20px)) saturate(180%);
+		backdrop-filter: blur(var(--navbar-glass-blur, 20px)) saturate(180%);
+		border: 1px solid color-mix(in oklch, var(--card-border, #e5e5e5) 40%, transparent);
+		box-shadow: var(--shadow-navbar, 0 4px 16px rgba(0, 0, 0, 0.08));
+		color: inherit;
 		font-size: 0.74rem;
+		opacity: 0;
+		transform: translateY(-8px) scale(0.96);
+		transform-origin: top right;
+		pointer-events: none;
 		transition:
-			max-height 0.4s cubic-bezier(0.32, 0.72, 0, 1),
-			opacity 0.3s ease,
-			padding 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+			opacity 0.28s ease,
+			transform 0.34s cubic-bezier(0.32, 0.72, 0, 1);
 	}
 	:global(#media-island.is-expanded .mi-detail) {
-		max-height: 140px;
 		opacity: 1;
-		padding: 4px 18px 12px;
+		transform: translateY(0) scale(1);
+		pointer-events: auto;
+	}
+	/* ProMax 版（桌面端导航岛沉底，768 起生效，与 promax.css 的 md 断点一致）：
+	   详情面板改向上浮出，动画方向同步镜像 */
+	@media (min-width: 768px) {
+		:global(body.site-promax #media-island .mi-detail) {
+			top: auto;
+			bottom: calc(100% + 0.85rem);
+			transform: translateY(8px) scale(0.96);
+			transform-origin: bottom right;
+		}
+		:global(body.site-promax #media-island.is-expanded .mi-detail) {
+			transform: translateY(0) scale(1);
+		}
 	}
 	:global(#media-island .mi-row) {
 		display: flex;
@@ -351,13 +290,13 @@ import { Icon } from "astro-icon/components";
 		justify-content: space-between;
 		gap: 16px;
 		padding: 4px 0;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		border-bottom: 1px solid color-mix(in oklch, currentColor 12%, transparent);
 	}
 	:global(#media-island .mi-row:last-of-type) {
 		border-bottom: none;
 	}
 	:global(#media-island .mi-k) {
-		color: rgba(245, 245, 247, 0.55);
+		color: color-mix(in oklch, currentColor 55%, transparent);
 		flex-shrink: 0;
 	}
 	:global(#media-island .mi-v) {
@@ -366,31 +305,58 @@ import { Icon } from "astro-icon/components";
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		max-width: 200px;
+		max-width: 180px;
 	}
 	:global(#media-island .mi-tip) {
 		margin-top: 2px;
 		text-align: center;
 		font-size: 0.62rem;
-		color: rgba(245, 245, 247, 0.4);
+		color: color-mix(in oklch, currentColor 45%, transparent);
 	}
 
-	/* ---------- 隐藏：原地缩回（不位移） ---------- */
+	/* ---------- 收起：0.34s 被岛吸回去（内容同步淡出，不留空白色块） ----------
+	   过渡取自「目标状态」：落到 .mi-hidden 时用下面这套更快的缓出，
+	   回到常态时用本体的 0.5s 弹性曲线 → 进慢出快，像被吸回岛里。 */
 	:global(#media-island.mi-hidden) {
-		transform: scale(0.5);
-		opacity: 0;
+		transition:
+			grid-template-columns 0.34s cubic-bezier(0.45, 0, 0.2, 1),
+			margin-left 0.34s cubic-bezier(0.45, 0, 0.2, 1),
+			opacity 0.22s ease;
+	}
+	/* 裁切层等收缩动画走完再隐藏，否则会中断关闭动画 */
+	:global(#media-island.mi-hidden .mi-slot) {
+		visibility: hidden;
+		transition: visibility 0s linear 0.34s;
+	}
+	/* 胶囊向左微缩 + 整块淡出：0.22s 内就不可见，不会出现停滞的白块 */
+	:global(#media-island.mi-hidden .mi-pill) {
+		transform: scale(0.9);
+		transition: transform 0.34s cubic-bezier(0.45, 0, 0.2, 1);
+	}
+	:global(#media-island.mi-hidden .mi-detail) {
+		opacity: 0 !important;
 		pointer-events: none;
+		transition:
+			opacity 0.18s ease,
+			transform 0.18s ease;
 	}
 
 	@media (max-width: 1023px) {
-		:global(#media-island) {
-			top: 0.55rem;
-			right: 4.6rem;
-		}
 		:global(#media-island .mi-pill) {
-			height: 32px;
-			padding: 0 14px;
+			height: 30px;
+			gap: 6px;
+			padding: 0 10px;
 			font-size: 0.68rem;
+		}
+		:global(#media-island .mi-label) {
+			max-width: 96px;
+		}
+		:global(#media-island .mi-vol-bar) {
+			width: 48px;
+		}
+		:global(#media-island .mi-detail) {
+			width: 232px;
+			right: -0.5rem;
 		}
 	}
 
@@ -521,11 +487,15 @@ import { Icon } from "astro-icon/components";
 			const nav = performance.now() < navUntil;
 			const vol = performance.now() < volUntil;
 			// 点先灭、岛后收：红/绿点从亮到灭时，岛保留 600ms 再退场
+			// （仅当岛上还有别的可见内容时才值得停留；否则立即收起，不留空白色块）
 			const dotsOn = mic || cam;
-			if (dotsPrev && !dotsOn) hideAt = performance.now() + 600;
+			const visible = a || mic || cam || nav || vol;
+			if (dotsPrev && !dotsOn) hideAt = visible ? performance.now() + 600 : 0;
 			dotsPrev = dotsOn;
-			const any = a || mic || cam || nav || vol || performance.now() < hideAt;
+			const any = visible || performance.now() < hideAt;
 			island!.classList.toggle("mi-hidden", !any);
+			// 收起时一并把展开态复位，下次挤出是干净的收起态
+			if (!any) island!.classList.remove("is-expanded");
 			eqEl?.classList.toggle("show", a && !vol);
 			dotMicEl?.classList.toggle("show", mic);
 			dotCamEl?.classList.toggle("show", cam);
@@ -609,16 +579,26 @@ import { Icon } from "astro-icon/components";
 				const link = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
 				if (!link) return;
 				if (link.target === "_blank" || link.hasAttribute("download")) return;
+				/* 岛内浏览（ProMax）已经接管这次点击：卡片带 data-no-swup，
+				   swup 会被放过、我们自己也 preventDefault —— 根本不会有导航。
+				   注意本监听挂在**捕获阶段**（末尾的 true），跑在 <a> 的处理器之前，
+				   所以上面那句 e.defaultPrevented 在这里永远是 false，只能靠标记判断，
+				   否则「正在跳转…」会亮着空等 4 秒才自己收回去。 */
+				if (link.hasAttribute("data-no-swup")) return;
 				const href = link.getAttribute("href") || "";
 				if (!href || href.startsWith("#") || href.startsWith("javascript:") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
 				try {
 					const u = new URL(link.href, location.href);
 					if (u.origin !== location.origin) return;
+					/* 目标就是当前这一页（典型：在主页点「主页」）→ 根本不会发生导航，
+					   如果照样置位，岛就永远等不到 astro:page-load / pageshow，
+					   「正在跳转…」会一直挂到 8 秒兜底 —— 用户看到的就是「卡住」。 */
+					if (u.pathname === location.pathname && u.search === location.search) return;
 					if (u.pathname === location.pathname && u.hash && u.hash !== location.hash) return; // 纯锚点
 				} catch {
 					return;
 				}
-				navUntil = performance.now() + 8000;
+				navUntil = performance.now() + 4000;
 				sync();
 			},
 			true,
@@ -631,24 +611,9 @@ import { Icon } from "astro-icon/components";
 		document.addEventListener("swup:contentReplaced", arrive);
 		window.addEventListener("pageshow", arrive);
 
-		/* --- 快捷键：Ctrl+Shift+↑/↓ 调音量（优先生效于正在播放的媒体，含静音解除） --- */
+		/* --- 快捷键：Ctrl+Shift+↑/↓ 调音量（优先生效于正在播放的媒体，含静音解除） ---
+		    反馈统一走导航岛内的音量条（.mi-vol），左上角不再弹音量 HUD。 */
 		const clamp01 = (v: number) => Math.min(1, Math.max(0, Math.round(v * 100) / 100));
-		/* --- 左上角音量 HUD：调节时弹出（百分比 + 进度条），1.2s 后收起 --- */
-		const huds = document.querySelectorAll("#vol-hud");
-		huds.forEach((n, i) => i > 0 && n.remove()); // swup 重建时去重
-		const hud = document.getElementById("vol-hud");
-		const hudPct = hud?.querySelector<HTMLElement>("[data-vol-hud-pct]") ?? null;
-		const hudFill = hud?.querySelector<HTMLElement>("[data-vol-hud-fill]") ?? null;
-		let hudTimer = 0;
-		const showHud = (level: number, muted: boolean) => {
-			if (!hud || !hudPct || !hudFill) return;
-			hudPct.textContent = muted ? "静音" : `${Math.round(level * 100)}%`;
-			hudFill.style.width = `${Math.round(level * 100)}%`;
-			document.getElementById("kbd-hint")?.classList.remove("show"); // HUD 弹出时快捷键提示让位
-			hud.classList.add("show");
-			if (hudTimer) window.clearTimeout(hudTimer);
-			hudTimer = window.setTimeout(() => hud.classList.remove("show"), 1200);
-		};
 
 		/* --- 左上角快捷键提示：进站后弹一次（教不知道快捷键的访客调音量） --- */
 		const hints = document.querySelectorAll("#kbd-hint");
@@ -674,19 +639,15 @@ import { Icon } from "astro-icon/components";
 			const media = Array.from(document.querySelectorAll<HTMLMediaElement>("audio,video")).filter((m) => !m.srcObject);
 			const playing = media.filter((m) => !m.paused && !m.ended);
 			const list = playing.length ? playing : media;
-			if (list.length) {
-				list.forEach((m) => {
-					if (m.muted && delta > 0) m.muted = false;
-					m.volume = clamp01(m.volume + delta); // 触发 volumechange → 岛自动弹出音量条
-				});
-				showHud(list[0].volume, list[0].muted);
-			} else {
-				// 页面没有任何媒体时也给出反馈：直接驱动音量条
-				volLevel = clamp01(volLevel + delta);
-				volUntil = performance.now() + 2000;
-				showHud(volLevel, false);
-				sync();
-			}
+			list.forEach((m) => {
+				if (m.muted && delta > 0) m.muted = false;
+				m.volume = clamp01(m.volume + delta); // 触发 volumechange → 岛内音量条自动挤出
+			});
+			// 页面没有任何媒体、或音量已到边界（不触发 volumechange）时，直接驱动岛内音量条
+			volLevel = list.length ? (list[0].muted ? 0 : list[0].volume) : clamp01(volLevel + delta);
+			volUntil = performance.now() + 2000;
+			document.getElementById("kbd-hint")?.classList.remove("show"); // 会用快捷键了，提示让位
+			sync();
 		};
 
 		/* --- 调试台（Ctrl+Shift+E 开关）；键监听全局唯一，防止 swup 重建岛后重复触发 --- */

@@ -13,6 +13,7 @@ import { Icon } from "astro-icon/components";
 import ImageWrapper from "@/components/common/ImageWrapper.astro";
 import FloatingControls from "@/components/controls/FloatingControls.astro";
 import ScrollDownIndicator from "@/components/controls/ScrollDownIndicator.astro";
+import TopSearch from "@/components/controls/TopSearch.svelte";
 import BackgroundPlayer from "@/components/features/BackgroundPlayer.astro";
 import TypewriterText from "@/components/features/TypewriterText.astro";
 import CategoryBar from "@/components/layout/CategoryBar.astro";
@@ -284,6 +285,14 @@ const hasMultipleImages =
 
 <slot slot="head" name="head"></slot>
 
+<!--
+    屏幕上方那枚搜索（ProMax 桌面端专属）
+    ⚠ 必须挂在 #top-row **外面**：#top-row 是 fixed + -translate-x-1/2，
+      transform 会给后代当包含块，后代里的 position:fixed 就不再相对视口。
+      挂在 body 直下（这里）才是真正的「屏幕上方」。
+-->
+<TopSearch client:load />
+
 <!-- Floating Navbar - 居中悬浮 -->
 <div id="top-row" class="z-50 fixed top-3 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-3">
     <div id="navbar-wrapper" class="pointer-events-auto flex items-center gap-3">
@@ -300,7 +309,465 @@ const hasMultipleImages =
         <Icon is:inline id="navbar-toggle-icon-up" name="material-symbols:expand-less-rounded" class="text-[1.25rem]" />
         <Icon is:inline id="navbar-toggle-icon-down" name="material-symbols:expand-more-rounded" class="text-[1.25rem] hidden" />
     </button>
+    <!--
+        ProMax 版专属：iPhone 式 home indicator。
+        岛沉底时它就是屏幕最下方那根短条，同时兼职「阅读进度条 + 回到顶部」：
+          - .pm-hi-fill 的宽度 = --pm-hi-progress（脚本按滚动比例写入）
+          - 点击 / 回车 = 平滑回顶
+          - hover = 拉长加粗 + 浮出提示
+          - 切页加载时脚本加 .pm-hi-loading 扫一道高光
+        默认 display:none，只有 body.site-promax 且 ≥1024px 才出现（见 styles/promax.css）。
+    -->
+    <button
+        id="pm-home-indicator"
+        type="button"
+        aria-label="回到顶部"
+        title="回到顶部"
+    >
+        <span class="pm-hi-fill" aria-hidden="true"></span>
+        <span class="pm-hi-tip" aria-hidden="true">
+            <span class="pm-hi-pct" data-pm-hi-pct>0%</span>
+            <span>· 回到顶部</span>
+        </span>
+    </button>
 </div>
+
+<script is:inline>
+    /* ProMax home indicator：阅读进度 + 回到顶部 + 切页扫光
+       元素在非 ProMax / 窄屏下是 display:none，脚本跑了也只是原地空转。 */
+    (function () {
+        var bar = document.getElementById("pm-home-indicator");
+        if (!bar) return;
+
+        var pctEl = bar.querySelector("[data-pm-hi-pct]");
+        var lastPct = -1;
+        var rafId = 0;
+
+        function computeProgress() {
+            var doc = document.documentElement;
+            var max = doc.scrollHeight - window.innerHeight;
+            if (max <= 4) return 0;
+            var y = window.scrollY || doc.scrollTop || 0;
+            return Math.min(1, Math.max(0, y / max));
+        }
+
+        function render() {
+            rafId = 0;
+            var pct = Math.round(computeProgress() * 100);
+            if (pct === lastPct) return;
+            lastPct = pct;
+            bar.style.setProperty("--pm-hi-progress", pct + "%");
+            if (pctEl) pctEl.textContent = pct + "%";
+            document.body.classList.toggle("pm-at-top", pct <= 0);
+        }
+
+        function schedule() {
+            if (!rafId) rafId = requestAnimationFrame(render);
+        }
+
+        window.addEventListener("scroll", schedule, { passive: true });
+        window.addEventListener("resize", schedule, { passive: true });
+        /* 图片 / 字体加载完，文档高度会变，补算一次 */
+        window.addEventListener("load", schedule);
+
+        /* 点一下 / 回车 / 在条上向上滑 → 平滑回到顶部 */
+        function toTop() {
+            var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+        }
+        bar.addEventListener("click", toTop);
+
+        /* 向上滑手势：条子贴在屏幕最下沿，拇指上推是最自然的「回顶」动作。
+           位移超过 24px 才认，避免把「按下时手抖」当成滑动。 */
+        var swipeY = 0;
+        var swiping = false;
+        bar.addEventListener(
+            "pointerdown",
+            function (e) {
+                swiping = true;
+                swipeY = e.clientY;
+            },
+            { passive: true },
+        );
+        window.addEventListener(
+            "pointerup",
+            function (e) {
+                if (!swiping) return;
+                swiping = false;
+                if (swipeY - e.clientY > 24) toTop();
+            },
+            { passive: true },
+        );
+        bar.addEventListener("pointercancel", function () {
+            swiping = false;
+        });
+
+        /* ================= 墨色：跟着壁纸亮暗走 =================
+           条子要「有时候是黑的、有时候是白的」，判据不是站点主题而是
+           **它身下那片壁纸的亮度** —— 浅色壁纸用黑条、深色壁纸用白条，
+           否则深色壁纸上一条黑线完全看不见。
+           做法：把壁纸图（或视频当前帧）画进极小的 canvas，取「画面
+           下半部中间」那一块的加权亮度（Rec.709）。
+           ⚠ 壁纸若是**外链 CDN**（本站默认的 t.alcy.cc 就是），画进
+           canvas 后 getImageData 会因跨域污染直接抛 SecurityError，
+           读不到任何像素 —— 这时退回主题（亮主题黑墨 / 暗主题白墨），
+           并在 body 上留 data-pm-hi-tone="theme" 说明这一档是退路。
+           自托管的壁纸能正常取样，那时才是真正的「按壁纸亮暗」。 */
+        var inkGaveUp = false;
+        function wallpaperMedia() {
+            var wrap = document.getElementById("wallpaper-wrapper");
+            if (!wrap) return null;
+            var vids = wrap.querySelectorAll("video");
+            for (var i = 0; i < vids.length; i++) {
+                if (vids[i].readyState >= 2 && vids[i].getBoundingClientRect().width > 0) return vids[i];
+            }
+            var imgs = wrap.querySelectorAll("img");
+            for (var j = 0; j < imgs.length; j++) {
+                var el = imgs[j];
+                if (!el.currentSrc || !el.complete || !el.naturalWidth) continue;
+                if (getComputedStyle(el).display === "none") continue;
+                if (el.getBoundingClientRect().width <= 0) continue;
+                return el;
+            }
+            return null;
+        }
+        function sampleInk() {
+            var media = wallpaperMedia();
+            if (!media) return "";
+            var nw = media.naturalWidth || media.videoWidth || 0;
+            var nh = media.naturalHeight || media.videoHeight || 0;
+            if (!nw || !nh) return "";
+            var c = document.createElement("canvas");
+            c.width = c.height = 12;
+            var cx = c.getContext("2d", { willReadFrequently: true });
+            if (!cx) return "";
+            /* 只看画面「下半部中间」——条子就落在壁纸的下缘，那里才是
+               它真正的底。窗口宽取 34%、高取 18%，够摊平局部噪点。 */
+            var sw = nw * 0.34;
+            var sh = nh * 0.18;
+            var sx = nw * 0.5 - sw / 2;
+            var sy = nh * 0.88 - sh / 2;
+            if (sx < 0) sx = 0;
+            if (sy < 0) sy = 0;
+            if (sx + sw > nw) sw = nw - sx;
+            if (sy + sh > nh) sh = nh - sy;
+            try {
+                cx.drawImage(media, sx, sy, sw, sh, 0, 0, 12, 12);
+                var data = cx.getImageData(0, 0, 12, 12).data;
+                var sum = 0;
+                for (var i = 0; i < data.length; i += 4) {
+                    sum += (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
+                }
+                var lum = sum / (data.length / 4);
+                /* 0.56 ≈ 中灰偏亮一点：这一档之上用黑墨，之下用白墨 */
+                return lum > 0.56 ? "dark" : "light";
+            } catch (e) {
+                /* 跨域污染（SecurityError）不是「还没准备好」，再试也不会变 ——
+                   记下来，别让重试轮次空转。 */
+                inkGaveUp = true;
+                return "";
+            }
+        }
+        function applyInk() {
+            var tone = sampleInk();
+            if (!tone) {
+                /* 取不到壁纸（外链图 / 视频还没出帧）→ 先交给主题，稍后再试 */
+                bar.style.removeProperty("--pm-hi-ink");
+                document.body.setAttribute("data-pm-hi-tone", "theme");
+                return false;
+            }
+            bar.style.setProperty("--pm-hi-ink", tone === "dark" ? "rgb(17, 17, 19)" : "rgb(245, 245, 247)");
+            document.body.setAttribute("data-pm-hi-tone", tone);
+            return true;
+        }
+        applyInk();
+        /* 壁纸 / 字体 / 轮播都是渐次到位的：有界地补几轮，直到算出来为止 */
+        var inkTries = 0;
+        function retryInk() {
+            if (inkGaveUp || inkTries >= 8) return;
+            inkTries++;
+            setTimeout(function () {
+                if (applyInk()) return;
+                retryInk();
+            }, 400 + inkTries * 150);
+        }
+        retryInk();
+        window.addEventListener("load", applyInk);
+        /* 换壁纸 / 轮播切图：等过渡走完再重算 */
+        var wrapEl = document.getElementById("wallpaper-wrapper");
+        if (wrapEl && window.MutationObserver) {
+            var inkTimer = 0;
+            new MutationObserver(function () {
+                if (inkTimer) clearTimeout(inkTimer);
+                inkTimer = setTimeout(applyInk, 700);
+            }).observe(wrapEl, { attributes: true, childList: true, subtree: true });
+        }
+        document.addEventListener("siteversionchange", applyInk);
+
+        /* 切页 / 加载：扫一道高光。swup 与 astro 两套事件都挂，
+           没有过渡动画时用定时器兜底收尾。 */
+        var loading = 0;
+        function startLoading() {
+            loading++;
+            bar.classList.add("pm-hi-loading");
+        }
+        function stopLoading() {
+            loading = Math.max(0, loading - 1);
+            if (loading) return;
+            bar.classList.remove("pm-hi-loading");
+            schedule();
+        }
+        document.addEventListener("astro:before-preparation", startLoading);
+        document.addEventListener("astro:after-swap", stopLoading);
+        document.addEventListener("swup:willReplaceContent", startLoading);
+        document.addEventListener("swup:contentReplaced", function () {
+            stopLoading();
+            render();
+        });
+        document.addEventListener("click", function (e) {
+            /* 默认行为已被接管（比如 ProMax 岛内浏览拦下了这次点击）→ 不是跳转，
+               别弹「正在跳转」：否则它会亮着空等 2.5s 才自己收回去 */
+            if (e.defaultPrevented) return;
+            var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+            if (!a) return;
+            var href = a.getAttribute("href") || "";
+            if (!href || href.charAt(0) === "#" || a.target === "_blank") return;
+            if (a.host && a.host !== location.host) return;
+            startLoading();
+            setTimeout(stopLoading, 2500);
+        });
+
+        document.addEventListener("siteversionchange", schedule);
+        render();
+    })();
+</script>
+
+<script is:inline>
+    /* ================================================================
+       ProMax 底部导航岛「鼠标移开自动隐藏」
+       用户需求：鼠标移走时岛自动滑出屏幕，移回底部感应区再滑回来；
+       箭头按钮点过的「钉住」状态除外（钉住时常驻不隐藏）。
+       生效条件（缺一不可）：
+         · body.site-promax（其它版本维持原行为）
+         · ≥768px（岛沉底的宽度档，与 promax.css 的媒体查询一致）
+         · (hover: hover) and (pointer: fine) —— 真鼠标才有「移开」，
+           触屏设备没有 hover，一律保持常显
+       实现直接复用现有的 navbar-manual-hidden 类（动画/位移/镜像
+       全部现成），箭头图标语义照抄 toggleFullscreenNavbar：
+       岛沉底时常态朝下、收起后朝上。
+       ⚠ 节点查询全部惰性 —— 本脚本与 navbar 分属不同组件，
+         is:inline 按文档顺序执行时不保证对方已在 DOM 里。
+       ================================================================ */
+    (function () {
+        var wrapper = document.getElementById("navbar-wrapper");
+        var toggle = document.getElementById("fullscreen-navbar-toggle");
+        if (!wrapper || !toggle) return;
+        if (wrapper.__pmAutoHideBound) return; /* swup 换页重跑防重复绑定 */
+        wrapper.__pmAutoHideBound = true;
+
+        var pinned = false; /* 箭头钉住：展开状态下不自动隐藏 */
+        var away = false; /* 鼠标是否在感应区外（初值=在区内：岛首屏常显） */
+
+        function active() {
+            return (
+                document.body.classList.contains("site-promax") &&
+                window.innerWidth >= 768 &&
+                window.matchMedia("(hover: hover) and (pointer: fine)").matches
+            );
+        }
+
+        /* 这些状态下不许藏：搜索面板展开 / 岛内有键盘焦点 / 高亮带拖拽中 */
+        function busy() {
+            if (document.querySelector("#dynamic-island-search.open")) return true;
+            var ae = document.activeElement;
+            if (ae && ae !== document.body && wrapper.contains(ae)) return true;
+            if (document.querySelector("#navbar-pill.is-dragging")) return true;
+            return false;
+        }
+
+        /* 底部感应区：屏幕下缘 150px / 岛的包围盒外扩 28px / 箭头按钮外扩 14px */
+        function inZone(x, y) {
+            if (y >= window.innerHeight - 150) return true;
+            var r = wrapper.getBoundingClientRect();
+            if (r.width > 0 && y >= r.top - 28 && y <= r.bottom + 28) return true;
+            var t = toggle.getBoundingClientRect();
+            return (
+                x >= t.left - 14 && x <= t.right + 14 && y >= t.top - 14 && y <= t.bottom + 14
+            );
+        }
+
+        function setHidden(hide) {
+            var isHidden = wrapper.classList.contains("navbar-manual-hidden");
+            if (hide !== isHidden) {
+                if (hide) wrapper.classList.add("navbar-manual-hidden");
+                else wrapper.classList.remove("navbar-manual-hidden");
+            }
+            /* 图标/文案无论状态是否变化都校一遍：初始 markup 是「顶部导航栏」
+               的图标语义（朝上），沉底岛要按当下状态归位 */
+            syncIcons(hide);
+            toggle.setAttribute("aria-label", hide ? "显示导航栏" : "隐藏导航栏");
+            toggle.title = pinned ? "取消钉住导航岛" : hide ? "显示导航栏" : "钉住导航岛";
+        }
+
+        /* 箭头图标语义（照抄 toggleFullscreenNavbar）：岛沉底时常态朝下、收起朝上 */
+        function syncIcons(hide) {
+            var iconUp = document.getElementById("navbar-toggle-icon-up");
+            var iconDown = document.getElementById("navbar-toggle-icon-down");
+            if (!iconUp || !iconDown) return;
+            iconUp.classList.toggle("hidden", !hide);
+            iconUp.style.opacity = hide ? "1" : "0";
+            iconDown.classList.toggle("hidden", hide);
+            iconDown.style.opacity = hide ? "0" : "1";
+        }
+
+        /* 初始归位：markup 默认是「顶部导航栏」的图标语义（朝上），
+           Layout.astro 的 resetFullscreenNavbarState 定义了但没人调用，
+           沉底岛上箭头就一直反着 —— 这里按当下状态校一次。 */
+        if (document.body.classList.contains("site-promax") && window.innerWidth >= 768) {
+            syncIcons(wrapper.classList.contains("navbar-manual-hidden"));
+        }
+
+        function evaluate() {
+            if (!active()) {
+                setHidden(false);
+                return;
+            }
+            if (pinned) {
+                setHidden(false);
+                return;
+            }
+            setHidden(away && !busy());
+        }
+
+        /* ⚠ 不能只在 away 翻转时评估：搜索面板关闭、拖拽结束这类
+           「busy 解除」的时刻没有 pointermove 之外的信号，所以每次
+           移动都重估。pointermove 很高频，用 rAF 合并成一帧一次。 */
+        var pending = 0;
+        var lastX = 0;
+        var lastY = 0;
+        function onMove(e) {
+            lastX = e.clientX;
+            lastY = e.clientY;
+            if (pending) return;
+            pending = requestAnimationFrame(function () {
+                pending = 0;
+                away = !inZone(lastX, lastY);
+                evaluate();
+            });
+        }
+        window.addEventListener("pointermove", onMove, { passive: true });
+        /* 鼠标离开窗口也算「移开」 */
+        document.addEventListener("mouseleave", function () {
+            away = true;
+            evaluate();
+        });
+
+        /* 箭头 = 钉住开关。⚠ ProMax 下必须摘掉 inline onclick：
+           toggleFullscreenNavbar 定义在 Layout 的模块脚本里，模块是
+           deferred 的 —— 页面刚加载完那一秒内点击会 ReferenceError
+           （真实用户也能踩到：加载后立刻点箭头没反应）。
+           ProMax 的钉住逻辑完全自持，不依赖那个函数；其它版本原样保留。 */
+        function claimToggle() {
+            if (active()) toggle.removeAttribute("onclick");
+        }
+        claimToggle();
+
+        toggle.addEventListener("click", function () {
+            if (!active()) return; /* 非 ProMax 走原 onclick 逻辑 */
+            pinned = !pinned;
+            evaluate();
+        });
+
+        document.addEventListener("siteversionchange", function () {
+            /* 切走 ProMax 时必须把岛还回来，钉住状态一并清掉 */
+            if (!document.body.classList.contains("site-promax")) pinned = false;
+            claimToggle();
+            evaluate();
+        });
+    })();
+</script>
+
+<script is:inline>
+    /* 「正在跳转 / 正在播放」媒体指示块的位置（仅 ProMax 沉底布局）
+       ─────────────────────────────────────────────────────────────
+       它原生是左岛（#navbar）的最后一格，「正在跳转…」一挤出就把左岛
+       撑宽，玻璃引擎的高亮带与岛面玻璃跟着重排（观感：左岛右端冒一块、
+       玻璃发白）。ProMax 下把它搬进右侧动作岛（#navbar-actions），
+       从右岛右端挤出，左岛彻底不再被它动。其它版本留在原地不动。 */
+    (function () {
+        /* 原生位置记档：非 ProMax（或缩回窄屏）时还回去 */
+        var home = null;
+
+        function rowOf() {
+            var frame = document.querySelector("#navbar > div");
+            return frame ? frame.firstElementChild : null;
+        }
+
+        function dedupe(keepInActions) {
+            /* swup 重建导航岛时会带来一份新的 #media-island —— 只留
+               「在正确位置」的那份（旧节点带着全部监听器，优先保留） */
+            var all = document.querySelectorAll("#media-island");
+            if (all.length <= 1) return;
+            var keep = null;
+            for (var i = 0; i < all.length; i++) {
+                var inActions = !!all[i].closest("#navbar-actions");
+                if (keepInActions === inActions && !keep) keep = all[i];
+            }
+            keep = keep || all[0];
+            for (var j = 0; j < all.length; j++) {
+                if (all[j] !== keep) all[j].remove();
+            }
+        }
+
+        function place() {
+            var mi = document.getElementById("media-island");
+            if (!mi) return;
+            var actions = document.querySelector("#navbar-actions .navbar-actions-inner");
+            var promax =
+                document.body.classList.contains("site-promax") &&
+                window.innerWidth >= 768 &&
+                !!actions;
+            if (promax) {
+                dedupe(true);
+                mi = document.getElementById("media-island");
+                if (!mi) return;
+                if (mi.parentElement !== actions) {
+                    if (!home || !home.parent) {
+                        home = { parent: mi.parentElement, next: mi.nextSibling };
+                    }
+                    actions.appendChild(mi);
+                    /* 岛宽变了 → 提醒玻璃引擎 / 字形蒙版重新量 */
+                    window.dispatchEvent(new Event("resize"));
+                }
+            } else {
+                dedupe(false);
+                mi = document.getElementById("media-island");
+                if (!mi || mi.closest("#navbar")) return;
+                var row = rowOf();
+                if (!row) return;
+                if (home && home.parent && home.parent.isConnected) {
+                    home.parent.insertBefore(
+                        mi,
+                        home.next && home.next.parentElement === home.parent ? home.next : null,
+                    );
+                } else {
+                    row.appendChild(mi);
+                }
+                window.dispatchEvent(new Event("resize"));
+            }
+        }
+
+        var t = 0;
+        window.addEventListener("resize", function () {
+            clearTimeout(t);
+            t = setTimeout(place, 160);
+        });
+        document.addEventListener("siteversionchange", place);
+        document.addEventListener("astro:page-load", place);
+        document.addEventListener("swup:contentReplaced", place);
+        place();
+    })();
+</script>
 
 <!-- 灵动岛状态栏：右上角常驻，音乐播放/天气面板打开/导航隐藏时自动滑出 -->
 <StatusIsland />
@@ -601,7 +1068,7 @@ const hasMultipleImages =
             <div class="w-4/5 lg:w-3/4 text-center mb-0">
                 <div class="flex flex-col">
                     {backgroundWallpaper.common?.homeText?.title && (
-                        <div class="banner-title font-bold text-white mb-2 lg:mb-4 leading-tight" style={{ '--banner-title-size': backgroundWallpaper.common.homeText.titleSize || "3rem" }}>
+                        <div class="banner-title font-bold text-white mb-2 lg:mb-4 leading-tight" data-lg-text style={{ '--banner-title-size': backgroundWallpaper.common.homeText.titleSize || "3rem" }}>
                             {backgroundWallpaper.common.homeText.title}
                         </div>
                     )}
