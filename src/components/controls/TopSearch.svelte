@@ -950,12 +950,10 @@ $effect(() => {
 		{#if notice}
 			<span class="ts-hint-text">{notice}</span>
 		{:else}
-			<span class="ts-hint-arrow" aria-hidden="true">↓</span>
-			<!-- 本会话第一次进站先说「搬走了」这件事，鼠标贴上去之后再说怎么用 -->
+			<!-- 两态：刚进站先说搜索搬到哪了；鼠标贴到屏幕顶边再说怎么拉出来 -->
+			<span class="ts-hint-arrow" aria-hidden="true">{firstHint && !hoverTop ? "↑" : "↓"}</span>
 			<span class="ts-hint-text">
-				{firstHint && !hoverTop
-					? "搜索就在上方 · 悬停有液态玻璃，或从顶部往下拖"
-					: "从屏幕顶部往下拖，唤出搜索"}
+				{firstHint && !hoverTop ? "搜索就在上方" : "从网页向下拉出现搜索框"}
 			</span>
 		{/if}
 	</div>
