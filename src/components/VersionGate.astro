@@ -30,6 +30,23 @@
 		<div class="vg-skip">点一下跳过</div>
 	</section>
 
+	<!-- 背景音乐：lite / normal / promax 各一段，悬停按钮即切换 -->
+	<audio id="vg-audio" loop preload="auto" hidden></audio>
+
+	<!-- 右上角静音按钮 -->
+	<button type="button" class="vg-mute" data-vg-mute aria-label="静音背景音乐">
+		<svg class="vg-mute__on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"></path>
+			<path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+			<path d="M18.5 5.5a9 9 0 0 1 0 13"></path>
+		</svg>
+		<svg class="vg-mute__off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"></path>
+			<line x1="16" y1="9" x2="22" y2="15"></line>
+			<line x1="22" y1="9" x2="16" y2="15"></line>
+		</svg>
+	</button>
+
 	<!-- 版本选择 -->
 	<section class="vg-panel">
 		<div class="vg-versions">
@@ -258,6 +275,57 @@
 	}
 
 	/* =========================
+	   背景音乐静音按钮
+	========================= */
+	.vg-mute {
+		position: absolute;
+		top: 18px;
+		right: 18px;
+		z-index: 20;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 42px;
+		height: 42px;
+		border-radius: 50%;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		background: rgba(255, 255, 255, 0.08);
+		-webkit-backdrop-filter: blur(14px);
+		backdrop-filter: blur(14px);
+		color: rgba(255, 255, 255, 0.75);
+		cursor: pointer;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 8px 24px rgba(0, 0, 0, 0.35);
+		transition:
+			transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.35s, border 0.35s,
+			color 0.35s;
+	}
+	.vg-mute:hover {
+		transform: scale(1.08);
+		background: rgba(255, 255, 255, 0.16);
+		border-color: rgba(255, 255, 255, 0.45);
+		color: #fff;
+	}
+	.vg-mute:active {
+		transform: scale(0.94);
+	}
+	.vg-mute:focus-visible {
+		outline: 2px solid rgba(255, 255, 255, 0.6);
+		outline-offset: 3px;
+	}
+	.vg-mute .vg-mute__off {
+		display: none;
+	}
+	.vg-mute.is-muted {
+		color: rgba(255, 255, 255, 0.4);
+	}
+	.vg-mute.is-muted .vg-mute__on {
+		display: none;
+	}
+	.vg-mute.is-muted .vg-mute__off {
+		display: block;
+	}
+
+	/* =========================
 	   版本选择
 	========================= */
 	.vg-panel {
@@ -475,6 +543,69 @@
 		window.__versionGateShownThisLoad = true;
 		if (ver !== null && !isReloadish) return;
 
+		/* ── 版本音频 ──────────────────────────────────────────────────
+		   三个可选版本各配一段：lite.mp3 / normal.mp3 / promax.mp3。
+		   开门不自动播；鼠标悬停（或键盘聚焦）到哪个版本按钮，
+		   就播对应曲名的音频；右上角静音按钮随时关（记档，下次进站保持）。 */
+		var TRACKS = { lite: "/audio/lite.mp3", normal: "/audio/normal.mp3", promax: "/audio/promax.mp3" };
+		var MUTE_KEY = "vgMusicMuted";
+		var audioEl = document.getElementById("vg-audio");
+		var muteBtn = gate.querySelector("[data-vg-mute]");
+		var muted = false;
+		try {
+			muted = localStorage.getItem(MUTE_KEY) === "1";
+		} catch (e) {}
+
+		function playTrack(v) {
+			if (!TRACKS[v] || !audioEl) return;
+			if (audioEl.getAttribute("src") !== TRACKS[v]) {
+				audioEl.src = TRACKS[v];
+				audioEl.volume = 0.55;
+			}
+			if (muted) return;
+			tryPlay();
+		}
+		function tryPlay() {
+			if (!audioEl || !audioEl.getAttribute("src")) return;
+			var p = audioEl.play();
+			if (p && p.catch) {
+				p.catch(function () {
+					/* 浏览器拦自动播放：等第一次交互再起 */
+					var kick = function () {
+						if (!gate.hidden && !muted) tryPlay();
+					};
+					document.addEventListener("pointerdown", kick, { once: true });
+					document.addEventListener("keydown", kick, { once: true });
+				});
+			}
+		}
+		function applyMute() {
+			if (muteBtn) {
+				muteBtn.classList.toggle("is-muted", muted);
+				muteBtn.setAttribute("aria-label", muted ? "取消静音" : "静音背景音乐");
+			}
+			if (muted && audioEl) audioEl.pause();
+		}
+		if (muteBtn) {
+			muteBtn.addEventListener("click", function (e) {
+				e.stopPropagation();
+				muted = !muted;
+				try {
+					localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
+				} catch (err) {}
+				applyMute();
+			});
+		}
+		/* 悬停 / 键盘聚焦版本按钮 → 播对应版本的音频（占位档不播） */
+		function trackFromEvent(e) {
+			var btn = e.target && e.target.closest ? e.target.closest(".vg-btn[data-ver]") : null;
+			if (!btn || btn.getAttribute("data-soon")) return;
+			playTrack(btn.getAttribute("data-ver"));
+		}
+		gate.addEventListener("pointerover", trackFromEvent);
+		gate.addEventListener("focusin", trackFromEvent);
+		applyMute();
+
 		/* ── 等整站加载完再开门 ────────────────────────────────────────
 		   开屏这块东西不轻：70vw/60vw 的大半径 blur 光斑在动、玻璃文字在跑
 		   流光、按钮全是 backdrop-filter。要是它跟首屏抢主线程和合成层
@@ -562,6 +693,7 @@
 				// 只有还没 ready、且点在开屏区域时才算「跳过」
 				if (gate.classList.contains("is-ready")) return;
 				if (e.target && e.target.closest && e.target.closest("[data-ver]")) return;
+				if (e.target && e.target.closest && e.target.closest("[data-vg-mute]")) return;
 				gate.classList.add("is-ready");
 				if (readyTimer) clearTimeout(readyTimer);
 			});
@@ -638,6 +770,8 @@
 			gate.hidden = true;
 			gate.classList.remove("is-cover", "is-shown", "is-ready");
 			document.documentElement.style.overflow = "";
+			/* 选完版本收门：背景音乐一并停掉 */
+			if (audioEl) audioEl.pause();
 			/* 解锁滚动后视口宽度会变化（滚动条回来了）→ 提醒玻璃引擎重新量一次 */
 			try {
 				window.dispatchEvent(new Event("resize"));
