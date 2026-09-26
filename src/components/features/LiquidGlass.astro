@@ -201,6 +201,38 @@
 			force: true,
 		},
 		{
+			/* 屏幕左缘拖出来那枚时间（LeftTime.svelte，ProMax 桌面端）。
+			   它有**两种形态**共用这一个 DOM：
+			     · 板块  .lt-panel             —— 圆角玻璃盒，底色 rgba(255,255,255,.42)
+			     · 进壁纸 .lt-panel.wallpaper  —— 拉长的长方形，底色压到 .10
+			   两种底色的 alpha 都够（hasGlassBackdrop 过得了），折射一直都在；
+			   形态切换时 LeftTime 会 unregister → 清 __lgBaseBg → 重新 register，
+			   好让透底基准按新底色重记（否则折射停在旧底色上）。
+			   面板平时 opacity:0，靠 force 的显形观察者补玻璃；
+			   它是 body 直下的独立层，不占 nest 名额。 */
+			sel: ".lt-panel",
+			band: 24,
+			strength: 1.2,
+			blur: 2.4,
+			sat: 1.16,
+			tint: 0.62,
+			force: true,
+		},
+		{
+			/* 时间面板下沿那颗「进壁纸 / 回板块」按钮：
+			   它住在已经上了玻璃的 .lt-panel 内部 → **必须 nest**，
+			   不然「玻璃上不再叠玻璃」那条规则会直接拒了它。
+			   tint 给满 1：按钮是深底白字，透底会把它压成半透灰纱。 */
+			sel: ".lt-mode",
+			band: 14,
+			strength: 0.9,
+			blur: 2.2,
+			sat: 1.18,
+			tint: 1,
+			nest: true,
+			force: true,
+		},
+		{
 			/* 同理：搜索结果面板在 #navbar-actions 的玻璃壳内部 */
 			sel: ".dis-results-panel",
 				band: 24,

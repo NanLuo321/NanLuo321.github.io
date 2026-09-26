@@ -68,7 +68,7 @@ uniform vec4  uBlob2;  // 悬停液凸：cx, cy, r, r（hold 模式下跟指针�
 uniform float uEdge;   // 顶部吸附线（0 = 黑条已去掉）
 uniform float uK;      // 融合半径
 uniform float uK2;     // 液凸与胶囊的融合半径
-uniform float uHeight, uHlAmt, uAb, uDpr, uCont, uDark, uValid, uValid2;
+uniform float uHeight, uHlAmt, uAb, uDpr, uCont, uDark, uValid, uValid2, uOrient;
 uniform vec3  uTint;   // 清玻璃那档的底色（取自站点的 --card-bg）
 out vec4 outColor;
 
@@ -97,6 +97,12 @@ vec4 sdfUnion(vec4 a, vec4 b, float k){
 
 void main(){
   vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);  // y 向下，对齐 UI 坐标
+
+  // 左缘模式（uOrient=1）：把坐标系沿对角线翻一下 —— 顶边那一整套几何
+  // （半平面吸附、液颈、贴边黑玻璃、上黑下透的压暗、高光朝向）原封不动
+  // 变成「左缘」的几何。CPU 传进来的 blob / 液凸坐标按同一套翻转
+  // （见 uniform 上传处），shader 其余部分零改动。
+  if (uOrient > 0.5) p = p.yx;
 
   // 顶边半平面与液滴的平滑并集。uEdge 退到视口上方（见 meltTuning.edge）→
   // 半平面整条画不出来；但它仍然把靠近顶边的液滴往上吸，液颈就是从这里来的。
@@ -235,6 +241,10 @@ export interface MeltOptions {
 	lens?: HTMLElement | null;
 	/** 胶囊落点（视口坐标）—— 必须与组件 CSS 里的尺寸是同一套 */
 	capsule: () => CapsuleBox;
+	/** 吸附边：top = 屏幕顶边（默认，搜索）；left = 屏幕左缘（时间）。
+	 *  只影响「从哪条边渗出来 / 拉多远算拉够 / 缩回哪条边」，
+	 *  形状与材质在 shader 里靠坐标翻转原样复用。 */
+	orient?: "top" | "left";
 	onPhase?: (p: MeltPhase) => void;
 	/** 弹簧落定：可以交给 DOM 那枚真胶囊了 */
 	onSettle?: () => void;
@@ -246,6 +256,7 @@ export interface MeltOptions {
  */
 export function createMelt(opts: MeltOptions) {
 	const { canvas, lens, capsule } = opts;
+	const orient = opts.orient === "left" ? "left" : "top";
 	const gl = canvas.getContext("webgl2", {
 		antialias: false,
 		alpha: true,
@@ -290,10 +301,13 @@ export function createMelt(opts: MeltOptions) {
 		"uDark",
 		"uValid",
 		"uValid2",
+		"uOrient",
 		"uTint",
 	]) {
 		U[n] = gl.getUniformLocation(prog, n);
 	}
+	// 左缘翻转是常量，链接完写一次就够
+	gl.uniform1f(U.uOrient, orient === "left" ? 1 : 0);
 	// 预乘 alpha：rgb 里已经带过 alpha，混合不能再乘一遍
 	gl.enable(gl.BLEND);
 	gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -411,8 +425,14 @@ export function createMelt(opts: MeltOptions) {
 		last = now;
 
 		if (phase === "drag") {
-			sp.cx.t = pointer.x;
-			sp.cy.t = Math.max(pointer.y, P.edge * 0.5);
+			// 沿吸附边钳住：top 模式不许越过顶边，left 模式不许越过左缘
+			if (orient === "left") {
+				sp.cx.t = Math.max(pointer.x, P.edge * 0.5);
+				sp.cy.t = pointer.y;
+			} else {
+				sp.cx.t = pointer.x;
+				sp.cy.t = Math.max(pointer.y, P.edge * 0.5);
+			}
 			// 速度拉伸：液滴朝运动方向微微变长
 			const st = P.radius + Math.min(26, Math.abs(sp.cx.v) * 0.045);
 			const st2 = P.radius + Math.min(26, Math.abs(sp.cy.v) * 0.045);
@@ -436,7 +456,12 @@ export function createMelt(opts: MeltOptions) {
 		}
 		for (const key in sp) sp[key as keyof typeof sp].step(dt);
 		for (const s of [bp.x, bp.y, bp.r]) s.step(dt);
-		if (phase === "retract" && sp.by.x < 2.5 && bumpGone()) {
+		// 缩回完成判定：贴着吸附边的那根半轴缩没了才算完（top=by，left=bx）
+		if (
+			phase === "retract" &&
+			(orient === "left" ? sp.bx.x : sp.by.x) < 2.5 &&
+			bumpGone()
+		) {
 			sleep();
 			return;
 		}
@@ -463,20 +488,21 @@ export function createMelt(opts: MeltOptions) {
 
 		const darkAmt = Math.max(0, Math.min(1, sp.dark.x));
 		gl.uniform2f(U.uRes, canvas.width, canvas.height);
-		gl.uniform4f(
-			U.uBlob,
-			sp.cx.x * dpr,
-			sp.cy.x * dpr,
-			Math.max(sp.bx.x, 0.5) * dpr,
-			Math.max(sp.by.x, 0.5) * dpr,
-		);
-		gl.uniform4f(
-			U.uBlob2,
-			bp.x.x * dpr,
-			bp.y.x * dpr,
-			Math.max(bp.r.x, 0.5) * dpr,
-			Math.max(bp.r.x, 0.5) * dpr,
-		);
+		// uRes 仍是屏幕坐标（y 翻转发生在 shader 入口、翻转之前）；
+		// blob / 液凸在 left 模式下按 (y,x) 传 —— 与 shader 里的坐标系翻转配套
+		const bwx = Math.max(sp.bx.x, 0.5) * dpr;
+		const bwy = Math.max(sp.by.x, 0.5) * dpr;
+		if (orient === "left") {
+			gl.uniform4f(U.uBlob, sp.cy.x * dpr, sp.cx.x * dpr, bwy, bwx);
+		} else {
+			gl.uniform4f(U.uBlob, sp.cx.x * dpr, sp.cy.x * dpr, bwx, bwy);
+		}
+		const bpr = Math.max(bp.r.x, 0.5) * dpr;
+		if (orient === "left") {
+			gl.uniform4f(U.uBlob2, bp.y.x * dpr, bp.x.x * dpr, bpr, bpr);
+		} else {
+			gl.uniform4f(U.uBlob2, bp.x.x * dpr, bp.y.x * dpr, bpr, bpr);
+		}
 		gl.uniform1f(U.uEdge, P.edge * dpr);
 		gl.uniform1f(U.uK, sp.k.x * dpr);
 		gl.uniform1f(U.uK2, P.k * dpr);
@@ -563,17 +589,25 @@ export function createMelt(opts: MeltOptions) {
 	return {
 		phase: () => phase,
 		wake,
-		/** 从屏幕顶边某个横坐标按下 */
+		/** 从吸附边某个坐标按下 */
 		down(x: number, y: number) {
 			hold = false;
 			resetBump();
 			readTint();
 			resize();
 			pointer = { x, y };
-			sp.cx.x = x;
-			sp.cx.v = 0;
-			sp.cy.x = P.edge * 0.5; // 从顶边里渗出来
-			sp.cy.v = 0;
+			// 从吸附边里渗出来：top 模式固定 y、left 模式固定 x
+			if (orient === "left") {
+				sp.cx.x = P.edge * 0.5;
+				sp.cx.v = 0;
+				sp.cy.x = y;
+				sp.cy.v = 0;
+			} else {
+				sp.cx.x = x;
+				sp.cx.v = 0;
+				sp.cy.x = P.edge * 0.5;
+				sp.cy.v = 0;
+			}
 			sp.bx.x = sp.by.x = 2;
 			// 跟手要紧：中心用硬弹簧，半宽回到正常阻尼（初值 2 会弹一下才有体积）
 			sp.cx.set(18, 0.95);
@@ -590,13 +624,16 @@ export function createMelt(opts: MeltOptions) {
 			if (phase !== "drag") return;
 			pointer = { x, y };
 		},
-		/** 松手：拉够 → 弹成胶囊；没拉够 → 被吸回顶边 */
-		up(y: number) {
+		/** 松手：拉够 → 弹成胶囊；没拉够 → 被吸回吸附边。
+		 *  阈值沿拉伸轴：top 模式看 y（视口高度），left 模式看 x（视口宽度）。 */
+		up(x: number, y: number) {
 			if (phase !== "drag") return;
-			if (
-				y >
-				(document.documentElement.clientHeight || window.innerHeight) * 0.32
-			) {
+			const reach = orient === "left" ? x : y;
+			const span =
+				orient === "left"
+					? document.documentElement.clientWidth || window.innerWidth
+					: document.documentElement.clientHeight || window.innerHeight;
+			if (reach > span * 0.32) {
 				toCapsule(true);
 				setPhase("morph");
 			} else {
@@ -624,10 +661,11 @@ export function createMelt(opts: MeltOptions) {
 			setPhase("morph");
 			wake();
 		},
-		/** 缩回屏幕顶边（点空白 / Esc / 没拉够松手） */
+		/** 缩回吸附边（点空白 / Esc / 没拉够松手） */
 		retract() {
 			setMorphSprings();
-			sp.cy.t = P.edge * 0.3;
+			if (orient === "left") sp.cx.t = P.edge * 0.3;
+			else sp.cy.t = P.edge * 0.3;
 			sp.bx.t = sp.by.t = 1;
 			sp.dark.t = 1;
 			sp.k.t = P.k;
@@ -656,7 +694,7 @@ export function createMelt(opts: MeltOptions) {
 				(phase === "morph" &&
 					sp.cx.settled() &&
 					sp.cy.settled() &&
-					sp.by.settled())
+					(orient === "left" ? sp.bx : sp.by).settled())
 			) {
 				snapToCapsule();
 			}

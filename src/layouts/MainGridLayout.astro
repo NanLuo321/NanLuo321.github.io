@@ -13,8 +13,10 @@ import { Icon } from "astro-icon/components";
 import ImageWrapper from "@/components/common/ImageWrapper.astro";
 import FloatingControls from "@/components/controls/FloatingControls.astro";
 import ScrollDownIndicator from "@/components/controls/ScrollDownIndicator.astro";
+import LeftTime from "@/components/controls/LeftTime.svelte";
 import TopSearch from "@/components/controls/TopSearch.svelte";
 import BackgroundPlayer from "@/components/features/BackgroundPlayer.astro";
+import WallpaperDepth from "@/components/features/WallpaperDepth.astro";
 import TypewriterText from "@/components/features/TypewriterText.astro";
 import CategoryBar from "@/components/layout/CategoryBar.astro";
 import {
@@ -292,6 +294,23 @@ const hasMultipleImages =
       挂在 body 直下（这里）才是真正的「屏幕上方」。
 -->
 <TopSearch client:load />
+
+<!--
+    屏幕左缘那枚时间（ProMax 桌面端专属）
+    与 TopSearch 同一套液体管线，吸附边换成屏幕左缘（引擎 orient: "left"）；
+    同样挂在 body 直下，DOM 顺序在 TopSearch 之后 —— 左缘感应带从 80px
+    起，屏幕左上角那 26px 留给搜索的顶部感应带，两个手势不打架。
+-->
+<LeftTime client:load />
+
+<!--
+    壁纸 · 角色凸出（ProMax 桌面端的 iPhone 锁屏景深）
+    面板挂在 body 直下（同 TopSearch/LeftTime 的理由：岛上 transform 会给 fixed 当包含块），
+    岛里那颗入口按钮在 Navbar.astro (#wp-source-toggle)。
+    它运行时会往 body 末尾插一层 #wallpaper-subject —— 就是「同一张壁纸只露角色」
+    的那层，专门夹在壁纸(z:-1) 和 时间(z:65) 之上、导航岛(z:80) 之下。
+-->
+<WallpaperDepth />
 
 <!-- Floating Navbar - 居中悬浮 -->
 <div id="top-row" class="z-50 fixed top-3 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-3">

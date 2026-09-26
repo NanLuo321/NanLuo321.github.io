@@ -1,0 +1,1705 @@
+---
+/**
+ * 壁纸 · 角色凸出（ProMax 桌面端的「iPhone 锁屏景深」）
+ * ============================================================================
+ * 岛里那颗 #wp-source-toggle 打开这个小面板，面板里能：
+ *
+ *   ① 切换壁纸来源：API 随机图 ⇄ 自定义图片（**API 那条一行没动**，
+ *      只换 <img> 的 src，切回来就是原来的 API 地址，重新随机）
+ *   ② 自定义图片：选本地文件（存 IndexedDB，刷新还在）或粘贴图片地址
+ *   ③ 角色凸出：用浏览器自己的算力（canvas，无模型）识别壁纸里的角色，
+ *      生成遮罩，把「同一张壁纸」再画一层、只显示角色 —— 于是角色从壁纸里
+ *      凸出来，**把中间那层时间盖住**。
+ *
+ * 层级（角色**只准压住时间**，别的文字/控件一律在它之上）：
+ *
+ *   #wallpaper-wrapper   z:-1   壁纸本体（里面那层暗化 banner-dim 只影响它自己）
+ *   #wallpaper-subject   z:25   角色层（本组件产出，pointer-events:none）
+ *                        z:62   仅当 body.wp-subject-armed（那一刀裁切真的生效了）时抬上来
+ *   #left-time           z:65 ／ 58
+ *                               时间（LeftTime.svelte）。**板块**形态是 65 ——
+ *                               那时时间是一块浮在正文上的玻璃盒，属于 UI，
+ *                               角色不该压它。**进壁纸**形态是 58 —— 高于
+ *                               正文(30)/#content-wrapper(50)（向下翻文章盖不掉时间），
+ *                               又低于裁切生效时抬到 62 的角色层（角色的头/发压在
+ *                               时间前面，就是 iPhone 锁屏那种景深）。
+ *   正文(30) / 顶部搜索(65) / 导航岛(80) 全都在角色之上。
+ *
+ * 详见下面 is:global 那段注释。**光靠 z-index 保不住「文字」**：横幅标题关在
+ * #wallpaper-wrapper 的负层栈里，任何比 -1 高的层都能盖住它 —— 所以最终真正
+ * 落地的是给角色层按时间框**裁一刀**（applySubjectClip，见 paintSubject 后面那段注），
+ * 框外连像素都没有 → 标题/文章/搜索全都露出来，而时间照样被角色压着。
+ *
+ * ⚠ 角色层是「同一张壁纸再画一遍」、跟壁纸**逐像素一致**（A/B 实测：除了时间那一带，
+ *   其余每一带的差异都 ≤ 运行噪声）—— 换句话说它**唯一看得见的作用就是遮挡**。
+ *   于是有三条配套规则，让这件事只在该发生的地方发生：
+ *     ① 平时**整块剪掉**（CSS 默认 inset 下边 100%），只在时间框露脸时裁出那一格：
+ *        零观感代价，却顺手治好「时间收起后角色盖住横幅标题」。
+ *     ② 框底下若是**正文**（卡片 / 侧栏，见 clipSafe）就不裁、也不抬层 ——
+ *        否则 armed(62) 会把卡片糊成一块壁纸。判据只认**正文容器**、不认悬浮控件
+ *        （搜索抓取条 / 导航岛）：它们本就在角色之上(65/80)，把它们当正文会把
+ *        整页顶部误判成不安全、景深当场全灭（实测过）。
+ *     ③ 时间自己会**自动避让**：bestSpot(w,h) 拿 mask 覆盖率地形图扫一遍候选落点，
+ *        挑一块角色最薄的交给 LeftTime（用户还能再拖）。候选里**硬性剔掉**顶部
+ *        搜索带(118)与沉底导航岛(104) —— 时间必须整个待在搜索带下面，否则会跟
+ *        放大镜/麦克风叠在一起，而且面板上半截的 pointerdown 会被搜索层吃掉、拖不动。
+ *        跟**横幅文字**（大标题/副标题）相交的落点按**真实损伤**罚分：判据是那一刀
+ *        裁出来的**裁切框**（面板 ± CLIP_PAD）。文字被框蹭到之后**大多能抠掉**
+ *        （applySubjectClip 会把它挖成多边形，见 punchEdge），所以「擦到但能挖」损伤
+ *        记 0、「挖不掉（洞悬在框中间）」才按交叠面积罚。一刀切写法的坑实测踩过：
+ *        真实壁纸下它选了把标题+副标题整块吞掉的位置，比只擦 29px 字顶还差。
+ *
+ * 算法与跨域限制都写在 utils/wallpaper-depth.ts 的头部注释里。
+ * ⚠ 一句话：API 随机图（t.alcy.cc）不带 ACAO，浏览器读不了像素 ——
+ *   所以「角色凸出」默认对**自定义图片**生效；API 图下面板会明说原因。
+ */
+---
+
+<!-- 面板：挂在 body 直下（岛上的 transform 会给 fixed 当包含块） -->
+<div id="wp-depth-panel" class="wp-panel" hidden aria-hidden="true">
+	<div class="wp-head">
+		<span class="wp-title">壁纸 · 角色凸出</span>
+		<button type="button" class="wp-x" id="wp-close" aria-label="关闭">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+		</button>
+	</div>
+
+	<div class="wp-group">
+		<div class="wp-k">壁纸来源</div>
+		<div class="wp-seg" id="wp-source" role="group" aria-label="壁纸来源">
+			<button type="button" data-src="api" aria-pressed="true">API 随机图</button>
+			<button type="button" data-src="custom" aria-pressed="false">自定义图片</button>
+		</div>
+		<div class="wp-hint" id="wp-src-hint"></div>
+	</div>
+
+	<div class="wp-group" id="wp-custom-group">
+		<div class="wp-k">自定义图片</div>
+		<div class="wp-pick-row">
+			<button type="button" class="wp-btn" id="wp-pick">选择本地图片…</button>
+			<button type="button" class="wp-btn wp-btn-ghost" id="wp-clear">清除</button>
+		</div>
+		<div class="wp-url-row">
+			<input type="url" id="wp-url" placeholder="或粘贴图片地址（需允许跨域）" spellcheck="false" />
+			<button type="button" class="wp-btn" id="wp-url-apply">使用</button>
+		</div>
+		<input type="file" id="wp-file" accept="image/*" hidden />
+	</div>
+
+	<div class="wp-group">
+		<label class="wp-switch" for="wp-depth">
+			<input type="checkbox" id="wp-depth" />
+			<span class="wp-switch-ui" aria-hidden="true"></span>
+			<span>角色凸出（时间嵌进角色里）</span>
+		</label>
+		<div class="wp-status" id="wp-status">—</div>
+		<button type="button" class="wp-btn wp-btn-wide" id="wp-redo">重新识别角色</button>
+	</div>
+</div>
+
+<style is:global>
+	/* ⚠ 导航岛的容器 #top-row 原本是 z-50，而角色层原来抬到 66 —— 不把岛抬起来
+	   角色就会糊到岛上。这里统一抬到 80：角色(25) 与正文(30)/搜索(65) 都在它之下，
+	   和主题里其它 z 值也不冲突。 */
+	#top-row,
+	#mobile-nav-island {
+		z-index: 80;
+	}
+
+	/* 「角色只准压住时间」的层级 + 裁切（ProMax）----------------------------
+	   角色层是壁纸的第二层（同一张图、再画一遍、只靠 mask 露出角色）。它挂在
+	   `#wallpaper-wrapper`(z:-1) **外面** —— 于是它既受不到壁纸那层暗化
+	   （#banner-dim-container 的 rgba(0,0,0,dimOpacity)）的约束，也不受正文层
+	   约束。原来给它的 z:66 正好糊在正文(30) / 顶部搜索(65) 上面 ——
+	   那就是用户说的「角色把文章挡住了 / 连上方的搜索框都盖住」。
+
+	   现在把它压到 **25**：正文(30)、搜索(65)、导航岛(80) 全都比它高 ——
+	   控件层面已经不可能再被糊住。
+
+	   时间是要**被角色压住**的（苹果锁屏那种「角色的头/发压在时间前面」），
+	   所以「进壁纸」形态下，角色层在**那一刀裁切真的生效时**升到 **62**
+	   （body.wp-subject-armed），去压住时间(58)；没裁切就老实待在 25。
+	   板块形态不动（时间 65）：那时时间是一块**浮在正文之上的液态玻璃盒**，
+	   属于 UI 而不是壁纸，角色不该也没必要压它。
+
+	   ⚠ 光靠 z 只能保住「控件」，保不住「文字」：
+	   横幅标题（.banner-title）挂在 `#banner-overlay-container`(z:20) 里，而那个
+	   容器关在 `#wallpaper-wrapper` 的 z:-1 栈里 —— 它出不来，任何比 -1 高的层
+	   都能盖住它。所以最后真正落地的是给角色层**裁一刀**：只留落在时间框里的
+	   像素（脚本里的 applySubjectClip），框外连像素都没有 → 标题/文章/搜索
+	   全都露出来，而时间照样被角色压着。
+	   裁切边界要无缝，就必须让角色层跟壁纸一样亮 —— 见 syncSubjectTint。
+
+	   「时间」这层的 z 也不能随便往低估：它下面还压着正文(30) 与
+	   #content-wrapper(50)。实测把时间沉到 20 之后，页面往下翻时一篇文章的
+	   玻璃卡正好停在时间那一格，把时间整个盖掉了 —— 所以它必须留在正文之上。
+	   最终取 **58**：高于正文(30) / #content-wrapper(50) / 玻璃滚动条(55)，
+	   低于顶部搜索(65)、导航岛(80)、导航栏(100)。 */
+	body.site-promax.lt-in-wallpaper #left-time {
+		z-index: 58;
+	}
+
+	/* 角色层默认 z:25 —— 在正文(30) **之下**，结构上就不可能碰到文章/文字。
+	   只有「那一刀裁切框真的生效了」，才升到 62 去压住时间
+	   （body.wp-subject-armed 由 applySubjectClip 同步开关，跟裁切同生共死）。
+	   62 仍低于顶部搜索(65)：搜索框与导航岛在结构上就盖不着 ——
+	   不靠「裁切框刚好没罩到它」这种运气。 */
+	body.site-promax.lt-in-wallpaper.wp-subject-armed #wallpaper-subject {
+		z-index: 62;
+	}
+
+	/* 角色层：壁纸的第二层绘制，只靠 mask 露出角色。绝不能吃事件。
+	   ⚠ 默认**整块剪掉**（inset 下边 100%）—— 它只在「进壁纸 + 时间框露脸 +
+	     框底下不是正文」时才由 applySubjectClip 裁出那一格来。因为角色层跟壁纸
+	     逐像素一致、唯一作用就是遮挡，所以平时剪掉是零观感代价的，
+	     却避免了「时间收起来后它盖住横幅标题」这个隐患。 */
+	#wallpaper-subject {
+		position: fixed;
+		left: 0;
+		top: 0;
+		width: 0;
+		height: 0;
+		/* 25：正文(30) 之下 —— 角色永远糊不到文章/搜索/导航岛上 */
+		z-index: 25;
+		clip-path: inset(0px 0px 100% 0px);
+		-webkit-clip-path: inset(0px 0px 100% 0px);
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.35s ease;
+		will-change: opacity;
+	}
+	#wallpaper-subject.on {
+		opacity: 1;
+	}
+	#wallpaper-subject img {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+	/* 角色层里那层「跟壁纸对齐」的罩子：暗化 + 底部渐变，跟壁纸身上那两层同值。
+	   角色层挂在 #wallpaper-wrapper 外面，这两层天然吃不到 —— 不补上的话它比
+	   壁纸亮 25%（暗化 alpha 0.2），裁切边界就会露出一条很明显的亮缝。
+	   ⚠ 这层**必须跟 img 套同一张 mask**（paintSubject 里一起写）：
+	     不套的话它会把整个裁切框都压暗 20%，框内就出现一块暗色方块。 */
+	#wallpaper-subject .wp-subject-tint {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+	}
+</style>
+
+<style>
+	/* ================= 面板本体：跟站点玻璃一致的口径 ================= */
+	.wp-panel {
+		position: fixed;
+		left: 50%;
+		bottom: 104px;
+		transform: translateX(-50%);
+		width: min(360px, 92vw);
+		box-sizing: border-box;
+		z-index: 200; /* 时间(65)/角色层(25)/岛(80) 之上，版本门之下 */
+		padding: 14px 15px 15px;
+		border-radius: 20px;
+		border: 1px solid rgba(0, 0, 0, 0.08);
+		background: rgba(255, 255, 255, 0.86);
+		backdrop-filter: blur(18px) saturate(1.4);
+		-webkit-backdrop-filter: blur(18px) saturate(1.4);
+		box-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
+		color: #1b1d21;
+		font-size: 0.86rem;
+		line-height: 1.45;
+		display: flex;
+		flex-direction: column;
+		gap: 13px;
+	}
+	.wp-panel[hidden] {
+		display: none;
+	}
+	:global(html.dark) .wp-panel {
+		background: rgba(24, 26, 32, 0.86);
+		border-color: rgba(255, 255, 255, 0.12);
+		color: #eef0f4;
+		box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+	}
+
+	.wp-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+	}
+	.wp-title {
+		font-weight: 700;
+		font-size: 0.92rem;
+		letter-spacing: 0.02em;
+	}
+	.wp-x {
+		width: 26px;
+		height: 26px;
+		flex: none;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		border-radius: 9999px;
+		background: rgba(0, 0, 0, 0.06);
+		color: inherit;
+		cursor: pointer;
+		padding: 0;
+		transition: background 0.2s ease;
+	}
+	.wp-x:hover {
+		background: rgba(0, 0, 0, 0.12);
+	}
+	.wp-x svg {
+		width: 14px;
+		height: 14px;
+	}
+	:global(html.dark) .wp-x {
+		background: rgba(255, 255, 255, 0.1);
+	}
+	:global(html.dark) .wp-x:hover {
+		background: rgba(255, 255, 255, 0.18);
+	}
+
+	.wp-group {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.wp-k {
+		font-size: 0.74rem;
+		font-weight: 700;
+		letter-spacing: 0.09em;
+		opacity: 0.55;
+	}
+
+	/* 分段控件（API / 自定义） */
+	.wp-seg {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 3px;
+		padding: 3px;
+		border-radius: 12px;
+		background: rgba(0, 0, 0, 0.06);
+	}
+	:global(html.dark) .wp-seg {
+		background: rgba(255, 255, 255, 0.08);
+	}
+	.wp-seg button {
+		border: 0;
+		border-radius: 9px;
+		padding: 7px 6px;
+		font: inherit;
+		font-size: 0.82rem;
+		font-weight: 600;
+		color: inherit;
+		background: transparent;
+		cursor: pointer;
+		opacity: 0.62;
+		transition:
+			background 0.2s ease,
+			opacity 0.2s ease;
+	}
+	.wp-seg button[aria-pressed="true"] {
+		opacity: 1;
+		background: rgba(255, 255, 255, 0.95);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+	}
+	:global(html.dark) .wp-seg button[aria-pressed="true"] {
+		background: rgba(255, 255, 255, 0.16);
+		box-shadow: none;
+	}
+
+	.wp-btn {
+		border: 1px solid rgba(0, 0, 0, 0.1);
+		background: rgba(0, 0, 0, 0.04);
+		color: inherit;
+		border-radius: 10px;
+		padding: 8px 12px;
+		font: inherit;
+		font-size: 0.82rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition:
+			background 0.2s ease,
+			border-color 0.2s ease,
+			transform 0.12s ease;
+	}
+	.wp-btn:hover {
+		background: rgba(0, 0, 0, 0.08);
+	}
+	.wp-btn:active {
+		transform: scale(0.97);
+	}
+	:global(html.dark) .wp-btn {
+		border-color: rgba(255, 255, 255, 0.14);
+		background: rgba(255, 255, 255, 0.07);
+	}
+	:global(html.dark) .wp-btn:hover {
+		background: rgba(255, 255, 255, 0.13);
+	}
+	.wp-btn-wide {
+		width: 100%;
+	}
+	.wp-btn-ghost {
+		opacity: 0.7;
+	}
+
+	.wp-pick-row {
+		display: flex;
+		gap: 7px;
+	}
+	.wp-pick-row .wp-btn:first-child {
+		flex: 1;
+	}
+	.wp-url-row {
+		display: flex;
+		gap: 7px;
+	}
+	.wp-url-row input {
+		flex: 1;
+		min-width: 0;
+		border: 1px solid rgba(0, 0, 0, 0.12);
+		background: rgba(255, 255, 255, 0.7);
+		color: inherit;
+		border-radius: 10px;
+		padding: 8px 10px;
+		font: inherit;
+		font-size: 0.78rem;
+	}
+	.wp-url-row input::placeholder {
+		opacity: 0.45;
+	}
+	:global(html.dark) .wp-url-row input {
+		border-color: rgba(255, 255, 255, 0.16);
+		background: rgba(0, 0, 0, 0.3);
+	}
+
+	.wp-hint {
+		font-size: 0.74rem;
+		opacity: 0.62;
+	}
+	.wp-hint:empty {
+		display: none;
+	}
+
+	/* 开关 */
+	.wp-switch {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		cursor: pointer;
+		user-select: none;
+		font-weight: 600;
+	}
+	.wp-switch input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+	.wp-switch-ui {
+		position: relative;
+		flex: none;
+		width: 38px;
+		height: 22px;
+		border-radius: 9999px;
+		background: rgba(0, 0, 0, 0.16);
+		transition: background 0.22s ease;
+	}
+	.wp-switch-ui::after {
+		content: "";
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 18px;
+		height: 18px;
+		border-radius: 9999px;
+		background: #fff;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+		transition: transform 0.22s cubic-bezier(0.34, 1.4, 0.6, 1);
+	}
+	.wp-switch input:checked + .wp-switch-ui {
+		background: #3b82f6;
+	}
+	.wp-switch input:checked + .wp-switch-ui::after {
+		transform: translateX(16px);
+	}
+	.wp-switch input:focus-visible + .wp-switch-ui {
+		outline: 2px solid #3b82f6;
+		outline-offset: 2px;
+	}
+
+	.wp-status {
+		font-size: 0.76rem;
+		opacity: 0.72;
+		padding: 7px 9px;
+		border-radius: 9px;
+		background: rgba(0, 0, 0, 0.05);
+	}
+	:global(html.dark) .wp-status {
+		background: rgba(255, 255, 255, 0.06);
+	}
+	.wp-status[data-tone="ok"] {
+		color: #12805a;
+		background: rgba(16, 163, 110, 0.12);
+	}
+	.wp-status[data-tone="warn"] {
+		color: #a9600b;
+		background: rgba(245, 158, 11, 0.14);
+	}
+	:global(html.dark) .wp-status[data-tone="ok"] {
+		color: #5ee0ae;
+	}
+	:global(html.dark) .wp-status[data-tone="warn"] {
+		color: #f7c06a;
+	}
+	.wp-status[data-tone="busy"] {
+		color: #2b6bd8;
+		background: rgba(59, 130, 246, 0.12);
+	}
+	:global(html.dark) .wp-status[data-tone="busy"] {
+		color: #8fbcff;
+	}
+</style>
+
+<script>
+	import {
+		clearCustomImage,
+		computeSubjectMask,
+		contentRect,
+		loadCustomImage,
+		loadReadableImage,
+		mapBoxToViewport,
+		saveCustomImage,
+		type Rect,
+		type SubjectMask,
+	} from "@/utils/wallpaper-depth";
+
+	/* ============================ 状态 ============================ */
+
+	type Source = "api" | "custom";
+
+	const LS_SOURCE = "wpSource";
+	const LS_DEPTH = "wpDepth";
+
+	let state: { source: Source; depth: boolean } = { source: "api", depth: false };
+	let customUrl: string | null = null; /* createObjectURL 的产物，换图时要 revoke */
+	let mask: SubjectMask | null = null;
+	let maskUrl: string | null = null; /* mask 的 blob URL（比 dataURL 短，复用好） */
+	let busy = false;
+	/* 每换一次壁纸 / 关一次深度就 +1。analyze() 在每次 await 后核对，
+	   一旦对不上就整轮作废 —— 否则「识别到一半被关掉 / 被换图」时，
+	   迟到的 paintSubject() 会把上一张图的角色蒙版糊到新图上。 */
+	let analyzeGen = 0;
+	/* 这个 URL 已经证明读不了像素（跨域 / 防盗链）。记下来，
+	   免得「重新识别」或来回切来源时反复发请求、反复在控制台刷 CORS 报错 */
+	const unreadableUrls = new Set<string>();
+	let resizeTimer = 0;
+
+	/* 「只压时间」那刀裁切的状态（applySubjectClip / pumpClip 用） */
+	const CLIP_PAD = 14; /* 时间文字有 20px 的 text-shadow 外溢，给一点余量 */
+	let clipTimer = 0;
+	let clipMiss = 0;
+	let clipLast: string | null = null;
+	let clipLookAt = 0; /* syncSubjectLook 的滚动节流时间戳 */
+
+	/* 横幅里**真正承载字**的那几块。搜一遍不算贵，但两处调用必须同源：
+	   bestSpot 拿它避开落点、applySubjectClip 拿它把字从裁切区里抠出来 ——
+	   两套判据一旦分家，就会出现「按 A 避让、按 B 挖洞」的错位。
+	   ⚠ `.banner-home-text-overlay` 绝不能收进来：它是 `absolute inset-0` 的
+	     满屏 flex 容器（背景全透明，只负责摆位），rect 就是整个视口 ——
+	     当成「文字」用，**每个**候选都判相交，避让那一档直接空转、永远回落成软罚分
+	     （实测踩过：加了它之后 bestSpot 恒返回 y=234，看着像「罚分不够狠」，
+	     其实是判据被满屏容器污染了）。下面的 92% 过滤是第二道保险：
+	     换成别的类名、别的页面版式也照样拦得住。 */
+	const TEXT_SEL = ".banner-title, .banner-subtitle, .banner-page-title-overlay";
+	function heroTextRects(): DOMRect[] {
+		const vw = window.innerWidth;
+		const vh = window.innerHeight;
+		const out: DOMRect[] = [];
+		for (const el of document.querySelectorAll(TEXT_SEL)) {
+			const q = el.getBoundingClientRect();
+			if (q.width < 8 || q.height < 8) continue;
+			if (q.width >= vw * 0.92 && q.height >= vh * 0.92) continue; /* 布局容器，不是字 */
+			out.push(q);
+		}
+		return out;
+	}
+
+	/* 「时间该放哪儿」的地形图：把 mask 缩成一张小网格，自动避让用它挑落点
+	   （详见 bestSpot）。跟 maskUrl 同生命周期 —— 换图就重算。 */
+	let maskGrid: { gw: number; gh: number; data: Float32Array } | null = null;
+	let maskGridFor: string | null = null; /* 这张网格是给哪个 maskUrl 算的 */
+	/* 「这一刀裁下去安不安全」的节流时间戳（见 clipSafe） */
+	let safeAt = 0;
+	let safeCache = true;
+
+	function $<T extends HTMLElement>(id: string): T | null {
+		return document.getElementById(id) as T | null;
+	}
+
+	const panel = (): HTMLElement | null => $("wp-depth-panel");
+	const statusEl = (): HTMLElement | null => $("wp-status");
+
+	/* ============================ 壁纸元素 ============================ */
+
+	/** 当前真正在显示的那张壁纸 img（桌面/移动两套，挑可见的） */
+	function wallpaperImg(): HTMLImageElement | null {
+		const wrap = document.getElementById("wallpaper-wrapper");
+		if (!wrap) return null;
+		const all = Array.from(wrap.querySelectorAll("img")) as HTMLImageElement[];
+		let best: HTMLImageElement | null = null;
+		let bestArea = 0;
+		for (const im of all) {
+			const r = im.getBoundingClientRect();
+			const area = r.width * r.height;
+			if (area > bestArea && im.naturalWidth > 0) {
+				bestArea = area;
+				best = im;
+			}
+		}
+		return best || all[0] || null;
+	}
+
+	/** 头一次碰到这张图时把「原始 src/srcset」记下来 —— 切回 API 就靠它 */
+	function rememberOriginal(im: HTMLImageElement): void {
+		if (im.dataset.wpOrig !== undefined) return;
+		im.dataset.wpOrig = im.getAttribute("src") || "";
+		im.dataset.wpOrigSet = im.getAttribute("srcset") || "";
+		im.dataset.wpOrigSizes = im.getAttribute("sizes") || "";
+	}
+
+	function setImgSrc(im: HTMLImageElement, url: string, keepResponsive: boolean): void {
+		rememberOriginal(im);
+		/* 壁纸要换了 → 正在跑的那轮识别立刻作废 */
+		analyzeGen++;
+		busy = false;
+		if (keepResponsive) {
+			/* 还原本地图的响应式属性 */
+			if (im.dataset.wpOrigSet) im.setAttribute("srcset", im.dataset.wpOrigSet);
+			if (im.dataset.wpOrigSizes) im.setAttribute("sizes", im.dataset.wpOrigSizes);
+		} else {
+			/* 自定义图没有 srcset，留着会盖掉 src */
+			im.removeAttribute("srcset");
+			im.removeAttribute("sizes");
+		}
+		im.setAttribute("src", url);
+		if (im.getAttribute("src") !== url) im.src = url;
+	}
+
+	/* ============================ 角色层 ============================ */
+
+	function subjectEl(create: boolean): HTMLElement | null {
+		let el = document.getElementById("wallpaper-subject");
+		if (!el && create) {
+			el = document.createElement("div");
+			el.id = "wallpaper-subject";
+			el.setAttribute("aria-hidden", "true");
+			document.body.appendChild(el);
+		}
+		return el;
+	}
+
+	function dropSubject(): void {
+		const el = subjectEl(false);
+		if (el) {
+			el.classList.remove("on");
+			el.innerHTML = "";
+			/* 裁切是跟 mask 配套的，mask 都丢了就把这一刀也撤干净 */
+			el.style.removeProperty("clip-path");
+			el.style.removeProperty("-webkit-clip-path");
+		}
+		/* 抬起层也要跟着放下来，否则角色会以 62 的 z 顶在正文上 */
+		try {
+			document.body.classList.remove("wp-subject-armed");
+		} catch {
+			/* ignore */
+		}
+		clipLast = null;
+		stopClip();
+	}
+
+	/** 彻底丢掉当前蒙版（关深度 / 清自定义图时用）：作废在跑的识别 + 撤角色层 + 释放 blob */
+	function resetMask(): void {
+		analyzeGen++;
+		busy = false;
+		dropSubject();
+		mask = null;
+		maskGrid = null;
+		maskGridFor = null;
+		if (maskUrl) {
+			URL.revokeObjectURL(maskUrl);
+			maskUrl = null;
+		}
+		/* 地形图没了 → 让 LeftTime 别再按旧的自动避让落点摆 */
+		try {
+			document.dispatchEvent(new CustomEvent("wallpaperdepthchange"));
+		} catch {
+			/* ignore */
+		}
+	}
+
+	/* ==================== 自动避让：mask 覆盖率地形图 ====================
+	   时间那一格要是正压在角色身上，就会被角色吃掉（时间 z:58 < 角色 62）。
+	   壁纸里角色在哪儿、有多厚，mask 就是答案 —— 把 mask 缩成 96 格宽的小网格，
+	   `bestSpot(w,h)` 拿它当「地形图」扫一遍候选落点，挑一块角色最薄的给时间。
+	   ⚠ 网格是按**归一化的图像坐标**存的；铺法与 object-fit 同一套（见 bestSpot）。 */
+	async function buildMaskGrid(): Promise<void> {
+		const url = maskUrl;
+		if (!url || maskGridFor === url) return;
+		try {
+			const img = new Image();
+			img.decoding = "async";
+			await new Promise<void>((res, rej) => {
+				img.onload = () => res();
+				img.onerror = () => rej(new Error("mask load failed"));
+				img.src = url;
+			});
+			const GW = 96;
+			const GH = Math.max(8, Math.round((GW * img.height) / Math.max(1, img.width)));
+			const c = document.createElement("canvas");
+			c.width = GW;
+			c.height = GH;
+			const ctx = c.getContext("2d");
+			if (!ctx) return;
+			ctx.drawImage(img, 0, 0, GW, GH);
+			const d = ctx.getImageData(0, 0, GW, GH).data;
+			const data = new Float32Array(GW * GH);
+			for (let i = 0; i < GW * GH; i++) data[i] = d[i * 4 + 3] / 255; /* alpha=1 才是角色 */
+			maskGrid = { gw: GW, gh: GH, data };
+			maskGridFor = url;
+		} catch {
+			maskGrid = null;
+		}
+	}
+
+	/** 矩形（归一化图像坐标）里角色的「平均厚度」；越接近 0 越干净 */
+	function gridCoverage(u0: number, v0: number, u1: number, v1: number): number {
+		const g = maskGrid;
+		if (!g) return -1;
+		const x0 = Math.max(0, Math.floor(u0 * g.gw));
+		const x1 = Math.min(g.gw, Math.ceil(u1 * g.gw));
+		const y0 = Math.max(0, Math.floor(v0 * g.gh));
+		const y1 = Math.min(g.gh, Math.ceil(v1 * g.gh));
+		if (x1 <= x0 || y1 <= y0) return 0; /* 完全在图像外 → 没有角色 */
+		let s = 0;
+		let n = 0;
+		const stepX = Math.max(1, Math.floor((x1 - x0) / 24));
+		const stepY = Math.max(1, Math.floor((y1 - y0) / 12));
+		for (let y = y0; y < y1; y += stepY)
+			for (let x = x0; x < x1; x += stepX) {
+				s += g.data[y * g.gw + x];
+				n++;
+			}
+		return n ? s / n : 0;
+	}
+
+	/** 复刻 object-fit: cover 下「归一化图像坐标 ↔ 归一化盒子坐标」的换算 */
+	function maskMapper(boxW: number, boxH: number): ((u: number, v: number) => [number, number]) | null {
+		const g = maskGrid;
+		const im = wallpaperImg();
+		if (!g || !im) return null;
+		const cs = getComputedStyle(im);
+		const fit = cs.objectFit;
+		if (fit === "fill" || fit === "none") {
+			/* 铺满：盒子坐标就是图像坐标 */
+			return (u, v) => [u, v];
+		}
+		const ma = g.gw / g.gh;
+		const ba = boxW / Math.max(1, boxH);
+		/* cover：图像等比放大到刚好盖住盒子，多出来的一边居中裁掉 */
+		const coverW = ma > ba ? ma / ba : 1;
+		const coverH = ma > ba ? 1 : ba / ma;
+		return (u, v) => [(u - 0.5) / coverW + 0.5, (v - 0.5) / coverH + 0.5];
+	}
+
+	/** 给时间面板挑一块「角色盖得最少」的落点（视口坐标，返回面板中心）。
+	   返回 null = 没地形图（不可用）→ 调用方回落到默认落点。 */
+	function bestSpot(w: number, h: number): { x: number; y: number } | null {
+		if (!state.depth || !maskGrid) return null;
+		const im = wallpaperImg();
+		if (!im) return null;
+		const r = im.getBoundingClientRect();
+		if (r.width < 4 || r.height < 4) return null;
+		const vw = window.innerWidth;
+		const vh = window.innerHeight;
+		const map = maskMapper(r.width, r.height);
+		if (!map) return null;
+		const halfW = w / 2;
+		const halfH = h / 2;
+		/* 落点四周留出一点边距，别把面板怼到屏幕边上 */
+		const padX = Math.min(24, vw * 0.03);
+		/* 上下两条是**硬约束**，不是罚分：
+		   · 上 = 顶部搜索那条可见带（感应条 .ts-grab 是 top:0/height:26/满宽、
+		     图标在 y26..107）。#top-search 是 z:65 的满屏固定层，**压在时间(58)之上**
+		     且这些区域 pointer-events:auto —— 时间钻进这条带里，① 会跟放大镜/
+		     麦克风图标叠在一起，② 面板顶上那几十 px 的 pointerdown 会被搜索层吃掉，
+		     用户按在面板上半截拖不动。
+		   · 下 = 沉底导航岛（z:80，岛顶边 vh-104 往上）。
+		   之前这两条是 +0.06 的**软罚分**，实测顶不住「右上角天空特别干净」的诱惑：
+		   三张真实壁纸**全都**把落点选在 y=20 —— 时间当场钻进搜索带。宁可把落点
+		   挪回角色稍厚一点的地方（时间照样可读，还能拖），也不跟搜索/导航抢位置。 */
+		const TOP_BAND = 118; /* 与 LeftTime.svelte 的 WP_TOP_INSET 同口径 */
+		const BOT_BAND = 104; /* 沉底导航岛的高度 */
+		const xLo = halfW + padX;
+		const xHi = vw - halfW - padX;
+		const yLo = halfH + TOP_BAND;
+		const yHi = vh - halfH - BOT_BAND;
+		if (xHi < xLo || yHi < yLo) return null;
+		/* 横幅那几行字（首页大标题/副标题、文章页标题）—— 它们关在
+		   `#wallpaper-wrapper` 的负层栈里，**任何 ≥0 的层都能盖住**：
+		   时间(z:58) 会直接压上去，抬到 62 的角色层更是。
+		   判据用**裁切框**（面板 ± CLIP_PAD）而不是面板本体：真正糊掉标题的是
+		   那一刀裁出来的框，框比面板大一圈。
+
+		   罚分按**真实损伤**算，不是「相交就一刀切 +0.45」——
+		   因为擦到的那些字**是可以抠掉的**（applySubjectClip 会把它挖成多边形）：
+		     · 交叠块贴住框的上/下沿 → 能挖 → 损伤 = 0
+		     · 洞开在框中间 / 拦腰截断 → 挖不了 → 损伤 = 交叠面积 / 文字总面积
+		   一刀切的写法分不出这两种，实测就吃过亏：真实壁纸下 bestSpot 选了
+		   cy=411，那一刀把**标题+副标题整块吞进去**（挖不掉，因为有洞悬在框中间），
+		   比 cy=234 只擦标题字顶 29px 差得多，可两者拿到的罚分一模一样。
+		   （cy=234 的洞贴下沿、cy=588 的洞贴上沿，两边都是可挖的 → 损伤 0，
+		     于是真正该比的就只剩地形覆盖了。） */
+		const CLIP = CLIP_PAD;
+		const textRects = heroTextRects();
+		const textArea = textRects.reduce((s, q) => s + q.width * q.height, 0);
+		const COLS = 9;
+		const ROWS = 7;
+		let best: { x: number; y: number; score: number } | null = null;
+		for (let iy = 0; iy < ROWS; iy++) {
+			const cy = yLo + ((yHi - yLo) * iy) / (ROWS - 1);
+			for (let ix = 0; ix < COLS; ix++) {
+				const cx = xLo + ((xHi - xLo) * ix) / (COLS - 1);
+				/* 面板四角 → 图像归一化坐标 → 地形图，取两点对角框出的矩形 */
+				const [ua, va] = map((cx - halfW - r.left) / r.width, (cy - halfH - r.top) / r.height);
+				const [ub, vb] = map((cx + halfW - r.left) / r.width, (cy + halfH - r.top) / r.height);
+				let cover = gridCoverage(Math.min(ua, ub), Math.min(va, vb), Math.max(ua, ub), Math.max(va, vb));
+				if (cover < 0) continue;
+				/* 这一刀会蹭掉多少字（能挖掉的算 0） */
+				const l0 = cx - halfW - CLIP;
+				const t0 = cy - halfH - CLIP;
+				const r0 = cx + halfW + CLIP;
+				const b0 = cy + halfH + CLIP;
+				const hits = textHoles(l0, t0, r0, b0);
+				if (hits.length && !punchEdge(hits, t0, b0) && textArea > 0) {
+					let cut = 0;
+					for (const h of hits) cut += (h.x2 - h.x1) * (h.y2 - h.y1);
+					cover += 0.6 * Math.min(1, cut / textArea);
+				} else if (hits.length) {
+					cover += 0.02; /* 能挖掉：只留一丝代价，免得同等地形下专挑压字的位置 */
+				}
+				/* 同分时偏向「上方居中」—— 那是最像锁屏的默认观感 */
+				cover += Math.abs(cx - vw / 2) / vw * 0.05;
+				cover += ((cy - yLo) / Math.max(1, yHi - yLo)) * 0.03;
+				if (!best || cover < best.score - 1e-6) best = { x: Math.round(cx), y: Math.round(cy), score: cover };
+			}
+		}
+		return best ? { x: best.x, y: best.y } : null;
+	}
+
+	/** 「这一刀裁下去安不安全」—— 框底下是不是正文？
+	   角色 armed 时会抬到 z:62，那是**正文之上**：框里凡是蒙版盖到的像素，
+	   就会把卡片糊成一块壁纸。所以框压到正文就不裁（角色退回 25，时间完整可见）。
+	   判据：在「框内、面板外」那圈取几个点做命中测试 ——
+	   · 命中链里出现主题的**正文容器**（见 CONTENT_SEL）→ 不安全。
+
+	   ⚠ 只认这几个「正文容器」，**绝不能**用「命中点上有 body/html 之外的东西」
+	     这种粗判：搜索框的抓取条(button.ts-grab)、导航岛这些**悬浮控件**天天跟
+	     框的边角重叠，粗判会把整页顶部误判成正文 —— 实测框角 (625,13) 命中
+	     button.ts-grab → safe=false → armed=false → 那一刀永远不裁，
+	     景深直接全灭（时间倒是不挡了，可角色也再也不凸出了）。
+	     而悬浮控件本来就在角色之上（搜索 65 / 岛 80），角色抬到 62 也压不到它们，
+	     所以它们不该、也不需要参与「安不安全」的判定。
+
+	   60ms 节流：它在裁切泵里被高频调用，但落点/滚动不变时结果也不会变。 */
+	const CONTENT_SEL = "#main-grid, #content-wrapper, #swup-container, .footer";
+	function clipSafe(): boolean {
+		const now = performance.now();
+		if (now - safeAt < 60) return safeCache;
+		safeAt = now;
+		const box = clockBox();
+		if (!box) {
+			safeCache = true;
+			return true;
+		}
+		const pts: Array<[number, number]> = [
+			[box.left - 7, box.top - 7],
+			[box.right + 7, box.top - 7],
+			[box.left - 7, box.bottom + 7],
+			[box.right + 7, box.bottom + 7],
+			[(box.left + box.right) / 2, box.top - 7],
+			[box.left - 7, (box.top + box.bottom) / 2],
+		];
+		let safe = true;
+		for (const [x, y] of pts) {
+			if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) continue;
+			let els: Element[] = [];
+			try {
+				els = document.elementsFromPoint(x, y);
+			} catch {
+				continue;
+			}
+			/* elementsFromPoint 会把祖先一起给出来，所以命中链里只要有**正文容器本身**
+			   或它的后代，就说明这个点落在正文上（closest 一路向上找）。 */
+			if (els.some((el) => typeof el.closest === "function" && el.closest(CONTENT_SEL))) {
+				safe = false;
+				break;
+			}
+		}
+		safeCache = safe;
+		return safe;
+	}
+
+	/** 把「同一张壁纸 + mask」画进角色层；几何跟原图逐像素对齐 */
+	function paintSubject(): void {
+		if (!state.depth) return; /* 深度关着就别画（防迟到的调用） */
+		const im = wallpaperImg();
+		const el = subjectEl(true);
+		if (!im || !el || !maskUrl) return;
+		const r = im.getBoundingClientRect();
+		if (r.width < 4 || r.height < 4) return;
+		const cs = getComputedStyle(im);
+
+		el.style.left = `${Math.round(r.left)}px`;
+		el.style.top = `${Math.round(r.top)}px`;
+		el.style.width = `${Math.round(r.width)}px`;
+		el.style.height = `${Math.round(r.height)}px`;
+
+		/* mask 是按「图像内容」算的，铺法必须跟 object-fit 同一套，
+		   否则羽化的边缘会和角色错开几个像素 */
+		const size = cs.objectFit === "fill" || cs.objectFit === "none" ? "100% 100%" : cs.objectFit;
+		const pos = cs.objectPosition || "50% 50%";
+		const url = maskUrl;
+
+		/** 同一张 mask 往节点上写 —— img 与那层罩子都要，见下面注释 */
+		const applyMask = (node: HTMLElement): void => {
+			for (const [k, v] of [
+				["mask-image", `url("${url}")`],
+				["-webkit-mask-image", `url("${url}")`],
+				["mask-size", size],
+				["-webkit-mask-size", size],
+				["mask-position", pos],
+				["-webkit-mask-position", pos],
+				["mask-repeat", "no-repeat"],
+				["-webkit-mask-repeat", "no-repeat"],
+			] as const) {
+				node.style.setProperty(k as string, v as string);
+			}
+		};
+
+		let img = el.querySelector("img") as HTMLImageElement | null;
+		if (!img) {
+			img = document.createElement("img");
+			img.alt = "";
+			img.decoding = "async";
+			el.appendChild(img);
+		}
+		const src = im.currentSrc || im.src;
+		if (img.getAttribute("src") !== src) img.setAttribute("src", src);
+		img.style.objectFit = cs.objectFit;
+		img.style.objectPosition = pos;
+		/* 壁纸那张 img 身上还挂着别的东西，必须一并抄过来，否则两层会长得不一样：
+		   · filter —— 全屏模式有 `filter: blur(var(--scroll-blur)) !important`
+		     （滚动渐糊）。不抄的话一往下滚壁纸糊了、角色还是清的 —— 用户说的
+		     「向下翻的时候」正是这个状态，裁切边界当场穿帮。
+		   · opacity / transform / mix-blend —— 其它模式（overlay 等）会动，
+		     一并抄了才谈得上「逐像素对齐」。 */
+		img.style.filter = cs.filter;
+		img.style.opacity = cs.opacity;
+		img.style.transform = cs.transform;
+		img.style.mixBlendMode = cs.mixBlendMode;
+		applyMask(img);
+
+		/* 罩子层必须插在 img **之后**（都是 absolute，后插的压在 img 上），
+		   而且**必须套同一张 mask** —— 否则它会把整个裁切框都压暗 20%，
+		   框里就多出一块暗方块（实测过）。 */
+		let tint = el.querySelector(".wp-subject-tint") as HTMLElement | null;
+		if (!tint) {
+			tint = document.createElement("div");
+			tint.className = "wp-subject-tint";
+			el.appendChild(tint);
+		}
+		applyMask(tint);
+
+		el.classList.add("on");
+		/* 亮度对齐（补暗化/渐变）+「只压时间」那一刀 */
+		syncSubjectTint();
+		applySubjectClip();
+		pumpClip();
+	}
+
+	/* ==================== 角色层：亮度对齐 +「只压时间」的裁切 ====================
+	   用户的要求：**角色只准压住时间**，文字（横幅标题、副标题）一个都不许盖，
+	   顶上的搜索框、正文文章更不用说了。
+
+	   控件靠 z（正文 30 / 搜索 65 / 岛 80 都在角色 25 之上）已经保住了；
+	   但横幅标题保不住 —— 它挂在 `#banner-overlay-container`(z:20) 里，而那个容器
+	   关在 `#wallpaper-wrapper` 的 z:-1 栈里出不来，任何比 -1 高的层都能盖它。
+	   所以只能**裁**：让角色层只保留落在时间框里的那点像素。
+
+	   为什么必须先做亮度对齐：角色层挂在壁纸 wrapper **外面**，吃不到
+	   `#banner-dim-container` 那层 rgba(0,0,0,0.2) 暗化 —— 它比壁纸亮 25%
+	   （实测：同一个像素 18/255 vs 14/255；换成浅色底就是 178 vs 142，一眼一条缝）。
+	   给角色层补上同一层暗化（syncSubjectTint）后两层逐像素一样亮，
+	   裁切边界就彻底隐形了 —— 这一刀只可能"少画角色"，不可能"多画"，所以安全。 */
+
+	/** 需要裁切吗：只看「形态」，**故意不看 mask**。
+	   analyze() 是「先 paintSubject()、后 mask = m」（那儿有意为之：外部一旦看到
+	   hasMask=true，角色层必定已经贴好）。所以 paintSubject() 里读 mask 必然是
+	   null —— 一开始就是拿它当条件，结果裁切永远只在「下一次触发」时才生效
+	   （实测：识别完当场是没裁的，得等一次 lefttimechange 才补上）。
+	   而裁切本来就是纯几何问题（时间框在屏幕哪儿），跟蒙版算没算出来无关。 */
+	function clipNeeded(): boolean {
+		if (!state.depth) return false;
+		const cls = document.body.classList;
+		return cls.contains("site-promax") && cls.contains("lt-in-wallpaper");
+	}
+
+	/** 时间面板此刻在屏幕上的框；只有「进壁纸」形态且真露脸了才算数 */
+	function clockBox(): DOMRect | null {
+		const p = document.querySelector(".lt-panel");
+		if (!p) return null;
+		const cls = p.classList;
+		if (!cls.contains("show") || !cls.contains("wallpaper")) return null;
+		const r = p.getBoundingClientRect();
+		if (r.width < 8 || r.height < 8) return null;
+		return r;
+	}
+
+	/** 裁到「什么都没有」：角色层只在「有时间框 + 框底下是壁纸」时才露脸，
+	   其余时候一律整块剪掉。 */
+	const CLIP_HIDDEN = "inset(0px 0px 100% 0px)";
+
+	/** 「裁切框 ∩ 横幅文字」的那几块（视口坐标）。空数组 = 这一刀没蹭到字。 */
+	function textHoles(
+		l: number,
+		t: number,
+		r: number,
+		b: number,
+	): { x1: number; y1: number; x2: number; y2: number }[] {
+		const hits: { x1: number; y1: number; x2: number; y2: number }[] = [];
+		for (const q of heroTextRects()) {
+			const x1 = Math.max(l, q.left);
+			const x2 = Math.min(r, q.right);
+			const y1 = Math.max(t, q.top);
+			const y2 = Math.min(b, q.bottom);
+			if (x2 - x1 < 2 || y2 - y1 < 2) continue;
+			hits.push({ x1, y1, x2, y2 });
+		}
+		return hits;
+	}
+
+	/** 这些洞能不能用 polygon 挖掉 —— 必须**全部贴同一条边**（上沿或下沿），
+	    且横向互不重叠。返回贴的那条边；挖不了返回 null。
+	    ⚠ polygon 表达不了「洞」：洞开在框中间、或一块拦腰截断框，硬挖会把裁切区
+	      切成两块、多边形自交 —— 那比擦边严重得多，宁可退回 inset。 */
+	function punchEdge(
+		hits: { x1: number; y1: number; x2: number; y2: number }[],
+		t: number,
+		b: number,
+	): "top" | "bottom" | null {
+		if (!hits.length) return null;
+		const atBottom = hits.every((h) => h.y2 >= b - 1);
+		const atTop = hits.every((h) => h.y1 <= t + 1);
+		if (atBottom === atTop) return null; /* 都不贴边，或上下都贴（拦腰） */
+		const sorted = [...hits].sort((a, c) => a.x1 - c.x1);
+		for (let i = 1; i < sorted.length; i++) if (sorted[i].x1 < sorted[i - 1].x2 - 1) return null;
+		return atBottom ? "bottom" : "top";
+	}
+
+	/** 裁切区里那些「框 ∩ 文字」的小块，判断能不能用 polygon 挖掉。
+	    ============ 为什么必须挖（2026-09-26 实测）============
+	    只用 inset 时那一刀是**整块矩形**：框只要蹭到横幅标题，标题的字顶就被
+	    角色层抹掉（角色层是「同一张壁纸再画一遍」，mask 不透明处逐像素盖掉下层，
+	    所以它唯一看得见的作用就是遮挡）。
+
+	    1416×808 实测：面板顶被搜索带硬约束钉死在 ≥118 → 裁切框底最小 364；
+	    标题行盒 335..425 → **最少也得交叠 29px**；横向绕开要面板中心 ≥1609，
+	    而 xHi 只有 1012 → 横竖都躲不开。差分取证（角色层开/关两张图作差）：
+	      交叠带 mean|dL|=6.03 / max=67.7 / >12 的像素 10.55%
+	      同区域噪声基线（同一脚本跑两遍）mean|dL|=0.02 / 0.04%
+	      裁切框**外**的对照带 信号 0.19 ≤ 噪声 0.24（证明只影响框内）
+	    → 260 倍于噪声，是真事，不是抖动。既然躲不开，就把那一小块从裁切区抠掉：
+	    框变成「矩形 - 文字块」的简单多边形，字顶就再也不会被抹。
+	    抠完复测：该带 mean|dL| 6.03 → **0.08**、>12 的像素 10.55% → 0.10%。 */
+
+	/** 把时间框换算成角色层自己坐标系里的裁切串写上去。
+	    「把角色抬到正文之上」这件事跟裁切**同生共死**（body.wp-subject-armed）：
+	    · 有时间框 + 框底下不是正文 → 裁上，同时抬到 62 去压时间；
+	    · 没有时间框 / 框压住正文 → 整块剪掉，也绝不抬层。
+	    于是哪怕裁切因为任何理由没生效，也绝不会再出现「角色糊住文章」。
+	    ⚠ 为什么框压到正文也要剪掉：角色层是「同一张壁纸再画一遍」，它和壁纸
+	      逐像素一致 —— 换句话说它**唯一看得见的作用就是遮挡**（实测 A/B：除了
+	      时间那一带，其余每一带的差异都 ≤ 运行噪声）。所以把它整块剪掉是**零观感代价**的，
+	      却顺手治好了两个隐患：① 现在这样在「进壁纸 + 时间收起」时角色层没被裁过，
+	      会盖住空白下的横幅标题；② 把时间拖到文章区时，会在卡片上糊出一块壁纸。 */
+	function applySubjectClip(): void {
+		const el = subjectEl(false);
+		if (!el) return;
+		const want = clipNeeded() ? clockBox() : null;
+		const box = want && clipSafe() ? want : null;
+		try {
+			document.body.classList.toggle("wp-subject-armed", !!box);
+		} catch {
+			/* ignore */
+		}
+		let next = CLIP_HIDDEN;
+		if (box) {
+			/* ⚠ 用**角色层自己的盒子**当参照（不是视口）—— 壁纸不一定铺满视口 */
+			const r = el.getBoundingClientRect();
+			const xt = Math.max(0, Math.round(box.top - r.top) - CLIP_PAD);
+			const xl = Math.max(0, Math.round(box.left - r.left) - CLIP_PAD);
+			const xr = Math.max(0, Math.round(r.right - box.right) - CLIP_PAD);
+			const xb = Math.max(0, Math.round(r.bottom - box.bottom) - CLIP_PAD);
+			next = `inset(${xt}px ${xr}px ${xb}px ${xl}px)`;
+			/* 框要是蹭到了横幅文字，就把那一块抠掉（见 textHoles/punchEdge 的实测数据） */
+			const l0 = box.left - CLIP_PAD;
+			const t0 = box.top - CLIP_PAD;
+			const r0 = box.right + CLIP_PAD;
+			const b0 = box.bottom + CLIP_PAD;
+			const hits = textHoles(l0, t0, r0, b0);
+			const edge = punchEdge(hits, t0, b0);
+			if (edge) {
+				const X = (v: number): number => Math.round(v - r.left);
+				const Y = (v: number): number => Math.round(v - r.top);
+				const pts: [number, number][] = [];
+				if (edge === "bottom") {
+					/* 顺时针：上沿左→右，右沿下到底，沿下沿从右往左逐个挖口，左沿上回。
+					   ⚠ (r0,b0) 这个右下角**不能漏** —— 漏了它，(r0,t0) 会直接连到
+					     第一个挖口，右沿变成一条斜线，右上一角被白白切掉
+					     （探针「时间框整块露出来」当场抓到）。 */
+					pts.push([X(l0), Y(t0)], [X(r0), Y(t0)], [X(r0), Y(b0)]);
+					for (const h of [...hits].sort((a, c) => c.x2 - a.x2))
+						pts.push([X(h.x2), Y(b0)], [X(h.x2), Y(h.y1)], [X(h.x1), Y(h.y1)], [X(h.x1), Y(b0)]);
+					pts.push([X(l0), Y(b0)]);
+				} else {
+					/* 镜像：下沿左→右，右沿上到顶，沿上沿从右往左挖口，左沿下回 */
+					pts.push([X(l0), Y(b0)], [X(r0), Y(b0)], [X(r0), Y(t0)]);
+					for (const h of [...hits].sort((a, c) => c.x2 - a.x2))
+						pts.push([X(h.x2), Y(t0)], [X(h.x2), Y(h.y2)], [X(h.x1), Y(h.y2)], [X(h.x1), Y(t0)]);
+					pts.push([X(l0), Y(t0)]);
+				}
+				next = `polygon(${pts.map(([px, py2]) => `${px}px ${py2}px`).join(", ")})`;
+			}
+		}
+		if (next === clipLast) return;
+		clipLast = next;
+		el.style.clipPath = next;
+		el.style.setProperty("-webkit-clip-path", next);
+	}
+
+	/** 壁纸那张图的 filter/opacity 会随滚动变（全屏模式挂了
+	   `filter: blur(var(--scroll-blur)) !important`）。角色层是「第二遍绘制」，
+	   必须一直跟着变 —— 否则一往下滚壁纸糊了、角色还清的，裁切边界当场穿帮
+	   （实测：滚动后壁纸 blur(20px)、角色还停在 blur(0px)）。 */
+	function syncSubjectLook(): void {
+		const el = subjectEl(false);
+		const img = el ? (el.querySelector("img") as HTMLImageElement | null) : null;
+		if (!img) return;
+		const src = wallpaperImg();
+		if (!src) return;
+		const cs = getComputedStyle(src);
+		if (img.style.filter !== cs.filter) img.style.filter = cs.filter;
+		if (img.style.opacity !== cs.opacity) img.style.opacity = cs.opacity;
+	}
+
+	function stopClip(): void {
+		if (clipTimer) clearInterval(clipTimer);
+		clipTimer = 0;
+		clipMiss = 0;
+	}
+
+	/** 时间在动（拖拽落定 / 形态过渡 / 缩放）就得跟着跑一会儿。
+	   面板一露脸就一直跑到它收走为止 —— 一帧一次 getBoundingClientRect，
+	   而且只在 promax + 进壁纸 + 角色凸出打开时才跑，代价可忽略。 */
+	function pumpClip(): void {
+		if (!clipNeeded()) {
+			stopClip();
+			applySubjectClip();
+			return;
+		}
+		clipMiss = 0;
+		if (clipTimer) return;
+		clipTimer = window.setInterval(() => {
+			/* 滚动会让壁纸变模糊，角色层要一直跟上（见 syncSubjectLook） */
+			syncSubjectLook();
+			if (!clipNeeded()) {
+				stopClip();
+				applySubjectClip();
+				return;
+			}
+			if (!clockBox()) {
+				/* 面板可能还没挂上 .show（Svelte 的 DOM 更新晚一拍），给 ~0.6s 宽限 */
+				applySubjectClip();
+				if (++clipMiss >= 8) stopClip();
+				return;
+			}
+			clipMiss = 0;
+			applySubjectClip();
+		}, 80);
+	}
+
+	/** 把壁纸身上那两层「罩子」的计算值镜像到角色层那层 tint 上，两层才对得上亮度：
+	    · #banner-dim-container 里那层 rgba(0,0,0,dimOpacity) 的均匀暗化 → background-color
+	    · #wallpaper-gradient 的底部渐变 → background-image（压在暗化之上，同壁纸的层序）
+	    暗化关掉时 .banner-dim-overlay 不存在 → 镜像 transparent，两边一样。
+	   ⚠ 这层是**套了 mask** 的（见 paintSubject），所以只会作用在角色身上。 */
+	function syncSubjectTint(): void {
+		const el = subjectEl(false);
+		if (!el) return;
+		const tint = el.querySelector(".wp-subject-tint") as HTMLElement | null;
+		if (!tint) return;
+		const dimSrc = document.querySelector(".banner-dim-overlay");
+		tint.style.backgroundColor = dimSrc ? getComputedStyle(dimSrc).backgroundColor : "transparent";
+		let image = "none";
+		const g = document.getElementById("wallpaper-gradient");
+		if (g) {
+			const gcs = getComputedStyle(g);
+			if (gcs.display !== "none") image = gcs.backgroundImage;
+		}
+		tint.style.backgroundImage = image;
+	}
+
+	/* 注：裁切是**必须**的，不是可选项。
+	   角色层跟壁纸是同一张图，两层的唯一差别是「角色层挂在 #wallpaper-wrapper
+	   外面、吃不到那层暗化」，于是它比壁纸亮 25% —— 按时间框裁一刀就会在
+	   边界上留下一条硬邦邦的亮边。所以裁切必须和 syncSubjectTint() 配对使用：
+	   先把亮度补平，再裁，边界才是隐形的。
+	   （早先试过一次「只裁不补亮度」，边界上一条亮缝，肉眼可见，所以撤了。） */
+
+	/* ============================ 状态行 ============================ */
+
+	function setStatus(text: string, tone?: "ok" | "warn" | "busy"): void {
+		const el = statusEl();
+		if (!el) return;
+		el.textContent = text;
+		if (tone) el.dataset.tone = tone;
+		else delete el.dataset.tone;
+	}
+
+	/* ============================ 壁纸来源 ============================ */
+
+	function saveState(): void {
+		try {
+			localStorage.setItem(LS_SOURCE, state.source);
+			localStorage.setItem(LS_DEPTH, state.depth ? "1" : "0");
+		} catch {
+			/* 隐私模式写不进去也无所谓 */
+		}
+	}
+
+	function readState(): void {
+		try {
+			state.source = localStorage.getItem(LS_SOURCE) === "custom" ? "custom" : "api";
+			state.depth = localStorage.getItem(LS_DEPTH) === "1";
+		} catch {
+			/* ignore */
+		}
+	}
+
+	function syncSourceUi(): void {
+		const seg = $("wp-source");
+		if (seg) {
+			for (const b of Array.from(seg.querySelectorAll("button"))) {
+				b.setAttribute(
+					"aria-pressed",
+					b.getAttribute("data-src") === state.source ? "true" : "false",
+				);
+			}
+		}
+		const hint = $("wp-src-hint");
+		if (hint) {
+			hint.textContent =
+				state.source === "api"
+					? "API 随机图（t.alcy.cc）不带跨域头，浏览器读不了像素 —— 想用角色凸出请切「自定义图片」。"
+					: "用的是你自己选的图片，本地保存（IndexedDB），刷新还在。";
+		}
+		const cb = $<HTMLInputElement>("wp-depth");
+		if (cb) cb.checked = state.depth;
+	}
+
+	/** 换完壁纸来源后广播一次。
+	    LeftTime 的形态现在是**跟来源自动走**的（API → 板块模式，自定义 → 进壁纸模式），
+	    它得知道来源变了 —— 这个事件就是那个通知。
+	    ⚠ 复用 `wallpaperdepthchange` 而不是新造一个事件：换图本来就意味着地形图变了，
+	      而 LeftTime 那边的 handler 本来就是「重算避让 + 重广播形态」，语义正好对上；
+	      少一个事件就少一处要记得同步的地方。
+	    ⚠ 位置很讲究：必须在 `state.source` + `saveState()` **之后**才发 ——
+	      LeftTime 读的是 localStorage 的 `wpSource`（同步、不依赖组件启动顺序），
+	      发早了它读到的还是旧值。所以两条路径都要发：拿到自定义图那条，
+	      以及「没有自定义图 → 退回 API」那条（那条会改一次 state.source）。 */
+	function notifySourceChanged(): void {
+		try {
+			document.dispatchEvent(new CustomEvent("wallpaperdepthchange"));
+		} catch {
+			/* ignore */
+		}
+	}
+
+	/** 应用当前来源到页面上的壁纸 img */
+	async function applySource(): Promise<void> {
+		const im = wallpaperImg();
+		if (!im) {
+			notifySourceChanged();
+			return;
+		}
+		rememberOriginal(im);
+		const orig = im.dataset.wpOrig || "";
+
+		if (state.source === "custom") {
+			const blob = await loadCustomImage();
+			if (blob) {
+				if (customUrl) URL.revokeObjectURL(customUrl);
+				customUrl = URL.createObjectURL(blob);
+				setImgSrc(im, customUrl, false);
+				await waitImg(im);
+				notifySourceChanged();
+				return;
+			}
+			/* 没有自定义图 → 悄悄退回 API，免得页面空着 */
+			state.source = "api";
+			saveState();
+			syncSourceUi();
+		}
+		if (im.getAttribute("src") !== orig) {
+			setImgSrc(im, orig, true);
+			await waitImg(im);
+		}
+		notifySourceChanged();
+	}
+
+	function waitImg(im: HTMLImageElement): Promise<void> {
+		if (im.complete && im.naturalWidth > 0)
+			return new Promise((r) => requestAnimationFrame(() => r()));
+		return new Promise((r) => {
+			const done = (): void => {
+				im.removeEventListener("load", done);
+				im.removeEventListener("error", done);
+				/* 等一帧：load 之后布局尺寸才是最终的 */
+				requestAnimationFrame(() => r());
+			};
+			im.addEventListener("load", done);
+			im.addEventListener("error", done);
+			setTimeout(done, 6000);
+		});
+	}
+
+	/* ============================ 识别 ============================ */
+
+	function unreadableMsg(): string {
+		return state.source === "api"
+			? "这张 API 随机图跨域，读不了像素。切「自定义图片」就能用角色凸出。"
+			: "这张图读不了像素（图源没给跨域头）。换个图源，或改用本地图片。";
+	}
+
+	async function analyze(): Promise<void> {
+		const gen = ++analyzeGen;
+		busy = true;
+		setStatus("正在读取壁纸像素…", "busy");
+		await new Promise((r) => setTimeout(r, 16)); /* 让状态行先画出来 */
+		if (gen !== analyzeGen) return; /* 这一轮已经被作废 */
+		if (!state.depth) {
+			busy = false;
+			return;
+		}
+
+		const im = wallpaperImg();
+		if (!im) {
+			setStatus("页面上找不到壁纸元素", "warn");
+			busy = false;
+			return;
+		}
+		await waitImg(im);
+		if (gen !== analyzeGen) return;
+
+		const url = im.currentSrc || im.src || "";
+		const readable = unreadableUrls.has(url) ? null : await loadReadableImage(url);
+		if (gen !== analyzeGen) return;
+		if (!readable) {
+			if (url) unreadableUrls.add(url);
+			resetMask();
+			setStatus(unreadableMsg(), "warn");
+			return;
+		}
+
+		setStatus("正在识别角色…", "busy");
+		await new Promise((r) => requestAnimationFrame(() => r()));
+		if (gen !== analyzeGen) return;
+
+		const m = computeSubjectMask(readable);
+		if (gen !== analyzeGen) return;
+		if (!m) {
+			resetMask();
+			setStatus("没识别出角色（角色可能与背景太接近），换张对比强一点的图试试。", "warn");
+			return;
+		}
+
+		const nextMaskUrl = await dataUrlToBlobUrl(m.maskUrl);
+		/* ★ 关键：await 之后再核一次。此刻若已被关深度 / 换了壁纸，绝不能画 */
+		if (gen !== analyzeGen) return;
+		if (!state.depth) {
+			busy = false;
+			return;
+		}
+		if (maskUrl) URL.revokeObjectURL(maskUrl);
+		maskUrl = nextMaskUrl;
+		/* 先画、后置 mask：这样外部一旦看到 hasMask=true，角色层必定已经贴上，
+		   不会再出现「说有蒙版但层还没画」的半拍窗口 */
+		paintSubject();
+		mask = m;
+		/* 地形图：给「自动避让」用。buildMaskGrid 自己按 maskUrl 判重，
+		   同一张图重复调是空转；这里 await 它只是为了让 bestSpot() 拿到即用。 */
+		await buildMaskGrid();
+		if (gen !== analyzeGen) return;
+		/* 地形图好了 / 换了 → 通知 LeftTime 重算「自动避让」落点 */
+		try {
+			document.dispatchEvent(new CustomEvent("wallpaperdepthchange"));
+		} catch {
+			/* ignore */
+		}
+		setStatus(
+			`已识别角色 · 占画面 ${Math.round(m.coverage * 100)}% · 耗时 ${m.ms}ms · 分析分辨率 ${m.width}×${m.height}`,
+			"ok",
+		);
+		busy = false;
+	}
+
+	async function dataUrlToBlobUrl(dataUrl: string): Promise<string> {
+		try {
+			const blob = await (await fetch(dataUrl)).blob();
+			return URL.createObjectURL(blob);
+		} catch {
+			return dataUrl; /* 兜底：直接把 dataURL 塞进 mask-image */
+		}
+	}
+
+	/** 角色外接框 → 视口像素（LeftTime 用它决定时间压哪儿） */
+	function subjectBoxViewport(): Rect | null {
+		if (!state.depth || !mask) return null;
+		const im = wallpaperImg();
+		if (!im) return null;
+		const r = im.getBoundingClientRect();
+		if (r.width < 4 || r.height < 4) return null;
+		const cs = getComputedStyle(im);
+		const content = contentRect(
+			{ x: r.left, y: r.top, w: r.width, h: r.height },
+			im.naturalWidth,
+			im.naturalHeight,
+			cs.objectFit,
+			cs.objectPosition,
+		);
+		return mapBoxToViewport(mask.box, content);
+	}
+
+	/* ============================ 深度开关 ============================ */
+
+	async function setDepth(on: boolean): Promise<void> {
+		state.depth = on;
+		saveState();
+		const cb = $<HTMLInputElement>("wp-depth");
+		if (cb) cb.checked = on;
+		if (!on) {
+			resetMask();
+			setStatus("角色凸出已关闭", undefined);
+			return;
+		}
+		await analyze();
+	}
+
+	/* ============================ 面板开合 ============================ */
+
+	function openPanel(): void {
+		const p = panel();
+		if (!p) return;
+		p.hidden = false;
+		p.removeAttribute("aria-hidden");
+		syncSourceUi();
+	}
+	function closePanel(): void {
+		const p = panel();
+		if (!p) return;
+		p.hidden = true;
+		p.setAttribute("aria-hidden", "true");
+	}
+	function togglePanel(): void {
+		const p = panel();
+		if (!p) return;
+		if (p.hidden) openPanel();
+		else closePanel();
+	}
+
+	/* ============================ 装配 ============================ */
+
+	function bind(): void {
+		const btn = document.getElementById("wp-source-toggle");
+		if (btn && btn.dataset.wpBound !== "true") {
+			btn.dataset.wpBound = "true";
+			btn.addEventListener("click", (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				togglePanel();
+			});
+		}
+		const closeBtn = $("wp-close");
+		if (closeBtn && closeBtn.dataset.wpBound !== "true") {
+			closeBtn.dataset.wpBound = "true";
+			closeBtn.addEventListener("click", closePanel);
+		}
+		const seg = $("wp-source");
+		if (seg && seg.dataset.wpBound !== "true") {
+			seg.dataset.wpBound = "true";
+			seg.addEventListener("click", async (e) => {
+				const t = e.target as HTMLElement;
+				const b = t.closest("button[data-src]") as HTMLElement | null;
+				if (!b) return;
+				const src = b.getAttribute("data-src") as Source;
+				if (src === state.source) return;
+				state.source = src;
+				saveState();
+				syncSourceUi();
+				setStatus(src === "custom" ? "正在应用自定义图片…" : "正在切回 API 随机图…", "busy");
+				await applySource();
+				if (state.depth) await analyze();
+				else setStatus("壁纸已切换", undefined);
+			});
+		}
+
+		const cb = $<HTMLInputElement>("wp-depth");
+		if (cb && cb.dataset.wpBound !== "true") {
+			cb.dataset.wpBound = "true";
+			cb.addEventListener("change", () => {
+				void setDepth(cb.checked);
+			});
+		}
+
+		const redo = $("wp-redo");
+		if (redo && redo.dataset.wpBound !== "true") {
+			redo.dataset.wpBound = "true";
+			redo.addEventListener("click", () => {
+				void analyze();
+			});
+		}
+
+		const file = $<HTMLInputElement>("wp-file");
+		const pick = $("wp-pick");
+		if (pick && file && pick.dataset.wpBound !== "true") {
+			pick.dataset.wpBound = "true";
+			pick.addEventListener("click", () => file.click());
+		}
+		if (file && file.dataset.wpBound !== "true") {
+			file.dataset.wpBound = "true";
+			file.addEventListener("change", async () => {
+				const f = file.files && file.files[0];
+				file.value = "";
+				if (!f) return;
+				setStatus("正在保存并应用…", "busy");
+				const ok = await saveCustomImage(f);
+				state.source = "custom";
+				saveState();
+				syncSourceUi();
+				await applySource();
+				if (!ok) setStatus("保存失败（浏览器不让存），本次仍会显示", "warn");
+				if (state.depth) await analyze();
+				else if (ok) setStatus("自定义壁纸已应用", "ok");
+			});
+		}
+
+		const urlApply = $("wp-url-apply");
+		const urlInput = $<HTMLInputElement>("wp-url");
+		if (urlApply && urlInput && urlApply.dataset.wpBound !== "true") {
+			urlApply.dataset.wpBound = "true";
+			urlApply.addEventListener("click", async () => {
+				const u = (urlInput.value || "").trim();
+				if (!u) return;
+				const im = wallpaperImg();
+				if (!im) return;
+				rememberOriginal(im);
+				state.source = "custom";
+				saveState();
+				syncSourceUi();
+				setImgSrc(im, u, false);
+				setStatus("正在加载地址里的图片…", "busy");
+				await waitImg(im);
+				if (!im.naturalWidth) {
+					setStatus("这张图加载失败了（地址不对或被防盗链拦了）", "warn");
+					return;
+				}
+				if (state.depth) await analyze();
+				else setStatus("地址图片已应用（没存本地，刷新会回到 API）", "ok");
+			});
+		}
+
+		const clr = $("wp-clear");
+		if (clr && clr.dataset.wpBound !== "true") {
+			clr.dataset.wpBound = "true";
+			clr.addEventListener("click", async () => {
+				await clearCustomImage();
+				if (customUrl) {
+					URL.revokeObjectURL(customUrl);
+					customUrl = null;
+				}
+				state.source = "api";
+				saveState();
+				syncSourceUi();
+				resetMask();
+				await applySource();
+				setStatus("已清除自定义壁纸，回到 API 随机图", undefined);
+			});
+		}
+	}
+
+	/* ============================ 生命周期 ============================ */
+
+	async function boot(): Promise<void> {
+		if (!document.getElementById("wp-depth-panel")) return;
+		readState();
+		syncSourceUi();
+		await applySource();
+		if (state.depth) await analyze();
+		else setStatus("角色凸出关着。打开它，时间就会嵌进角色里。", undefined);
+	}
+
+	/* 切页 / 换主题后壁纸节点会重建，重新贴一次 */
+	function onPageReady(): void {
+		setTimeout(() => {
+			void (async () => {
+				await applySource();
+				if (state.depth && mask) {
+					/* 重新贴角色层（节点是新的，几何也可能变了） */
+					paintSubject();
+					if (!document.getElementById("wallpaper-subject"))
+						await analyze();
+				}
+			})();
+		}, 420);
+	}
+
+	if (!(window as unknown as { __wpDepthBound?: boolean }).__wpDepthBound) {
+		(window as unknown as { __wpDepthBound?: boolean }).__wpDepthBound = true;
+
+		const start = (): void => {
+			bind();
+			void boot();
+		};
+		if (document.readyState === "loading")
+			document.addEventListener("DOMContentLoaded", start, { once: true });
+		else start();
+
+		document.addEventListener("astro:page-load", () => {
+			bind();
+			onPageReady();
+		});
+		document.addEventListener("swup:contentReplaced", onPageReady);
+
+		document.addEventListener("keydown", (e) => {
+			if (e.key === "Escape") closePanel();
+		});
+		document.addEventListener(
+			"pointerdown",
+			(e) => {
+				const p = panel();
+				if (!p || p.hidden) return;
+				const t = e.target as Element | null;
+				if (t && typeof t.closest === "function") {
+					if (t.closest("#wp-depth-panel")) return;
+					if (t.closest("#wp-source-toggle")) return;
+				}
+				closePanel();
+			},
+			true,
+		);
+
+		window.addEventListener("resize", () => {
+			if (resizeTimer) clearTimeout(resizeTimer);
+			resizeTimer = window.setTimeout(() => {
+				if (state.depth && mask) paintSubject();
+				pumpClip();
+			}, 220);
+		});
+
+		document.addEventListener("siteversionchange", () => {
+			if (state.depth && mask) paintSubject();
+		});
+
+		/* LeftTime 广播形态/开合（拖拽落定、形态切换、收起、切页都会走到）：
+		   时间框要重新对一刀，亮度也要重读一遍（暗化/渐变可能随模式变） */
+		document.addEventListener("lefttimechange", () => {
+			syncSubjectTint();
+			syncSubjectLook();
+			applySubjectClip();
+			pumpClip();
+		});
+
+		/* 滚动会让全屏壁纸逐渐模糊（--scroll-blur 挂在 #wallpaper-wrapper 上，
+		   z:25 的角色层看不见那个变量，只能把计算值抄过来）。
+		   用 capture 抓：滚动事件不冒泡，但捕获阶段能收到任意滚动容器的。
+		   60ms 节流 —— 读数会强制一次样式计算，别每个滚动事件都做。
+		   ⚠ 这里**必须**顺带跑 applySubjectClip：滚动改变的正是「框底下是什么」
+		     （顶部是壁纸 → 往下一滚就是正文卡片）。不重算的话，在顶部 armed(62)
+		     的角色会一直糊着卡片，直到下一次别的什么事件才纠正。 */
+		document.addEventListener(
+			"scroll",
+			() => {
+				const t = performance.now();
+				if (t - clipLookAt < 60) return;
+				clipLookAt = t;
+				syncSubjectLook();
+				applySubjectClip();
+			},
+			{ capture: true, passive: true },
+		);
+
+		/* 给 LeftTime 用的口子：角色框 / 状态 / 开关 */
+		(window as unknown as Record<string, unknown>).__wallpaperDepth = {
+			box: subjectBoxViewport,
+			on: (): boolean => state.depth && !!mask,
+			source: (): Source => state.source,
+			setSource: async (s: Source): Promise<void> => {
+				state.source = s;
+				saveState();
+				syncSourceUi();
+				await applySource();
+				if (state.depth) await analyze();
+			},
+			setDepth,
+			redo: analyze,
+			open: openPanel,
+			close: closePanel,
+			toggle: togglePanel,
+			state: (): {
+				source: Source;
+				depth: boolean;
+				busy: boolean;
+				hasMask: boolean;
+				coverage: number;
+			} => ({
+				source: state.source,
+				depth: state.depth,
+				busy,
+				hasMask: !!mask,
+				coverage: mask ? mask.coverage : 0,
+			}),
+			status: (): string => (statusEl() ? statusEl()!.textContent || "" : ""),
+			/* 探针用：当前那一刀 + 时间框 + 手动重算 */
+			clip: (): string => {
+				const el = subjectEl(false);
+				return el ? el.style.clipPath || "" : "";
+			},
+			clockBox: (): Rect | null => {
+				const r = clockBox();
+				return r ? { x: r.left, y: r.top, w: r.width, h: r.height } : null;
+			},
+			resyncClip: (): void => {
+				applySubjectClip();
+				pumpClip();
+			},
+			/* 给 LeftTime 的「自动避让」：按角色地形图挑一块最薄的落点
+			   （视口坐标，返回面板中心）；没地形图时返回 null，调用方回落默认落点 */
+			bestSpot: (w: number, h: number): { x: number; y: number } | null => bestSpot(w, h),
+			/* 探针用：此刻那一刀裁下去安不安全（框底下是不是正文） */
+			clipSafe: (): boolean => clipSafe(),
+		};
+	}
+</script>

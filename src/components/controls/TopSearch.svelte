@@ -185,7 +185,7 @@ const onPointerUp = (e: PointerEvent) => {
 	if (phase !== "drag") return;
 	if (melt) {
 		// 「拉够 / 没拉够」和落点全在引擎里判，这里不重复一套阈值
-		melt.up(e.clientY);
+		melt.up(e.clientX, e.clientY);
 		return;
 	}
 	paintFallback(e.clientX, e.clientY, false);

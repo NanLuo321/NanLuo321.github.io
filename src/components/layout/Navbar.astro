@@ -258,6 +258,17 @@ if (isLocalSrcLogo) {
             <span class="effect-icon-leaf hidden"><Icon is:inline name="material-symbols:eco-rounded" class="text-[1.25rem]" /></span>
             <span class="effect-icon-all hidden text-[1rem] font-black leading-none">A</span>
         </button>
+        {/* 壁纸来源 + 角色凸出（iPhone 锁屏那种"时间嵌进角色里"）。
+            这颗只管开面板，面板 DOM 与全部逻辑在 WallpaperDepth.astro。 */}
+        <button
+            aria-label="壁纸来源与角色凸出"
+            title="壁纸来源 / 角色凸出（时间嵌进角色里）"
+            class="btn-plain scale-animation rounded-lg h-9 w-9 md:h-11 md:w-11 active:scale-90 flex items-center justify-center"
+            id="wp-source-toggle"
+            aria-pressed="false"
+        >
+            <Icon is:inline name="material-symbols:wallpaper-rounded" class="text-[1.25rem]" />
+        </button>
         {/* ProMax 专属：把右下角那颗「娱乐模式」搬进岛里（点击转发给 RainEffect 的隐藏开关） */}
         <button
             aria-label="娱乐模式：声音控制雨幕"
