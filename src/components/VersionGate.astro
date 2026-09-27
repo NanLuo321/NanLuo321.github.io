@@ -30,7 +30,8 @@
 		<div class="vg-skip">点一下跳过</div>
 	</section>
 
-	<!-- 背景音乐：lite / normal / promax 各一段，悬停按钮即切换 -->
+	<!-- 背景音乐：lite / normal / promax 各一段，**点哪个版本才播哪一段**
+	     （不是悬停就播 —— 悬停太早出声，容易吓人，也容易和浏览器的自动播放策略打架） -->
 	<audio id="vg-audio" loop preload="auto" hidden></audio>
 
 	<!-- 右上角静音按钮 -->
@@ -49,30 +50,44 @@
 
 	<!-- 版本选择 -->
 	<section class="vg-panel">
-		<div class="vg-versions">
-			<button type="button" class="vg-btn" data-ver="lite">
-				<span class="vg-name">精简版</span>
-				<span class="vg-tag">Lite</span>
-			</button>
-			<button type="button" class="vg-btn" data-ver="normal">
-				<span class="vg-name">普通版</span>
-				<span class="vg-tag vg-tag--rec">推荐 · Normal</span>
-			</button>
-			<button type="button" class="vg-btn" data-ver="promax">
-				<span class="vg-name">PROMAX</span>
-				<span class="vg-tag vg-tag--rec">新</span>
-			</button>
-			<button type="button" class="vg-btn vg-btn--soon" data-ver="promaxplusultra" data-soon="1">
-				<span class="vg-name">PROMAX ULTRA</span>
-				<span class="vg-tag vg-tag--soon">预告</span>
-			</button>
-			<button type="button" class="vg-btn vg-btn--soon" data-ver="ultra" data-soon="1">
-				<span class="vg-name">ULTRA</span>
-				<span class="vg-tag vg-tag--soon">明年</span>
-			</button>
+		<div class="vg-stack">
+			<div class="vg-versions">
+				<button type="button" class="vg-btn" data-ver="lite">
+					<span class="vg-name">精简版</span>
+					<span class="vg-tag">Lite</span>
+				</button>
+				<button type="button" class="vg-btn" data-ver="normal">
+					<span class="vg-name">普通版</span>
+					<span class="vg-tag vg-tag--rec">推荐 · Normal</span>
+				</button>
+				<button type="button" class="vg-btn" data-ver="promax">
+					<span class="vg-name">PROMAX</span>
+					<span class="vg-tag vg-tag--rec">新</span>
+				</button>
+				<button type="button" class="vg-btn vg-btn--soon" data-ver="promaxplusultra" data-soon="1">
+					<span class="vg-name">PROMAX ULTRA</span>
+					<span class="vg-tag vg-tag--soon">预告</span>
+				</button>
+				<button type="button" class="vg-btn vg-btn--soon" data-ver="ultra" data-soon="1">
+					<span class="vg-name">ULTRA</span>
+					<span class="vg-tag vg-tag--soon">明年</span>
+				</button>
+			</div>
+
+			<!-- 版本说明：点某个版本之后才出现，**一个逗号 / 句号一行**、逐句淡入。
+			     未选中时它在按钮下面占位（预留 min-height，所以按钮不会上下跳）；
+			     选中之后（.is-picking）它搬去屏幕正中、放大、居中 —— 见 CSS。 -->
+			<div class="vg-desc" data-vg-desc aria-live="polite"></div>
+
+			<div class="vg-tip" data-vg-tip></div>
 		</div>
-		<div class="vg-tip" data-vg-tip></div>
 	</section>
+
+	<!-- 右下角「进入 →」：选了版本才淡入。
+	     ⚠ 点版本按钮**不再**直接进站 —— 先看说明，点这里才真正应用版本。 -->
+	<button type="button" class="vg-enter" data-vg-enter>
+		进入<span class="vg-enter__arrow" aria-hidden="true">→</span>
+	</button>
 </div>
 
 <style>
@@ -333,8 +348,13 @@
 		inset: 0;
 		display: flex;
 		flex-direction: column;
-		justify-content: center;
 		align-items: center;
+		box-sizing: border-box;
+		padding: 24px 16px;
+		/* 内容靠 .vg-stack 的 margin:auto 竖直居中 —— 这里**不能**用
+		   justify-content:center：内容一旦超过视口，flex 会把顶部裁掉，且滚动也拉不回来
+		   （加了版本说明之后，矮屏 / 横屏手机上内容确实会超一屏）。 */
+		overflow-y: auto;
 		opacity: 0;
 		transform: scale(0.96);
 		pointer-events: none;
@@ -345,11 +365,45 @@
 		transform: scale(1);
 		pointer-events: auto;
 	}
+	/* 三列栅格：`1fr auto 1fr` 让**中间那列永远在屏幕正中**（两侧等分剩余空间）。
+	   未选中：按钮（第 1 行、横跨整行）/ 说明（第 2 行）/ 提示（第 3 行）逐行竖排，整体竖直居中。
+	   选中后（.is-picking）：按钮搬去第 1 列（用户圈的红框），
+	                        说明搬去第 2 列（屏幕正中，用户圈的红圈）并放大。
+	   用栅格而不是绝对定位，是为了保住 margin:auto 的「竖向居中 + 超一屏可滚动」。
+	   ⚠ 换列是**瞬间跳**的（grid-column 不可过渡）—— 「从中间滑到左边」那段动画
+	     由脚本的 flipFrom() 用 transform 补（FLIP），不在这里做。 */
+	.vg-stack {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		justify-items: center;
+		width: 100%;
+		margin: auto 0; /* 不足一屏 → 竖直居中；超过一屏 → 正常滚动 */
+	}
 	.vg-versions {
+		grid-column: 1 / -1;
+		grid-row: 1;
+		justify-self: center;
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
 		width: min(420px, 88vw);
+	}
+	#version-gate.is-picking .vg-versions {
+		/* 搬到左边（第 1 列）。
+		   ⚠ 宽度必须跟着视口缩（22vw），**不能写死像素、也不能 min(100%,…) 铺满整列** ——
+		     侧列是 1fr，写死会把栅格撑出横向溢出（中间那列被顶偏）；
+		     铺满整列则反过来，版本列表右缘会顶到说明的左缘（实测 876 宽时只剩 0px 间距）。
+		     22vw 让两侧恒定留出约 13~35px 的呼吸位。 */
+		grid-column: 1;
+		justify-self: center;
+		gap: 10px;
+		width: min(340px, 22vw);
+	}
+	#version-gate.is-picking .vg-btn {
+		height: 56px;
+		padding: 0 16px;
+		font-size: 13.5px;
 	}
 
 	/* 玻璃按钮 */
@@ -454,6 +508,8 @@
 		opacity: 0.75;
 	}
 	.vg-tip {
+		grid-column: 1 / -1;
+		grid-row: 3;
 		min-height: 20px;
 		margin-top: 16px;
 		text-align: center;
@@ -461,6 +517,139 @@
 		letter-spacing: 0.06em;
 		color: rgb(52, 211, 153);
 		font-weight: 600;
+	}
+	/* 选中后说明占了第 1 行，提示往上收一行，免得空出一整行 */
+	#version-gate.is-picking .vg-tip {
+		grid-row: 2;
+	}
+
+	/* 选中的版本按钮（点一下只「选中」，真正进站要点右下角的「进入 →」） */
+	.vg-btn.is-sel {
+		border-color: rgba(255, 255, 255, 0.5);
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06));
+		color: #fff;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 15px 45px rgba(255, 255, 255, 0.07);
+	}
+	/* 占位档位（ULTRA / ProMaxPlusUltra）不给选中态 —— 它们本来就进不去 */
+	.vg-btn--soon.is-sel {
+		border-color: rgba(255, 255, 255, 0.16);
+		background: rgba(255, 255, 255, 0.02);
+		color: rgba(255, 255, 255, 0.82);
+		box-shadow: none;
+	}
+
+	/* =========================
+	   版本说明（点版本后逐句淡入）
+	========================= */
+	.vg-desc {
+		grid-column: 1 / -1;
+		grid-row: 2;
+		justify-self: center;
+		box-sizing: border-box;
+		width: min(420px, 88vw);
+		/* 未选中时这块是空的（说明只在选中后才出），留一段 min-height 是给
+		   「打开面板 → 第一帧」一个稳定的占位，免得面板竖直居中量到最后一行时抖一下。
+		   真正的说明高度见下面 .is-picking 那条（按最多 5 行留）。 */
+		min-height: 94px;
+		margin-top: 20px;
+		text-align: left;
+		font-size: 0.82rem;
+		line-height: 1.7;
+		letter-spacing: 0.04em;
+		color: rgba(255, 255, 255, 0.62);
+	}
+	/* 选中之后：搬去第 2 列（屏幕正中）并放大居中 —— 就是用户圈的那个「红圈」。
+	   min-height 按**最多 5 行**留（5 × 1.95 × 1.18rem ≈ 184px），
+	   所以逐句淡入的过程中整块的高度不跳、竖排位置也不漂。 */
+	#version-gate.is-picking .vg-desc {
+		grid-column: 2;
+		grid-row: 1;
+		justify-self: center;
+		width: min(620px, 46vw);
+		min-height: 196px;
+		margin-top: 0;
+		text-align: center;
+		font-size: clamp(0.84rem, 1.15vw, 1.18rem);
+		line-height: 1.95;
+		letter-spacing: 0.05em;
+		color: rgba(255, 255, 255, 0.78);
+	}
+	/* 每一行单独上场：靠 animation-delay 拉开间隔（不是整段一次出现）
+	   ⚠⚠ 必须 `:global()`：Astro 会把 scoped `<style>` 里的选择器改写带上
+	   `[data-astro-cid-…]`，而这条 `.vg-desc__line` 是**脚本里 createElement 出来的**
+	   —— 没有那个属性，选择器永远不匹配，症状是「三行瞬间全亮、动画根本不跑」
+	   （实测 computed `animation-name: none` / `getAnimations().length === 0`）。
+	   留在 scoped 块里的 `.vg-desc`（它在模板里）不受影响。
+	   （keyframes 不被 Astro 改名，所以 `vgDescIn` 从 global 选择器引用得到。） */
+	:global(.vg-desc__line) {
+		margin: 0;
+		opacity: 0;
+		transform: translateY(12px);
+		filter: blur(7px);
+		/* 单行用 1s 慢慢化开（用户要求「文字慢点出现」）；
+		   行与行的间隔见脚本里的 LINE_STEP */
+		animation: vgDescIn 1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+	}
+	@keyframes vgDescIn {
+		to {
+			opacity: 1;
+			transform: translateY(0);
+			filter: blur(0);
+		}
+	}
+
+	/* 右下角「进入 →」 */
+	.vg-enter {
+		position: absolute;
+		right: 30px;
+		bottom: 28px;
+		z-index: 20;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 13px 24px;
+		border-radius: 9999px;
+		border: 1px solid rgba(255, 255, 255, 0.22);
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+		-webkit-backdrop-filter: blur(20px) saturate(180%);
+		backdrop-filter: blur(20px) saturate(180%);
+		color: #fff;
+		font-family: inherit;
+		font-size: 0.86rem;
+		letter-spacing: 0.16em;
+		cursor: pointer;
+		/* 没选版本之前只是「占位不出场」：透明 + 不吃事件 */
+		opacity: 0;
+		transform: translateY(8px);
+		pointer-events: none;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 12px 36px rgba(0, 0, 0, 0.4);
+		transition:
+			opacity 0.5s ease, transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.35s,
+			border-color 0.35s;
+	}
+	.vg-enter.is-on {
+		opacity: 1;
+		transform: translateY(0);
+		pointer-events: auto;
+	}
+	.vg-enter:hover {
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08));
+		border-color: rgba(255, 255, 255, 0.5);
+	}
+	.vg-enter:active {
+		transform: scale(0.97);
+	}
+	.vg-enter:focus-visible {
+		outline: 2px solid rgba(255, 255, 255, 0.6);
+		outline-offset: 3px;
+	}
+	.vg-enter__arrow {
+		transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+	.vg-enter:hover .vg-enter__arrow {
+		transform: translateX(5px);
 	}
 
 	/* =========================
@@ -475,6 +664,84 @@
 			border-radius: 16px;
 			font-size: 13px;
 			padding: 0 18px;
+		}
+		.vg-desc {
+			min-height: 86px;
+			font-size: 0.78rem;
+		}
+		.vg-enter {
+			right: 18px;
+			bottom: 18px;
+			padding: 12px 20px;
+		}
+		/* 窄屏塞不下「左按钮 + 中说明」两列 —— 退回竖排：按钮照旧居中，
+		   说明挪到它下面、居中并且比默认大一点。 */
+		#version-gate.is-picking .vg-versions {
+			grid-column: 1 / -1;
+			grid-row: 1;
+			justify-self: center;
+			width: min(420px, 88vw);
+		}
+		#version-gate.is-picking .vg-desc {
+			grid-column: 1 / -1;
+			grid-row: 2;
+			width: min(420px, 88vw);
+			min-height: 0;
+			margin-top: 16px;
+			font-size: 0.84rem;
+			line-height: 1.8;
+		}
+		#version-gate.is-picking .vg-tip {
+			grid-row: 3;
+		}
+	}
+
+	/* 窄一点的桌面窗口（601~860px）：22vw 只剩 170px 上下，右侧小标签
+	   （「推荐 · Normal」≈86px）会把版本名挤到第二行 —— 实测 744 宽时
+	   「普通版」被拆成「普通 / 版」。选中态下这些标签只是锦上添花，
+	   收起它们，让版本名独占一行。窄屏竖排那条分支（≤600）空间够，不受影响。 */
+	@media (min-width: 601px) and (max-width: 860px) {
+		#version-gate.is-picking .vg-tag {
+			display: none;
+		}
+	}
+
+	/* 矮屏（横屏手机 / 小窗口）：加了版本说明之后内容会超过一屏。
+	   收一档尺寸 + 底部给「进入 →」留出位置，免得它把说明压在下面。 */
+	@media (max-height: 620px) {
+		.vg-panel {
+			padding: 16px 16px 76px;
+		}
+		.vg-versions {
+			gap: 8px;
+		}
+		.vg-btn {
+			height: 50px;
+			font-size: 13px;
+		}
+		.vg-desc {
+			min-height: 0;
+			margin-top: 14px;
+			font-size: 0.76rem;
+		}
+		/* 矮屏优先「放得下」：不再给说明预留 5 行的高度（否则整块会顶出滚动） */
+		#version-gate.is-picking .vg-desc {
+			min-height: 0;
+			font-size: 0.82rem;
+			line-height: 1.7;
+		}
+	}
+
+	/* 矮屏 + 宽屏（≥601px，即没有走上面「窄屏竖排」那条分支）：
+	   两条侧列在矮屏上会被 1fr 挤扁，而版本列表有 min-content（标签 nowrap），
+	   合计超过面板宽 → 栅格横向溢出 → 中间那列被顶右。这里把两个宽度都收一档。 */
+	@media (min-width: 601px) and (max-height: 620px) {
+		#version-gate.is-picking .vg-versions {
+			width: min(240px, 20vw);
+		}
+		#version-gate.is-picking .vg-desc {
+			width: min(520px, 46vw);
+			font-size: 0.82rem;
 		}
 	}
 
@@ -496,6 +763,17 @@
 		}
 		#version-gate.is-shown .vg-skip {
 			opacity: 1;
+		}
+		/* 无动画 → 版本说明直接整段可见（逐句淡入纯属装饰，不该让人等）
+		   ⚠ 同样要 `:global()` —— 这些行是脚本建的，scoped 选择器匹配不到 */
+		:global(.vg-desc__line) {
+			animation: none;
+			opacity: 1;
+			transform: none;
+			filter: none;
+		}
+		.vg-enter {
+			transition: none;
 		}
 	}
 </style>
@@ -545,8 +823,9 @@
 
 		/* ── 版本音频 ──────────────────────────────────────────────────
 		   三个可选版本各配一段：lite.mp3 / normal.mp3 / promax.mp3。
-		   开门不自动播；鼠标悬停（或键盘聚焦）到哪个版本按钮，
-		   就播对应曲名的音频；右上角静音按钮随时关（记档，下次进站保持）。 */
+		   开门不自动播；**点了哪个版本按钮才播哪一段**（点击本身是用户手势，
+		   不受浏览器自动播放策略限制，一按就出声）。右上角静音按钮随时关
+		   （记档，下次进站保持）。占位档（ULTRA / ProMaxPlusUltra）不播。 */
 		var TRACKS = { lite: "/audio/lite.mp3", normal: "/audio/normal.mp3", promax: "/audio/promax.mp3" };
 		var MUTE_KEY = "vgMusicMuted";
 		var audioEl = document.getElementById("vg-audio");
@@ -596,14 +875,8 @@
 				applyMute();
 			});
 		}
-		/* 悬停 / 键盘聚焦版本按钮 → 播对应版本的音频（占位档不播） */
-		function trackFromEvent(e) {
-			var btn = e.target && e.target.closest ? e.target.closest(".vg-btn[data-ver]") : null;
-			if (!btn || btn.getAttribute("data-soon")) return;
-			playTrack(btn.getAttribute("data-ver"));
-		}
-		gate.addEventListener("pointerover", trackFromEvent);
-		gate.addEventListener("focusin", trackFromEvent);
+		/* 点版本按钮时才播对应版本的音频 —— 见下面 [data-ver] 的 click 处理
+		   （曾经用 pointerover / focusin 悬停就播，用户要求改成「点击后再播放」）。 */
 		applyMute();
 
 		/* ── 等整站加载完再开门 ────────────────────────────────────────
@@ -694,6 +967,7 @@
 				if (gate.classList.contains("is-ready")) return;
 				if (e.target && e.target.closest && e.target.closest("[data-ver]")) return;
 				if (e.target && e.target.closest && e.target.closest("[data-vg-mute]")) return;
+				if (e.target && e.target.closest && e.target.closest("[data-vg-enter]")) return;
 				gate.classList.add("is-ready");
 				if (readyTimer) clearTimeout(readyTimer);
 			});
@@ -717,27 +991,130 @@
 
 		whenPageReady(openGate);
 
-		var soonTipTimer = 0;
-		gate.addEventListener("click", function (e) {
-			var btn = e.target && e.target.closest ? e.target.closest("[data-ver]") : null;
-			if (!btn) return;
-			var v = btn.getAttribute("data-ver");
-			/* 占位档位（ProMaxPlusUltra / ULTRA）：只在面板底部回一句提示，
-			   不写 localStorage、不切 body 类名，免得选出一个还不存在的版本。 */
-			if (v === "ultra" || v === "promaxplusultra") {
-				var tipEl = gate.querySelector("[data-vg-tip]");
-				if (tipEl) {
-					tipEl.textContent =
-						v === "ultra"
-							? "ULTRA 版还在路上，明年再说～"
-							: "ProMaxPlusUltra 还在图纸上，先剧透一下～";
-					if (soonTipTimer) clearTimeout(soonTipTimer);
-					soonTipTimer = setTimeout(function () {
-						tipEl.textContent = "";
-					}, 2600);
-				}
-				return;
+		/* ── 版本说明 + 右下角「进入 →」─────────────────────────────────
+		   点某个版本按钮**不再**直接进站，而是：
+		     ① 播该版本的背景音乐（点击是用户手势 → 一按就出声）；
+		     ② 面板切成 .is-picking —— 版本列表**滑**到左边（FLIP，见 flipFrom）、
+		        说明搬到屏幕正中并放大；
+		     ③ 说明**一句一句**慢慢化开（断行规则 = 按「，」和「。」切，
+		        即「逗号 / 句号都算一段话的结尾」）；
+		     ④ 右下角亮起「进入 →」，点它才真正应用版本并收门。
+
+		   改文案：只动 DESC；改断行规则：只动 linesOf 里那个 split；
+		   改出场快慢：LINE_STEP（行距）+ CSS 里 vgDescIn 的时长（单行耗时）；
+		   改滑动快慢：FLIP_MS。 */
+		var DESC = {
+			lite: "轻量、简洁、快速。保留博客最核心的内容与功能，减少视觉元素与动画，让页面加载更加迅速，适合追求干净体验与低资源占用的访问者。",
+			normal:
+				"平衡内容与视觉体验。保留完整的博客功能、适量动画与精致的界面效果，在加载速度与视觉表现之间取得平衡，适合作为日常浏览的默认版本。",
+			promax:
+				"完整释放视觉表现力。加入更加丰富的动画、液态玻璃效果、动态背景与交互细节，让整个博客拥有更强的沉浸感与科技感，适合追求极致视觉体验的访问者。",
+		};
+		var DESC_BOX = gate.querySelector("[data-vg-desc]");
+		var ENTER_BTN = gate.querySelector("[data-vg-enter]");
+		var LINE_STEP = 0.8; /* 相邻两句之间的间隔（秒）—— 大一点 = 一句一句慢慢来 */
+		var selected = null;
+
+		/** 逗号「，」和句号「。」都算一句的结尾。空串（末尾那个句号后面）丢掉。
+		 *  lite → 5 行 / normal → 4 行 / promax → 4 行。 */
+		function linesOf(v) {
+			var text = DESC[v];
+			if (!text) return [];
+			return text
+				.split(/[，。]/)
+				.map(function (s) {
+					return s.trim();
+				})
+				.filter(function (s) {
+					return s.length > 0;
+				});
+		}
+
+		/* 选中某个版本：播它的音乐 → 出说明（逐句）→ 版本列表**从中间滑到左边** */
+		function showDesc(v) {
+			if (!DESC[v]) return;
+			selected = v;
+			playTrack(v); /* 点击后再播音乐 */
+			/* FLIP 的 First：**必须在任何改布局的动作之前量**。
+			   说明那几行虽然是 opacity:0，但**占位** —— 先填说明再量的话，
+			   量到的是「说明已经把上面那排按钮顶上去之后」的位置，动画起点就错了
+			   （表现成：点完按钮，列表先向上跳一下、再往左滑）。 */
+			var vEl = gate.querySelector(".vg-versions");
+			var firstRect = vEl ? vEl.getBoundingClientRect() : null;
+			/* 「从中间滑到左边」只在**第一次**点版本时播：之后列表已经在左边了，
+			   再点别的版本只是换选中态 + 换说明，不该再滑一次（那会像在抖）。 */
+			var wasPicking = gate.classList.contains("is-picking");
+
+			gate.classList.add("is-picking"); /* 版本列表左移、说明移到正中并放大 */
+			var btns = gate.querySelectorAll(".vg-btn[data-ver]");
+			for (var b = 0; b < btns.length; b++) {
+				btns[b].classList.toggle("is-sel", btns[b].getAttribute("data-ver") === v);
 			}
+			if (DESC_BOX) {
+				DESC_BOX.textContent = ""; /* 重新建节点 → 动画自然从头播 */
+				var lines = linesOf(v);
+				for (var i = 0; i < lines.length; i++) {
+					var p = document.createElement("p");
+					p.className = "vg-desc__line";
+					p.style.animationDelay = (i * LINE_STEP).toFixed(2) + "s";
+					p.textContent = lines[i];
+					DESC_BOX.appendChild(p);
+				}
+			}
+			if (ENTER_BTN) ENTER_BTN.classList.add("is-on");
+
+			if (!wasPicking) flipFrom(vEl, firstRect); /* 布局已经改完 → 用 transform 把它「滑」过去 */
+		}
+
+		/* ── 「从中间滑到左边」的动画（FLIP）────────────────────────────
+		   栅格换列（`grid-column: 1/-1` → `1`）是**没法 transition 的** ——
+		   位置瞬间就跳过去了。所以走 FLIP 四步：
+		     ① First  —— 改布局**之前**量旧矩形（在 showDesc 里量好传进来）
+		     ② Last   —— 改完布局量新矩形
+		     ③ Invert —— 用 transform 把它「按回」旧位置（此刻画面 = 点击前那一帧）
+		     ④ Play   —— 下一帧撤掉 transform，靠 transition 平滑滑到新位置
+		   ⚠ 必须用 transform 而不是过渡 width：transform 只影响绘制、不参与布局，
+		     滑动全程不会把中间那列（说明）挤偏；过渡 width 会真改布局，
+		     栅格每帧重算 → 中间那列跟着抖。
+		   代价：新旧宽度不同（420 → min(340px,22vw)），scale 会让文字在飞的途中
+		     轻微拉伸 —— 这是 FLIP 的固有代价，换来的是「第一帧与点击前一模一样」。
+		   结束后内联的 transform / transition / transform-origin 全部清干净，
+		   免得后面任何一次布局变化都拖着这段已经播完的过渡。 */
+		var FLIP_MS = 620;
+		function flipFrom(el, first) {
+			if (!el || !first || !first.width) return;
+			var reduce = false;
+			try {
+				reduce = !!(
+					window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+				);
+			} catch (e) {}
+			if (reduce) return; /* 关了动效就让它直接到新位置（布局已经改完了） */
+			var last = el.getBoundingClientRect();
+			if (!last.width || !last.height) return;
+			el.style.transformOrigin = "top left";
+			el.style.transform =
+				"translate(" +
+				(first.left - last.left).toFixed(2) +
+				"px, " +
+				(first.top - last.top).toFixed(2) +
+				"px) scale(" +
+				(first.width / last.width).toFixed(4) +
+				", " +
+				(first.height / last.height).toFixed(4) +
+				")";
+			void el.offsetWidth; /* 逼一帧：否则「设起点 + 改终点」会被合成一次，动画不播 */
+			el.style.transition = "transform " + FLIP_MS + "ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+			el.style.transform = "none";
+			setTimeout(function () {
+				el.style.transition = "";
+				el.style.transform = "";
+				el.style.transformOrigin = "";
+			}, FLIP_MS + 40);
+		}
+
+		/* 真正应用版本（就是原来「点按钮即进站」那段，原样搬进来） */
+		function applyVersion(v) {
 			try {
 				localStorage.setItem(KEY, v);
 				localStorage.setItem("visualEffectMode", v === "lite" ? "none" : "rain");
@@ -779,6 +1156,40 @@
 			window.dispatchEvent(
 				new CustomEvent("effectModeChange", { detail: { mode: v === "lite" ? "none" : "rain" } }),
 			);
+		}
+
+		/* 右下角「进入 →」：用当前选中的版本进站 */
+		if (ENTER_BTN) {
+			ENTER_BTN.addEventListener("click", function (e) {
+				e.stopPropagation();
+				if (selected) applyVersion(selected);
+			});
+		}
+
+		var soonTipTimer = 0;
+		gate.addEventListener("click", function (e) {
+			var btn = e.target && e.target.closest ? e.target.closest("[data-ver]") : null;
+			if (!btn) return;
+			var v = btn.getAttribute("data-ver");
+			/* 占位档位（ProMaxPlusUltra / ULTRA）：只在面板底部回一句提示，
+			   不写 localStorage、不切 body 类名，免得选出一个还不存在的版本。
+			   也不改选中态 —— 它们没有说明、也进不去。 */
+			if (v === "ultra" || v === "promaxplusultra") {
+				var tipEl = gate.querySelector("[data-vg-tip]");
+				if (tipEl) {
+					tipEl.textContent =
+						v === "ultra"
+							? "ULTRA 版还在路上，明年再说～"
+							: "ProMaxPlusUltra 还在图纸上，先剧透一下～";
+					if (soonTipTimer) clearTimeout(soonTipTimer);
+					soonTipTimer = setTimeout(function () {
+						tipEl.textContent = "";
+					}, 2600);
+				}
+				return;
+			}
+			/* 正式档位：先出说明（逐句），真正进站等右下角「进入 →」 */
+			showDesc(v);
 		});
 	})();
 </script>
